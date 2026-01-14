@@ -1526,10 +1526,10 @@ export default function Home() {
                     <p style={{ marginBottom: '1.5rem', opacity: 0.9, fontSize: '0.9rem' }}>
                         Encontre o profissional certo para cada serviço
                     </p>
-                    <p style={{ marginBottom: '1.5rem', opacity: 0.8, fontSize: '0.85rem', maxWidth: '800px', lineHeight: '1.6' }}>
+                    <p style={{ marginBottom: '1.5rem', opacity: 0.8, fontSize: '0.85rem', maxWidth: '800px', margin: '0 auto 1.5rem', lineHeight: '1.6' }}>
                         <strong>Por que buscamos por região?</strong> Conectamos você com profissionais da sua região para garantir atendimento rápido, custos de deslocamento reduzidos e maior praticidade para ambos.
                     </p>
-                    <p style={{ marginBottom: '1.5rem', opacity: 0.7, fontSize: '0.8rem', maxWidth: '800px', lineHeight: '1.5', fontStyle: 'italic' }}>
+                    <p style={{ marginBottom: '1.5rem', opacity: 0.7, fontSize: '0.8rem', maxWidth: '800px', margin: '0 auto 1.5rem', lineHeight: '1.5', fontStyle: 'italic' }}>
                         O ContrataPro é uma plataforma de conexão entre clientes e profissionais autônomos. Não somos empregadores nem responsáveis pelos serviços prestados. A contratação e execução dos serviços ocorre diretamente entre o cliente e o profissional.
                     </p>
                     <FooterLinks>
