@@ -1,0 +1,286 @@
+# Guia de Migrações de Banco de Dados
+
+Este projeto utiliza **Alembic** para gerenciar migrações de banco de dados com SQLAlchemy async.
+
+## 📋 Índice
+
+- [Estrutura](#estrutura)
+- [Comandos Básicos](#comandos-básicos)
+- [Workflow de Desenvolvimento](#workflow-de-desenvolvimento)
+- [Deploy em Produção](#deploy-em-produção)
+- [Troubleshooting](#troubleshooting)
+
+## 🗂️ Estrutura
+
+```
+backend/
+├── alembic/
+│   ├── versions/          # Arquivos de migration
+│   ├── env.py            # Configuração do Alembic (async)
+│   └── script.py.mako    # Template para novas migrations
+├── alembic.ini           # Configuração principal
+├── migrate.sh            # Script helper para migrations
+└── MIGRATIONS.md         # Este arquivo
+```
+
+## 🚀 Comandos Básicos
+
+### Usando o Script Helper (Recomendado)
+
+```bash
+# Aplicar todas as migrations pendentes
+./migrate.sh upgrade
+
+# Criar nova migration (autogenerate)
+./migrate.sh create "adicionar_campo_email"
+
+# Ver versão atual do banco
+./migrate.sh current
+
+# Ver histórico de migrations
+./migrate.sh history
+
+# Reverter última migration
+./migrate.sh downgrade
+```
+
+### Usando Alembic Diretamente
+
+```bash
+# Aplicar migrations
+python3 -m alembic upgrade head
+
+# Criar migration manual
+python3 -m alembic revision -m "descricao"
+
+# Criar migration com autogenerate
+python3 -m alembic revision --autogenerate -m "descricao"
+
+# Reverter para versão específica
+python3 -m alembic downgrade <revision_id>
+
+# Ver SQL que será executado (dry run)
+python3 -m alembic upgrade head --sql
+```
+
+## 💻 Workflow de Desenvolvimento
+
+### 1. Modificar Models
+
+Edite seus models em `app/models.py`:
+
+```python
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True)  # Novo campo
+```
+
+### 2. Criar Migration
+
+```bash
+./migrate.sh create "adicionar_email_usuario"
+```
+
+Isso cria um arquivo em `alembic/versions/` com o timestamp.
+
+### 3. Revisar Migration
+
+**IMPORTANTE**: Sempre revise o arquivo gerado antes de aplicar!
+
+```python
+def upgrade() -> None:
+    # Verifique se as alterações estão corretas
+    op.add_column('users', sa.Column('email', sa.String(), nullable=True))
+    op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
+
+def downgrade() -> None:
+    # Garanta que o rollback funciona corretamente
+    op.drop_index(op.f('ix_users_email'), table_name='users')
+    op.drop_column('users', 'email')
+```
+
+### 4. Aplicar Migration
+
+```bash
+./migrate.sh upgrade
+```
+
+### 5. Testar Rollback (Opcional)
+
+```bash
+./migrate.sh downgrade  # Reverte última migration
+./migrate.sh upgrade    # Reaplica
+```
+
+## 🏭 Deploy em Produção
+
+### Opção 1: Via Docker Compose
+
+```yaml
+# docker-compose.yml
+services:
+  backend:
+    build: ./backend
+    command: >
+      sh -c "python3 -m alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+```
+
+### Opção 2: Script de Deploy
+
+```bash
+#!/bin/bash
+# deploy.sh
+
+# 1. Pull do código
+git pull origin main
+
+# 2. Rebuild da aplicação
+docker-compose build backend
+
+# 3. Parar serviço
+docker-compose stop backend
+
+# 4. Aplicar migrations
+docker-compose run --rm backend python3 -m alembic upgrade head
+
+# 5. Reiniciar serviço
+docker-compose up -d backend
+```
+
+### Opção 3: CI/CD (GitHub Actions)
+
+```yaml
+# .github/workflows/deploy.yml
+- name: Run migrations
+  run: |
+    docker-compose run --rm backend python3 -m alembic upgrade head
+```
+
+## 🔧 Troubleshooting
+
+### Erro: "Can't locate revision"
+
+**Problema**: Banco está em estado inconsistente.
+
+**Solução**:
+```bash
+# Ver versão atual
+./migrate.sh current
+
+# Marcar versão manualmente
+python3 -m alembic stamp head
+```
+
+### Erro: "Target database is not up to date"
+
+**Problema**: Migrations pendentes.
+
+**Solução**:
+```bash
+./migrate.sh upgrade
+```
+
+### Autogenerate não detecta alterações
+
+**Problema**: Models não foram importados em `alembic/env.py`.
+
+**Solução**: Verifique se todos os models estão importados:
+
+```python
+# alembic/env.py
+from app.models import (
+    User, Service, WorkingHour, Appointment,
+    Subscription, Category
+)
+```
+
+### Erro de conexão com banco
+
+**Problema**: URL de conexão incorreta.
+
+**Solução**: Verifique `.env`:
+
+```bash
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname
+```
+
+### Rollback de migration em produção
+
+**CUIDADO**: Pode causar perda de dados!
+
+```bash
+# 1. Fazer backup primeiro!
+pg_dump -h localhost -U postgres faz_de_tudo > backup.sql
+
+# 2. Reverter migration
+./migrate.sh downgrade
+
+# 3. Se algo der errado, restaurar backup
+psql -h localhost -U postgres faz_de_tudo < backup.sql
+```
+
+## 📝 Boas Práticas
+
+### ✅ Fazer
+
+- ✅ Sempre revisar migrations autogenerated
+- ✅ Testar migrations em ambiente de staging primeiro
+- ✅ Fazer backup antes de migrations em produção
+- ✅ Versionar arquivos de migration no Git
+- ✅ Usar nomes descritivos nas migrations
+- ✅ Testar tanto upgrade quanto downgrade
+- ✅ Adicionar índices para campos frequentemente consultados
+
+### ❌ Evitar
+
+- ❌ Editar migrations já aplicadas em produção
+- ❌ Fazer migrations direto em produção sem testar
+- ❌ Deletar arquivos de migration do histórico
+- ❌ Modificar dados (usar data migrations separadas)
+- ❌ Criar migrations gigantes (dividir em partes menores)
+
+## 🔄 Estratégia de Versionamento
+
+### Convenção de Nomes
+
+```
+YYYYMMDD_HHMM-<revision_id>_<descricao>.py
+```
+
+Exemplo:
+```
+20260105_1330-abc123def456_adicionar_campo_email.py
+```
+
+### Branches e Migrations
+
+**Desenvolvimento em feature branches**:
+
+1. Criar branch: `git checkout -b feature/novo-campo`
+2. Modificar models
+3. Criar migration: `./migrate.sh create "novo_campo"`
+4. Commit: `git commit -am "feat: adicionar novo campo"`
+5. Merge para main
+
+**Conflitos de migration**:
+
+Se dois desenvolvedores criarem migrations em paralelo:
+
+```bash
+# Resolver conflito manualmente
+python3 -m alembic merge <rev1> <rev2>
+```
+
+## 📚 Referências
+
+- [Alembic Documentation](https://alembic.sqlalchemy.org/)
+- [SQLAlchemy Async](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html)
+- [FastAPI + Alembic](https://fastapi.tiangolo.com/tutorial/sql-databases/)
+
+---
+
+**Última atualização**: 2026-01-05
+**Versão**: 1.0.0

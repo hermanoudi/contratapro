@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+asyncpg
+alembic
+pydantic[email]
+python-dotenv
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt
+pytest
+pytest-asyncio
+httpx
+mercadopago==2.3.0
+pydantic-settings==2.1.0
+cloudinary
+python-multipart

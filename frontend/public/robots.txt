@@ -1,0 +1,24 @@
+# ContrataPro - Robots.txt
+# Permitir indexação de todas as páginas públicas
+
+User-agent: *
+Allow: /
+Allow: /search
+Allow: /register-pro
+Allow: /register-client
+Allow: /login
+
+# Bloquear páginas privadas e admin
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /my-appointments
+Disallow: /subscription
+Disallow: /profile
+Disallow: /book/*
+Disallow: /appointment/*
+
+# Sitemap
+Sitemap: https://contratapro.com.br/sitemap.xml
+
+# Crawl-delay (opcional - ajustar conforme necessário)
+Crawl-delay: 1

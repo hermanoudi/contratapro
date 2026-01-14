@@ -1,0 +1,332 @@
+{
+  "meta": {
+    "product": "Faz de tudo",
+    "feature": "Plataforma SaaS MVP",
+    "prd_owner": "[A ser definido pelo usuário/time]",
+    "version": "1.0",
+    "date": "2025-11-25"
+  },
+  "context": {
+    "summary": "A plataforma \"Faz de tudo\" é um novo SaaS B2B2C focado em conectar Clientes Consumidores a Prestadores de Serviços (Profissionais Liberais) em uma mesma localidade (Cidade). O MVP se concentra em funcionalidades de Cadastro e Busca por Proximidade (CEP), Agendamento com Bloqueio de Agenda e Monetização via Assinatura Mensal (R$ 50,00) dos Profissionais para validação de mercado e atingimento da meta de receita. A arquitetura inicial é um Monólito para agilidade.",
+    "target_audience": [
+      "Profissional Prestador de Serviço (Barbeiros, pintores, pedreiros, massagistas, eletricistas, diarístas, manicures, etc.)",
+      "Cliente Consumidor (Pessoas que buscam encontrar prestadores de serviço locais de forma rápida e confiável)"
+    ],
+    "key_use_cases": [
+      "O Cliente Consumidor informa o CEP e encontra uma lista filtrada de Profissionais e Serviços disponíveis em sua cidade.",
+      "O Profissional cadastra seus serviços, define seu preço e agenda, e paga a mensalidade para ter visibilidade e receber agendamentos.",
+      "O Cliente Consumidor solicita um horário de agendamento que bloqueia a agenda do Profissional e gera um contato via WhatsApp para finalizar a contratação."
+    ],
+    "deployment_context": {
+      "type": "new_system",
+      "description": "A plataforma será construída do zero, iniciando com uma arquitetura monolítica para facilitar a entrega rápida do MVP."
+    },
+    "problems": [
+      {
+        "description": "Dificuldade em encontrar profissionais locais (Ex: pintor em Goiânia).",
+        "impact": "Perda de tempo e dificuldade de contratação para o cliente.",
+        "priority": "high"
+      },
+      {
+        "description": "Falta de canal de exposição centralizado e focado em agendamento transacional para profissionais.",
+        "impact": "Dificuldade do profissional em captar novos clientes.",
+        "priority": "medium"
+      }
+    ]
+  },
+  "goals": [
+    {
+      "goal": "Criar uma base sólida de oferta de serviços",
+      "metric": "Número total de Profissionais Prestadores ativos",
+      "target": "150 Profissionais"
+    },
+    {
+      "goal": "Garantir a adoção e o engajamento do cliente",
+      "metric": "Número total de Clientes Consumidores cadastrados",
+      "target": "3.000 Clientes Consumidores"
+    },
+    {
+      "goal": "Monetizar a plataforma através do público profissional",
+      "metric": "Receita total gerada pelas mensalidades dos profissionais",
+      "target": "R$ 40.000,00"
+    }
+  ],
+  "scope": {
+    "in_scope": [
+      "Cadastro completo do Profissional (incluindo CEP para geolocalização por cidade)",
+      "Cadastro de Serviço (incluindo nome, descrição, 1 a 5 fotos e definição de valores)",
+      "Funcionalidade de Busca por CEP/Cidade (filtro obrigatório e exclusivo por cidade)",
+      "Funcionalidade de Agendamento (seleção de data/hora que bloqueia a agenda)",
+      "Cobrança da Mensalidade do Profissional via cartão de crédito (R$ 50,00/mês)",
+      "Painel básico do Administrador com KPIs (Profissionais e Agendamentos) e gestão de bloqueio/desbloqueio de perfil"
+    ],
+    "out_of_scope": [
+      "Pagamento do serviço pelo Cliente Consumidor dentro da plataforma",
+      "Métodos de pagamento para a mensalidade do profissional que não sejam cartão de crédito (Ex: PIX, Boleto)",
+      "Avaliações e comentários dos clientes",
+      "Funcionalidade de chat interno entre cliente e profissional",
+      "Múltiplos agendamentos simultâneos para o mesmo profissional",
+      "Atendimento baseado em \"raio de ação\" (distância em quilômetros)"
+    ]
+  },
+  "functional_requirements": [
+    {
+      "id": "FR-001",
+      "name": "Cadastro do Profissional",
+      "description": "O sistema deve permitir que o Profissional crie seu perfil, informe dados pessoais, de contato (incluindo WhatsApp), sua área de atuação (CEP) e defina sua categoria de serviço, para que ele possa ser aprovado e começar a cadastrar serviços.",
+      "main_flow": [
+        "Profissional clica em \"Ofereça seus serviços\".",
+        "Preenche Nome, E-mail e Senha.",
+        "Preenche o CEP e o sistema busca e apresenta o Endereço (cidade e estado). O profissional confirma.",
+        "Profissional preenche o restante do perfil: Telefone WhatsApp, Categoria de Serviço Principal, e uma Descrição breve.",
+        "Profissional Confirma o Cadastro."
+      ],
+      "alternative_flows": [
+        "O cadastro é aprovado automaticamente, liberando o profissional para o próximo passo."
+      ],
+      "known_errors": [
+        "CEP não encontrado: Mensagem de erro e bloqueio do avanço.",
+        "Campos Duplicados (E-mail): Mensagem de erro e bloqueio do avanço até o ajuste."
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "FR-002",
+      "name": "Cadastro de Serviço",
+      "description": "Permitir que o Profissional, após o cadastro, defina os detalhes de cada serviço que ele oferece (nome, descrição, preço: custo médio, menor custo e maior custo) e faça o upload de 1 a 5 fotos, para que o serviço seja exibido na busca do cliente.",
+      "main_flow": [
+        "O Profissional acessa o painel e clica em \"Adicionar Novo Serviço\".",
+        "Preenche o Nome e a Descrição detalhada.",
+        "Define a Unidade de Cobrança: \"Por Hora\" ou \"Por Execução\".",
+        "Informa os valores em R$ (formato brasileiro): Custo Médio Estimado, Menor Custo e Maior Custo.",
+        "Faz o upload de 1 (mínimo) a 5 (máximo) fotos de portfólio.",
+        "Confirma e clica em \"Salvar Serviço\"."
+      ],
+      "alternative_flows": [
+        "O serviço fica visível na busca do Cliente Consumidor imediatamente, mas o botão de Agendamento/Contato só é liberado após o pagamento da mensalidade (FR-003)."
+      ],
+      "known_errors": [
+        "Limite de Fotos: Erro se tentar enviar mais de 5 fotos.",
+        "Validação de Custos: Falha se o Menor Custo for maior que o Custo Médio Estimado."
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "FR-003",
+      "name": "Cobrança da Mensalidade do Profissional",
+      "description": "O sistema deve apresentar o plano de R$ 50,00/mês ao Profissional e permitir que ele efetue o pagamento recorrente da mensalidade exclusivamente via cartão de crédito, o que libera o botão de Agendamento/Contato em seu perfil público.",
+      "main_flow": [
+        "Profissional é direcionado para a tela de \"Assinatura/Pagamento\".",
+        "O sistema apresenta o plano de R$ 50,00/mês (recorrência mensal).",
+        "Profissional insere dados do Cartão de Crédito.",
+        "Dados são processados pelo Gateway (Stripe - Hipótese).",
+        "O sistema confirma o pagamento e libera o botão de Agendamento/Contato."
+      ],
+      "alternative_flows": [
+        "Transação Negada: O Profissional não é ativado.",
+        "Cobranças Futuras Falhas: 3 tentativas de retry do sistema, seguido de bloqueio de perfil e remoção da visibilidade.",
+        "Cancelamento pelo Profissional: Perfil é bloqueado na busca."
+      ],
+      "known_errors": [
+        "Se a transação for negada na primeira tentativa, o profissional não é ativado na plataforma.",
+        "Em caso de cancelamento, todos os agendamentos futuros devem ser cancelados e os clientes avisados via WhatsApp."
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "FR-004",
+      "name": "Gestão de Agendamento e Disponibilidade (Cliente e Profissional)",
+      "description": "Permitir que o Profissional gerencie sua disponibilidade no calendário, e que o Cliente Consumidor use a visualização desse calendário para solicitar o agendamento de um serviço com um horário específico (fornecendo Nome Completo e WhatsApp), gerando um bloqueio temporário na agenda do profissional. O agendamento é o ponto de partida para o contato via WhatsApp.",
+      "main_flow": [
+        "Cliente clica em \"Agendar\" (na página do serviço).",
+        "Cliente vê o Calendário de Disponibilidade (slots de 1 hora - Hipótese).",
+        "Cliente seleciona Serviço, Data e Horário.",
+        "Cliente preenche Nome Completo e WhatsApp.",
+        "O sistema registra o agendamento e bloqueia imediatamente o horário.",
+        "O sistema redireciona o Cliente para o WhatsApp do Profissional com uma mensagem pré-preenchida."
+      ],
+      "alternative_flows": [
+        "Duração Padrão: Slot de agendamento padrão de 1 hora.",
+        "Desbloqueio/Cancelamento pelo Profissional: Profissional pode cancelar/desbloquear. A ação é registrada (auditoria) e notifica o Cliente via WhatsApp automaticamente.",
+        "Disponibilidade: Se a agenda não for definida, o sistema assume que está toda ocupada."
+      ],
+      "known_errors": [
+        "Horário Indisponível: Se o horário acabou de ser bloqueado, o cliente recebe a mensagem: \"Horário indisponível. Por favor, selecione outro slot.\""
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "FR-005",
+      "name": "Busca de Profissionais por Cidade",
+      "description": "O sistema deve permitir que o Cliente Consumidor informe seu CEP para que o sistema determine sua cidade e apresente uma lista filtrada de Profissionais e Serviços cadastrados que atendem exclusivamente naquela mesma cidade. O cliente é obrigado a fornecer o CEP para realizar uma busca.",
+      "main_flow": [
+        "Cliente acessa a página inicial e vê a caixa de busca (com exemplos de profissionais).",
+        "Cliente digita o CEP para realizar a busca.",
+        "O sistema valida o CEP e determina a Cidade/Estado.",
+        "O sistema busca apenas Profissionais e Serviços que pertencem à mesma Cidade.",
+        "O sistema exibe a lista de resultados filtrada."
+      ],
+      "alternative_flows": [
+        "O Cliente Consumidor pode refinar a busca filtrando por Categoria de Serviço.",
+        "O cliente é obrigado a fornecer o CEP para realizar a pesquisa funcional."
+      ],
+      "known_errors": [
+        "CEP Inválido: Retorna a mensagem: \"Localidade não encontrada. Por favor, verifique o CEP.\"",
+        "Sem Profissionais: Retorna a mensagem: \"Infelizmente, ainda não temos atendimento que cobre a localidade desejada...\""
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "FR-006",
+      "name": "Painel do Administrador e KPIs",
+      "description": "O sistema deve prover uma interface restrita e segura para o Administrador visualizar de forma agregada os principais indicadores de crescimento da plataforma (KPIs), e também permitir a busca e o gerenciamento básico dos dados de Profissionais (incluindo a ação de bloquear/desbloquear perfil).",
+      "main_flow": [
+        "O Administrador acessa a URL restrita e realiza o login (Autenticação).",
+        "O sistema exibe o Dashboard, contendo KPIs (Profissionais Cadastrados, Agendamentos Realizados).",
+        "O Administrador utiliza a Busca para localizar um Profissional por Nome ou E-mail.",
+        "O Administrador visualiza o Status de Pagamento (data do último pagamento) e dados cadastrais.",
+        "O Administrador executa a ação de Bloquear Perfil ou Desbloquear Perfil.",
+        "O sistema permite a exportação da lista de Profissionais (CSV)."
+      ],
+      "alternative_flows": [
+        "O Administrador pode ver a data do último pagamento do Profissional (para identificar se ele está ativo)."
+      ],
+      "known_errors": [
+        "Login Inválido: Retorna a mensagem: \"Login ou senha inválidos.\""
+      ],
+      "priority": "high"
+    }
+  ],
+  "non_functional_requirements": [
+    {
+      "category": "performance",
+      "specifications": [
+        "Latência de Resposta (APIs Críticas): O tempo de resposta para 95% das requisições (p95) nas APIs de Busca, Agendamento e Cobrança deve ser menor que 150 milissegundos (ms)."
+      ]
+    },
+    {
+      "category": "availability",
+      "specifications": [
+        "Uptime Mensal (MVP): A disponibilidade alvo em ambiente de Produção é de 90% (Restrição de MVP/Custo inicial)."
+      ]
+    },
+    {
+      "category": "security",
+      "specifications": [
+        "Autenticação: Login e senha obrigatórios para Profissionais e Administradores.",
+        "Autorização: Controle de acesso baseado em papel (RBAC).",
+        "Auditoria (Immutable Log): Todas as alterações sensíveis (ex: valor do serviço, status de pagamento) devem ser registradas com quem, o quê e quando.",
+        "Comunicação: Todo o tráfego deve ser criptografado via HTTPS (TLS/SSL).",
+        "Dados de Pagamento: Dados de cartão de crédito não devem ser armazenados, apenas tokenizados pela integração de pagamento."
+      ]
+    },
+    {
+      "category": "observability",
+      "specifications": [
+        "Obrigatório o uso de logs estruturados (para fácil busca e análise) e métricas de erro por endpoint."
+      ]
+    },
+    {
+      "category": "reliability",
+      "specifications": [
+        "Atualizações de Status de Pagamento, Visibilidade do Profissional na Busca e Bloqueio/Desbloqueio da Agenda devem ser Transacionais."
+      ]
+    },
+    {
+      "category": "compatibility",
+      "specifications": [
+        "Site responsivo, acessível em navegadores web e dispositivos móveis."
+      ]
+    },
+    {
+      "category": "compliance",
+      "specifications": [
+        "Uso de formatos de moeda, data e endereço brasileiros (R$)."
+      ]
+    }
+  ],
+  "architecture": {
+    "approach": "Monólito único contendo toda a lógica de negócio (Cadastro, Agendamento, Pagamento, Busca e Admin) para acelerar o desenvolvimento inicial e a validação de mercado.",
+    "components": [
+      "API REST Backend (para lógica de negócio e comunicação com o frontend).",
+      "Banco de Dados Único (PostgreSQL - Hipótese) como fonte de verdade para todos os dados."
+    ],
+    "integrations": [
+      "Stripe (Hipótese) para processamento de pagamentos e recorrência.",
+      "API de Mensageria (WhatsApp) para notificações automáticas a Clientes e Profissionais.",
+      "Serviço de Geolocalização/CEP para validação e coleta de dados de endereço."
+    ]
+  },
+  "decisions_tradeoffs": [
+    {
+      "decision": "Uso de Arquitetura Monolítica",
+      "justification": "Entregar o MVP rapidamente, com custo de infraestrutura inicial menor e com o foco em validar a proposta de valor no mercado.",
+      "trade_off": "Maior dificuldade de escalar componentes isoladamente no futuro, maior acoplamento entre as funcionalidades, dificultando futuras manutenções e evoluções."
+    }
+  ],
+  "dependencies": [
+    {
+      "type": "organizational",
+      "title": "Design/UX do Site Responsivo e Agendamento",
+      "description": "O time de Design/UX deve entregar o layout e a experiência do usuário (UX) completos, incluindo o fluxo de cadastro do profissional, a busca do cliente e o design do Calendário de Agendamento (similar ao Google Calendar)."
+    },
+    {
+      "type": "organizational",
+      "title": "Definição de Termos Legais/Comerciais (Prioridade Média)",
+      "description": "A área Jurídica e Comercial deve definir e aprovar os termos de uso, política de privacidade, e a política de cancelamento da mensalidade, antes da fase de QA/Teste final."
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Falha na integração do sistema de Geolocalização (CEP)",
+      "probability": "medium",
+      "impact": "Alto (Compromete o valor central do produto).",
+      "mitigation": [
+        "Definir e testar o contrato de integração da API de CEP antes do desenvolvimento.",
+        "Implementar uma rotina de caching dos resultados de CEP válidos."
+      ],
+      "contingency_plan": "Permitir que o profissional insira manualmente a Cidade/Estado (como fallback), com validação manual posterior do Administrador (FR-006)."
+    },
+    {
+      "risk": "Alta taxa de falha na cobrança da mensalidade",
+      "probability": "medium",
+      "impact": "Alto (Compromete diretamente a meta de receita).",
+      "mitigation": [
+        "Garantir que o fluxo de pagamento recorrente (Stripe - Hipótese) utilize recursos de retry eficientes e validação de cartão em tempo real.",
+        "Comunicar de forma clara no frontend a necessidade de um cartão válido."
+      ],
+      "contingency_plan": "Notificar o Profissional via E-mail e WhatsApp quando a cobrança falhar, e oferecer um link direto para a atualização dos dados do cartão, antes de bloquear o perfil."
+    },
+    {
+      "risk": "Perda de Agendamentos devido à baixa disponibilidade (90%)",
+      "probability": "high",
+      "impact": "Alto (Gera frustração para Clientes e Profissionais).",
+      "mitigation": [
+        "Priorizar a transacionalidade e a observabilidade dos serviços críticos de Agendamento e Cobrança.",
+        "Isolar o Serviço de Agendamento dentro do Monólito para facilitar a migração ou escalabilidade prioritária, caso o 90% se mostre insuficiente."
+      ],
+      "contingency_plan": "Em caso de indisponibilidade, exibir uma mensagem de erro orientando o Cliente a tentar novamente em 5 minutos."
+    }
+  ],
+  "acceptance_criteria": [
+    "Um novo Profissional consegue concluir o cadastro inicial, e o sistema registra as coordenadas geográficas (latitude/longitude) da cidade com base no CEP fornecido.",
+    "É possível cadastrar um serviço com os 5 campos de preço (Médio, Menor, Maior, Unidade) e realizar o upload de no mínimo 1 e no máximo 5 fotos por serviço.",
+    "O sistema impede o salvamento do serviço se o campo 'Menor Custo' for maior que o 'Custo Médio Estimado'.",
+    "Todo Profissional com pagamento da mensalidade negado não tem o botão \"Agendar\" exibido em seu perfil público.",
+    "Se o Profissional ativo for bloqueado pelo Administrador, seu perfil é removido imediatamente da lista de resultados da Busca.",
+    "A busca de serviços na cidade X não retorna resultados de profissionais cadastrados na cidade Y.",
+    "Ao pesquisar em uma cidade sem profissionais cadastrados, a mensagem de erro amigável \"Infelizmente, ainda não temos atendimento que cobre a localidade desejada...\" é exibida.",
+    "Ao selecionar um slot de 1 hora na agenda, o sistema registra o agendamento no backend e bloqueia imediatamente o horário para novos clientes.",
+    "O cancelamento de um agendamento pelo Profissional gera automaticamente uma notificação via WhatsApp para o Cliente Consumidor.",
+    "O Painel Admin exibe corretamente os contadores (KPIs) de Total de Profissionais e Total de Agendamentos realizados."
+  ],
+  "testing_validation": {
+    "test_types": [
+      "Testes unitários para regras de negócio críticas (validação de preço, lógica de agendamento).",
+      "Testes de integração para fluxo principal (Cadastro, Pagamento, Busca por CEP).",
+      "Teste de segurança para controle de acesso (permissões de Admin/Profissional).",
+      "Teste de carga para a API de Busca, visando garantir a latência de 150 ms."
+    ],
+    "strategy": "TDD para lógica crítica de estoque de agenda e cálculo de recorrência de pagamento. QA manual guiado por roteiro para cobrir todos os fluxos de alta prioridade. Validação exploratória interna do time de Produto e QA."
+  }
+}
