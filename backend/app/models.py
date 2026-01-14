@@ -21,6 +21,7 @@ class SubscriptionPlan(Base):
 
     # Relacionamento
     users = relationship("User", back_populates="subscription_plan")
+    subscriptions = relationship("Subscription", back_populates="plan")
 
 class Category(Base):
     __tablename__ = "categories"
@@ -127,6 +128,9 @@ class Subscription(Base):
     id = Column(Integer, primary_key=True, index=True)
     professional_id = Column(Integer, ForeignKey("users.id"), unique=True)
 
+    # NOVO: Relacionamento com o plano escolhido
+    plan_id = Column(Integer, ForeignKey("subscription_plans.id"), nullable=True)
+
     # Mercado Pago Integration
     mercadopago_subscription_id = Column(String, nullable=True, unique=True)  # ID da assinatura no MP
     mercadopago_preapproval_id = Column(String, nullable=True)  # ID do preapproval no MP
@@ -135,13 +139,19 @@ class Subscription(Base):
 
     # Subscription details
     plan_amount = Column(Float, default=50.00) # R$ 50/month
-    status = Column(String, default="pending") # pending, active, cancelled, suspended, paused
+    status = Column(String, default="pending") # pending, active, cancelled, suspended, paused, expired
     next_billing_date = Column(Date, nullable=True)
     last_payment_date = Column(Date, nullable=True)
+    
+    # NOVO: Data de expiração do trial (15 dias)
+    trial_ends_at = Column(Date, nullable=True)
+    
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
     cancellation_reason = Column(Text, nullable=True)  # Motivo do cancelamento
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    # Relacionamentos
     professional = relationship("User", back_populates="subscription")
+    plan = relationship("SubscriptionPlan", back_populates="subscriptions")
