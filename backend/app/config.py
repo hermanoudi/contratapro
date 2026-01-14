@@ -1,15 +1,40 @@
 # backend/app/config.py
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://user:password@db/faz_de_tudo"
 
+    @field_validator('DATABASE_URL')
+    @classmethod
+    def convert_database_url(cls, v: str) -> str:
+        """
+        Converte DATABASE_URL do Railway (postgresql://) para asyncpg (postgresql+asyncpg://)
+        """
+        if v and v.startswith('postgresql://'):
+            return v.replace('postgresql://', 'postgresql+asyncpg://', 1)
+        return v
+
     # JWT
-    SECRET_KEY: str = "your-secret-key-here-change-in-production"
-    ALGORITHM: str = "HS256"
+    JWT_SECRET_KEY: str = "your-secret-key-here-change-in-production"
+    SECRET_KEY: str = ""  # Alias para compatibilidade
+    JWT_ALGORITHM: str = "HS256"
+    ALGORITHM: str = ""  # Alias para compatibilidade
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+
+    @field_validator('SECRET_KEY')
+    @classmethod
+    def set_secret_key_alias(cls, v: str, info) -> str:
+        """Usa JWT_SECRET_KEY se SECRET_KEY não estiver definido"""
+        return v or info.data.get('JWT_SECRET_KEY', 'fallback-secret')
+
+    @field_validator('ALGORITHM')
+    @classmethod
+    def set_algorithm_alias(cls, v: str, info) -> str:
+        """Usa JWT_ALGORITHM se ALGORITHM não estiver definido"""
+        return v or info.data.get('JWT_ALGORITHM', 'HS256')
 
     # Mercado Pago
     MERCADOPAGO_ACCESS_TOKEN: str = ""
