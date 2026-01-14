@@ -5,6 +5,7 @@ import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import logoImage from '../assets/contratapro-logo.png';
+import { API_URL } from '../config';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -331,7 +332,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })

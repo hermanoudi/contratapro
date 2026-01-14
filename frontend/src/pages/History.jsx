@@ -6,6 +6,7 @@ import {
     CheckCircle, XCircle, AlertCircle, History as HistoryIcon, Filter, X
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { API_URL } from '../config';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -524,7 +525,7 @@ export default function History() {
     const fetchPeople = async () => {
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch('/api/appointments/history/filters/people', {
+            const res = await fetch(`${API_URL}/appointments/history/filters/people`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {

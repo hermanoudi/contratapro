@@ -4,6 +4,7 @@ import { Calendar, Clock, User, Briefcase, Settings, Save, CheckCircle, XCircle,
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { API_URL } from '../config';
 const Container = styled.div`
   width: 100%;
 `;
@@ -239,13 +240,13 @@ export default function ClientDashboard() {
 
             try {
                 // Fetch Appointments
-                const apptsRes = await fetch('/api/appointments/client/me', {
+                const apptsRes = await fetch(`${API_URL}/appointments/client/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (apptsRes.ok) setAppointments(await apptsRes.json());
 
                 // Fetch User Data
-                const userRes = await fetch('/api/auth/me', {
+                const userRes = await fetch(`${API_URL}/auth/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (userRes.ok) setUserData(await userRes.json());
@@ -260,7 +261,7 @@ export default function ClientDashboard() {
         e.preventDefault();
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch('/api/users/me', {
+            const res = await fetch(`${API_URL}/users/me`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

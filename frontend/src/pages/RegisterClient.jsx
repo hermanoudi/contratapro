@@ -4,6 +4,7 @@ import { UserPlus, Mail, Lock, User, ChevronRight, ChevronLeft, MapPin, Phone, C
 import styled from 'styled-components';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { API_URL } from '../config';
 import logoImage from '../assets/contratapro-logo.png';
 
 const PageContainer = styled.div`
@@ -431,7 +432,7 @@ export default function RegisterClient() {
 
         setLoading(true);
         try {
-            const response = await fetch('/api/users/', {
+            const response = await fetch(`${API_URL}/users/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

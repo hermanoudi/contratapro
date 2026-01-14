@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { Search, MapPin, Star, Menu, LogOut, User, LayoutDashboard, Check, Calendar, DollarSign, Briefcase, X, ChevronRight, Shield, Edit2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CategoryMenu from '../components/CategoryMenu';
+import { API_URL } from '../config';
 import StructuredData from '../components/SEO/StructuredData';
 import logoImage from '../assets/contratapro-logo.png';
 
@@ -918,7 +919,7 @@ export default function Home() {
             if (token) {
                 try {
                     // Validar token com o backend
-                    const res = await fetch('/api/auth/me', {
+                    const res = await fetch(`${API_URL}/auth/me`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
 
@@ -952,7 +953,7 @@ export default function Home() {
     useEffect(() => {
         const fetchPlans = async () => {
             try {
-                const res = await fetch('/api/plans/');
+                const res = await fetch(`${API_URL}/plans/`);
                 if (res.ok) {
                     const data = await res.json();
                     // Ordenar: Trial primeiro, depois Bronze, Prata, Ouro

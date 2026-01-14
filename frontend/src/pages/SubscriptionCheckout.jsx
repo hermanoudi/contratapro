@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { CreditCard, Lock, ArrowLeft, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { API_URL } from '../config';
 const PageContainer = styled.div`
   min-height: 100vh;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
@@ -322,7 +323,7 @@ export default function SubscriptionCheckout() {
             }
 
             // Enviar para o backend
-            const res = await fetch('/api/subscriptions/create-with-card', {
+            const res = await fetch(`${API_URL}/subscriptions/create-with-card`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

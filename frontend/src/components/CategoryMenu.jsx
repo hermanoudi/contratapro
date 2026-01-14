@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { ChevronDown, Menu as MenuIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { API_URL } from '../config';
 const MenuButton = styled.button`
   display: flex;
   align-items: center;
@@ -198,7 +199,7 @@ export default function CategoryMenu() {
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/categories/groups');
+      const res = await fetch(`${API_URL}/categories/groups`);
       if (res.ok) {
         const data = await res.json();
         setCategories(data);

@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { CheckCircle, XCircle, Clock, Loader } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { API_URL } from '../config';
 const PageContainer = styled.div`
   min-height: 100vh;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
@@ -151,7 +152,7 @@ export default function SubscriptionCallback() {
 
     const checkSubscriptionStatus = async (token) => {
         try {
-            const res = await fetch('/api/subscriptions/my-subscription', {
+            const res = await fetch(`${API_URL}/subscriptions/my-subscription`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {

@@ -9,6 +9,7 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import ImageUpload from '../components/ImageUpload';
+import { API_URL } from '../config';
 
 // --- Styled Components ---
 const DashboardContainer = styled.div`
@@ -626,8 +627,8 @@ export default function Dashboard() {
             if (userRes.ok) setUser(await userRes.json());
 
             const [servicesRes, scheduleRes] = await Promise.all([
-                fetch('/api/services/me', { headers }),
-                fetch('/api/schedule/me', { headers })
+                fetch(`${API_URL}/services/me`, { headers }),
+                fetch(`${API_URL}/schedule/me`, { headers })
             ]);
 
             if (servicesRes.ok) setServices(await servicesRes.json());
@@ -659,7 +660,7 @@ export default function Dashboard() {
 
     const toggleSuspension = async () => {
         const token = localStorage.getItem('token');
-        const res = await fetch('/api/users/toggle-suspension', {
+        const res = await fetch(`${API_URL}/users/toggle-suspension`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -751,7 +752,7 @@ export default function Dashboard() {
             reason: blockForm.reason || 'Bloqueio manual'
         };
 
-        const res = await fetch('/api/appointments/block', {
+        const res = await fetch(`${API_URL}/appointments/block`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1359,7 +1360,7 @@ export default function Dashboard() {
                 ? parseFloat(newService.price.replace(',', '.'))
                 : null;
 
-            const res = await fetch('/api/services/', {
+            const res = await fetch(`${API_URL}/services/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1493,7 +1494,7 @@ export default function Dashboard() {
             }
 
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/schedule/', {
+            const res = await fetch(`${API_URL}/schedule/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

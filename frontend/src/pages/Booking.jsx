@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { Calendar as CalendarIcon, Clock, MapPin, Star, ChevronLeft, CheckCircle, Briefcase, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { API_URL } from '../config';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 
@@ -874,7 +875,7 @@ export default function Booking() {
             setIsLoggedIn(true);
 
             try {
-                const res = await fetch('/api/auth/me', {
+                const res = await fetch(`${API_URL}/auth/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
@@ -1033,7 +1034,7 @@ export default function Booking() {
                 };
             }
 
-            const res = await fetch('/api/appointments/', {
+            const res = await fetch(`${API_URL}/appointments/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

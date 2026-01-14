@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { ArrowLeft, Calendar, AlertCircle, CheckCircle, Clock, User, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { API_URL } from '../config';
 const PageContainer = styled.div`
     max-width: 1200px;
     margin: 0 auto;
@@ -223,7 +224,7 @@ export default function AdminTrials() {
     const fetchTrials = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/admin/trial-users', {
+            const res = await fetch(`${API_URL}/admin/trial-users`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -262,7 +263,7 @@ export default function AdminTrials() {
         setExtending(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/admin/extend-trial', {
+            const res = await fetch(`${API_URL}/admin/extend-trial`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

@@ -4,6 +4,7 @@ import {
     Calendar, Clock, User, Briefcase, ChevronLeft, Settings, LogOut, History as HistoryIcon, Menu, X
 } from 'lucide-react';
 import styled from 'styled-components';
+import { API_URL } from '../config';
 import logoImage from '../assets/contratapro-logo.png';
 
 const LayoutContainer = styled.div`
@@ -192,7 +193,7 @@ export default function ClientLayout({ children }) {
 
         const fetchUser = async () => {
             try {
-                const res = await fetch('/api/auth/me', {
+                const res = await fetch(`${API_URL}/auth/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {

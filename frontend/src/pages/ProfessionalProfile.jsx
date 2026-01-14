@@ -4,6 +4,7 @@ import { User, MapPin, Camera, Save, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 
 const PageContainer = styled.div`
+import { API_URL } from '../config';
   max-width: 1200px;
   margin: 0 auto;
 `;
@@ -284,7 +285,7 @@ export default function ProfessionalProfile() {
         return;
       }
 
-      const response = await fetch('/api/auth/me', {
+      const response = await fetch(`${API_URL}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -324,7 +325,7 @@ export default function ProfessionalProfile() {
 
   const loadCategories = async () => {
     try {
-      const res = await fetch('/api/categories/groups');
+      const res = await fetch(`${API_URL}/categories/groups`);
       if (res.ok) {
         const data = await res.json();
         setCategories(data);
@@ -424,7 +425,7 @@ export default function ProfessionalProfile() {
         formDataToSend.append('profile_picture', profilePictureFile);
       }
 
-      const response = await fetch('/api/users/me', {
+      const response = await fetch(`${API_URL}/users/me`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`

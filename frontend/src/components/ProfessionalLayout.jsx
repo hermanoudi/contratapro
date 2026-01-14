@@ -4,6 +4,7 @@ import {
     Calendar as CalendarIcon, Briefcase, Clock, Power, Menu, X,
     PauseCircle, PlayCircle, History as HistoryIcon, CreditCard, User
 } from 'lucide-react';
+import { API_URL } from '../config';
 import styled from 'styled-components';
 import { toast } from 'sonner';
 import logoImage from '../assets/contratapro-logo.png';
@@ -194,7 +195,7 @@ export default function ProfessionalLayout({ children }) {
 
         const fetchUser = async () => {
             try {
-                const res = await fetch('/api/auth/me', {
+                const res = await fetch(`${API_URL}/auth/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {
@@ -219,7 +220,7 @@ export default function ProfessionalLayout({ children }) {
 
     const toggleSuspension = async () => {
         const token = localStorage.getItem('token');
-        const res = await fetch('/api/users/toggle-suspension', {
+        const res = await fetch(`${API_URL}/users/toggle-suspension`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         });

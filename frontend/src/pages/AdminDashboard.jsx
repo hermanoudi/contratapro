@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { Users, Briefcase, Calendar, Shield, Power, DollarSign, TrendingUp, MapPin, CheckCircle, XCircle, AlertCircle, PauseCircle, Filter, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { API_URL } from '../config';
 const AdminContainer = styled.div`
   display: flex;
   min-height: 100vh;
@@ -315,19 +316,19 @@ export default function AdminDashboard() {
 
         try {
             const [userRes, dashboardRes, professionalsRes, clientsRes, subscriptionsRes] = await Promise.all([
-                fetch('/api/auth/me', {
+                fetch(`${API_URL}/auth/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch('/api/admin/dashboard', {
+                fetch(`${API_URL}/admin/dashboard`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch('/api/admin/professionals', {
+                fetch(`${API_URL}/admin/professionals`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch('/api/admin/clients', {
+                fetch(`${API_URL}/admin/clients`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch('/api/admin/subscriptions', {
+                fetch(`${API_URL}/admin/subscriptions`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);

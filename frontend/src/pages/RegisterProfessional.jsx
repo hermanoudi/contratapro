@@ -4,6 +4,7 @@ import { ChevronRight, ChevronLeft, Check, MapPin, User, Briefcase, Phone, Lock,
 import styled from 'styled-components';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { API_URL } from '../config';
 import logoImage from '../assets/contratapro-logo.png';
 
 const PageContainer = styled.div`
@@ -371,7 +372,7 @@ export default function RegisterProfessional() {
     const fetchCategories = async () => {
         setLoadingCategories(true);
         try {
-            const res = await fetch('/api/categories/groups');
+            const res = await fetch(`${API_URL}/categories/groups`);
             if (res.ok) {
                 const data = await res.json();
                 console.log('Categorias carregadas:', data);
@@ -391,7 +392,7 @@ export default function RegisterProfessional() {
     const fetchPlans = async () => {
         setLoadingPlans(true);
         try {
-            const res = await fetch('/api/plans/');
+            const res = await fetch(`${API_URL}/plans/`);
             if (res.ok) {
                 const data = await res.json();
                 // Ordenar: Trial primeiro, depois Bronze, Prata, Ouro
@@ -556,7 +557,7 @@ export default function RegisterProfessional() {
             };
 
             // 1. Criar usuário
-            const response = await fetch('/api/users/', {
+            const response = await fetch(`${API_URL}/users/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -564,7 +565,7 @@ export default function RegisterProfessional() {
 
             if (response.ok) {
                 // 2. Fazer login
-                const loginRes = await fetch('/api/auth/login', {
+                const loginRes = await fetch(`${API_URL}/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: formData.email, password: formData.password })
@@ -579,7 +580,7 @@ export default function RegisterProfessional() {
                         const formDataPhoto = new FormData();
                         formDataPhoto.append('file', profilePicture);
 
-                        await fetch('/api/users/upload-profile-picture', {
+                        await fetch(`${API_URL}/users/upload-profile-picture`, {
                             method: 'POST',
                             headers: { 'Authorization': `Bearer ${loginData.access_token}` },
                             body: formDataPhoto
@@ -589,7 +590,7 @@ export default function RegisterProfessional() {
                     // 4. Atribuir plano selecionado
                     const selectedPlanData = plans.find(p => p.id === selectedPlan);
                     if (selectedPlanData) {
-                        await fetch('/api/plans/me/change-plan', {
+                        await fetch(`${API_URL}/plans/me/change-plan`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',

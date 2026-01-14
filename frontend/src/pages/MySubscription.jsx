@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { CreditCard, Calendar, DollarSign, AlertCircle, X, ArrowLeft, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { API_URL } from '../config';
 const PageContainer = styled.div`
   min-height: 100vh;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
@@ -302,7 +303,7 @@ export default function MySubscription() {
     const fetchSubscription = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/subscriptions/my-subscription', {
+            const res = await fetch(`${API_URL}/subscriptions/my-subscription`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -325,7 +326,7 @@ export default function MySubscription() {
     const fetchUserPlan = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/plans/me/features', {
+            const res = await fetch(`${API_URL}/plans/me/features`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -352,7 +353,7 @@ export default function MySubscription() {
         setCancelling(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/subscriptions/cancel', {
+            const res = await fetch(`${API_URL}/subscriptions/cancel`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
