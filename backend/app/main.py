@@ -5,12 +5,38 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
+from .database import engine, Base
 from .routers import (
     users, services, appointments, subscriptions,
     auth, schedule, categories, admin, cep, health, plans
 )
 
-app = FastAPI(title="Chama Eu API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Gerencia o ciclo de vida da aplicação.
+    Cria as tabelas do banco de dados na inicialização.
+    """
+    # Startup: Criar tabelas
+    print("🚀 Iniciando aplicação...")
+    print("📊 Criando tabelas do banco de dados...")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("✅ Tabelas criadas com sucesso!")
+
+    yield
+
+    # Shutdown: Cleanup (se necessário)
+    print("👋 Encerrando aplicação...")
+
+
+app = FastAPI(
+    title="Chama Eu API",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 # Configuração de CORS
 # Lista de origens permitidas

@@ -1,9 +1,9 @@
 """
 Seeds para o banco de dados - Categorias de Serviços
 """
-from sqlalchemy.orm import Session
+from sqlalchemy import select
 from .models import Category
-from .database import SessionLocal
+from .database import AsyncSessionLocal
 
 # Lista completa de categorias com imagens do Unsplash
 CATEGORIES = [
@@ -227,49 +227,51 @@ CATEGORIES = [
 ]
 
 
-def seed_categories(db: Session):
+async def seed_categories():
     """
     Popula o banco de dados com as categorias de serviços.
     Executa apenas se a tabela estiver vazia.
     """
-    # Verificar se já existem categorias
-    existing_count = db.query(Category).count()
+    async with AsyncSessionLocal() as db:
+        # Verificar se já existem categorias
+        result = await db.execute(select(Category))
+        existing_count = len(result.scalars().all())
 
-    if existing_count > 0:
-        print(f"✓ Categorias já existem no banco ({existing_count} registros). Seed ignorado.")
-        return
+        if existing_count > 0:
+            msg = (f"✓ Categorias já existem no banco "
+                   f"({existing_count} registros). Seed ignorado.")
+            print(msg)
+            return
 
-    print("Iniciando seed de categorias...")
+        print("Iniciando seed de categorias...")
 
-    for cat_data in CATEGORIES:
-        category = Category(**cat_data)
-        db.add(category)
+        for cat_data in CATEGORIES:
+            category = Category(**cat_data)
+            db.add(category)
 
-    db.commit()
-    print(f"✓ {len(CATEGORIES)} categorias inseridas com sucesso!")
+        await db.commit()
+        print(f"✓ {len(CATEGORIES)} categorias inseridas com sucesso!")
 
 
-def run_seeds():
+async def run_seeds():
     """
     Executa todos os seeds do sistema.
     """
-    db = SessionLocal()
     try:
         print("=" * 50)
         print("EXECUTANDO SEEDS DO BANCO DE DADOS")
         print("=" * 50)
 
-        seed_categories(db)
+        await seed_categories()
 
         print("=" * 50)
         print("SEEDS CONCLUÍDOS COM SUCESSO!")
         print("=" * 50)
     except Exception as e:
         print(f"❌ Erro ao executar seeds: {e}")
-        db.rollback()
-    finally:
-        db.close()
+        raise
 
 
 if __name__ == "__main__":
-    run_seeds()
+    import asyncio
+    asyncio.run(run_seeds())
