@@ -2,15 +2,33 @@
 """
 Script para executar migration no banco de produção Railway.
 Adiciona campos plan_id e trial_ends_at na tabela subscriptions.
+
+Esta versão executa os comandos individualmente (compatível com asyncpg).
+
+IMPORTANTE: Configure DATABASE_URL como variável de ambiente!
+
+Uso:
+    DATABASE_URL="sua-url-aqui" python run_migration_fixed.py
+
+Ou via Railway CLI:
+    railway run python run_migration_fixed.py
 """
 
 import sys
 import os
 import asyncio
 
-# URL do banco Railway
-PRODUCTION_DB_URL = "postgresql+asyncpg://postgres:QqSQgoCaOKitEWCNacZfbqOhIlSMYQVn@trolley.proxy.rlwy.net:11371/railway"
-os.environ["DATABASE_URL"] = PRODUCTION_DB_URL
+# Usar DATABASE_URL do ambiente (Railway injeta automaticamente)
+if not os.getenv("DATABASE_URL"):
+    print("❌ ERRO: Variável DATABASE_URL não configurada!")
+    print()
+    print("Configure a URL do banco:")
+    url_example = "postgresql+asyncpg://user:pass@host:port/db"
+    print(f"  export DATABASE_URL='{url_example}'")
+    print()
+    print("Ou use Railway CLI:")
+    print("  railway run python run_migration_fixed.py")
+    sys.exit(1)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 

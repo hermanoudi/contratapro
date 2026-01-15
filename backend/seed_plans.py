@@ -2,22 +2,30 @@
 """
 Script para criar planos de assinatura no banco de produção Railway.
 
-IMPORTANTE: Este script se conecta diretamente ao banco de PRODUÇÃO!
+IMPORTANTE: Configure DATABASE_URL como variável de ambiente!
 
 Uso:
-    python seed_plans.py
+    DATABASE_URL="sua-url-aqui" python seed_plans.py
+
+Ou via Railway CLI:
+    railway run python seed_plans.py
 """
 
 import sys
 import os
 import asyncio
 
-# Configurar DATABASE_URL para produção
-# URL do banco Railway (mesma do seed_production.py)
-PRODUCTION_DB_URL = "postgresql+asyncpg://postgres:QqSQgoCaOKitEWCNacZfbqOhIlSMYQVn@trolley.proxy.rlwy.net:11371/railway"
-
-# Sobrescrever a variável de ambiente
-os.environ["DATABASE_URL"] = PRODUCTION_DB_URL
+# Usar DATABASE_URL do ambiente (Railway injeta automaticamente)
+if not os.getenv("DATABASE_URL"):
+    print("❌ ERRO: Variável DATABASE_URL não configurada!")
+    print()
+    print("Configure a URL do banco:")
+    url_example = "postgresql+asyncpg://user:pass@host:port/db"
+    print(f"  export DATABASE_URL='{url_example}'")
+    print()
+    print("Ou use Railway CLI:")
+    print("  railway run python seed_plans.py")
+    sys.exit(1)
 
 # Adicionar o diretório app ao path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -110,7 +118,7 @@ async def run():
     """
     try:
         print("=" * 60)
-        print("⚠️  ATENÇÃO: Conectando ao BANCO DE PRODUÇÃO no Railway!")
+        print("⚠️  ATENÇÃO: Conectando ao BANCO DE PRODUÇÃO!")
         print("=" * 60)
         print()
         print("CRIANDO PLANOS DE ASSINATURA")
