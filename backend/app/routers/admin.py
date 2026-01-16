@@ -585,3 +585,45 @@ async def setup_check_plans(
         ],
         "total": len(plans)
     }
+
+
+class ChangeAdminPasswordRequest(BaseModel):
+    secret_key: str
+    email: str
+    new_password: str
+
+
+@router.post("/setup/change-admin-password")
+async def setup_change_admin_password(
+    request: ChangeAdminPasswordRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Altera a senha de um administrador.
+    Requer chave secreta JWT para execução.
+    """
+    # Validar chave secreta
+    if request.secret_key != settings.SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Chave secreta inválida")
+
+    # Buscar usuário
+    result = await db.execute(
+        select(User).where(User.email == request.email)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="Usuário não é administrador")
+
+    # Alterar senha
+    user.hashed_password = pwd_context.hash(request.new_password)
+    await db.commit()
+
+    return {
+        "success": True,
+        "message": f"Senha do administrador {request.email} alterada com sucesso",
+        "user_id": user.id
+    }
