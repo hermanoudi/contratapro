@@ -313,18 +313,18 @@ const FooterLink = styled.p`
 `;
 
 const BrandLogo = styled.img`
-  height: 180px;
+  height: 80px;
   width: auto;
   object-fit: contain;
   margin-bottom: 2rem;
 
   @media (min-width: 768px) {
-    height: 350px;
+    height: 120px;
   }
 `;
 
 const MobileLogo = styled.img`
-  height: 120px;
+  height: 60px;
   width: auto;
   object-fit: contain;
   margin: 0 auto 1.5rem;
