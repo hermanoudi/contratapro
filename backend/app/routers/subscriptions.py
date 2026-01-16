@@ -10,7 +10,7 @@ import httpx
 import logging
 
 from ..database import get_db
-from ..models import Subscription, User
+from ..models import Subscription, SubscriptionPlan, User
 from .auth import get_current_user
 from ..config import settings
 
@@ -34,6 +34,245 @@ class CardTokenRequest(BaseModel):
 
 class CancelSubscriptionRequest(BaseModel):
     reason: str
+
+
+class SubscribePlanResponse(BaseModel):
+    message: str
+    plan_name: str
+    status: str
+    trial_ends_at: Optional[str] = None
+    init_point: Optional[str] = None  # URL do Mercado Pago (apenas para planos pagos)
+
+
+@router.post("/subscribe/{plan_slug}", response_model=SubscribePlanResponse)
+async def subscribe_to_plan(
+    plan_slug: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Assina um plano específico.
+
+    - **trial**: Ativa imediatamente por 15 dias (gratuito)
+    - **basic**: Redireciona para pagamento no Mercado Pago (R$ 29,90/mês)
+    - **premium**: Redireciona para pagamento no Mercado Pago (R$ 49,90/mês)
+    """
+    if not current_user.is_professional:
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas profissionais podem assinar planos"
+        )
+
+    # Buscar o plano pelo slug
+    result = await db.execute(
+        select(SubscriptionPlan).where(
+            SubscriptionPlan.slug == plan_slug,
+            SubscriptionPlan.is_active == True
+        )
+    )
+    plan = result.scalar_one_or_none()
+
+    if not plan:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Plano '{plan_slug}' não encontrado ou inativo"
+        )
+
+    # Verificar se já tem assinatura ativa
+    result = await db.execute(
+        select(Subscription).where(
+            Subscription.professional_id == current_user.id
+        )
+    )
+    existing_subscription = result.scalar_one_or_none()
+
+    # Verificar se já usou o trial
+    if plan_slug == "trial" and existing_subscription:
+        if existing_subscription.plan_id:
+            # Buscar plano anterior
+            result = await db.execute(
+                select(SubscriptionPlan).where(
+                    SubscriptionPlan.id == existing_subscription.plan_id
+                )
+            )
+            previous_plan = result.scalar_one_or_none()
+            if previous_plan and previous_plan.slug == "trial":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Você já utilizou o período de trial. Escolha um plano pago."
+                )
+
+    # Se já tem assinatura ativa (não cancelada/expirada), não pode criar outra
+    if existing_subscription and existing_subscription.status in ["active", "pending"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Você já possui uma assinatura ativa"
+        )
+
+    # FLUXO TRIAL: Ativar imediatamente sem pagamento
+    if plan.price == 0 or plan.slug == "trial":
+        trial_days = plan.trial_days or 15
+        trial_end_date = date.today() + timedelta(days=trial_days)
+
+        if existing_subscription:
+            # Reativar assinatura existente como trial
+            existing_subscription.plan_id = plan.id
+            existing_subscription.status = "active"
+            existing_subscription.trial_ends_at = trial_end_date
+            existing_subscription.plan_amount = 0.0
+            existing_subscription.cancelled_at = None
+            existing_subscription.cancellation_reason = None
+            existing_subscription.mercadopago_preapproval_id = None
+            existing_subscription.init_point = None
+            subscription = existing_subscription
+        else:
+            # Criar nova assinatura trial
+            subscription = Subscription(
+                professional_id=current_user.id,
+                plan_id=plan.id,
+                status="active",
+                trial_ends_at=trial_end_date,
+                plan_amount=0.0
+            )
+            db.add(subscription)
+
+        # Atualizar usuário
+        current_user.subscription_status = "active"
+        current_user.subscription_plan_id = plan.id
+        current_user.trial_ends_at = datetime.combine(trial_end_date, datetime.min.time())
+        current_user.subscription_started_at = datetime.now()
+
+        await db.commit()
+        await db.refresh(subscription)
+
+        logger.info(f"Trial ativado para usuário {current_user.id}. Expira em: {trial_end_date}")
+
+        return SubscribePlanResponse(
+            message=f"Plano {plan.name} ativado com sucesso! Você tem {trial_days} dias de acesso gratuito.",
+            plan_name=plan.name,
+            status="active",
+            trial_ends_at=trial_end_date.isoformat()
+        )
+
+    # FLUXO PAGO: Criar assinatura no Mercado Pago
+    try:
+        plan_data = {
+            "reason": f"Plano {plan.name} - ContrataPro",
+            "auto_recurring": {
+                "frequency": settings.SUBSCRIPTION_FREQUENCY,
+                "frequency_type": settings.SUBSCRIPTION_FREQUENCY_TYPE,
+                "transaction_amount": plan.price,
+                "currency_id": "BRL",
+            },
+            "back_url": f"{settings.FRONTEND_URL}/subscription/callback",
+            "external_reference": str(current_user.id),
+        }
+
+        logger.info(f"Criando plano pago no MP: {plan_data}")
+
+        async with httpx.AsyncClient() as client:
+            plan_response = await client.post(
+                "https://api.mercadopago.com/preapproval_plan",
+                json=plan_data,
+                headers={
+                    "Authorization": f"Bearer {settings.MERCADOPAGO_ACCESS_TOKEN}",
+                    "Content-Type": "application/json"
+                }
+            )
+
+        if plan_response.status_code not in [200, 201]:
+            logger.error(f"Erro ao criar plano MP: {plan_response.status_code} - {plan_response.text}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Erro ao criar plano no Mercado Pago"
+            )
+
+        mp_plan = plan_response.json()
+        mp_plan_id = mp_plan["id"]
+        mp_init_point = mp_plan.get("init_point")
+
+        if not mp_init_point:
+            raise HTTPException(
+                status_code=500,
+                detail="Erro: Mercado Pago não retornou URL de checkout"
+            )
+
+        # Criar/atualizar assinatura no banco como pending
+        if existing_subscription:
+            existing_subscription.plan_id = plan.id
+            existing_subscription.status = "pending"
+            existing_subscription.trial_ends_at = None
+            existing_subscription.plan_amount = plan.price
+            existing_subscription.mercadopago_preapproval_id = mp_plan_id
+            existing_subscription.init_point = mp_init_point
+            existing_subscription.cancelled_at = None
+            existing_subscription.cancellation_reason = None
+            subscription = existing_subscription
+        else:
+            subscription = Subscription(
+                professional_id=current_user.id,
+                plan_id=plan.id,
+                status="pending",
+                plan_amount=plan.price,
+                mercadopago_preapproval_id=mp_plan_id,
+                init_point=mp_init_point
+            )
+            db.add(subscription)
+
+        # Atualizar usuário
+        current_user.subscription_plan_id = plan.id
+        current_user.subscription_status = "pending"
+
+        await db.commit()
+        await db.refresh(subscription)
+
+        logger.info(f"Assinatura paga criada para usuário {current_user.id}. Init point: {mp_init_point}")
+
+        return SubscribePlanResponse(
+            message=f"Plano {plan.name} selecionado. Complete o pagamento para ativar.",
+            plan_name=plan.name,
+            status="pending",
+            init_point=mp_init_point
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao criar assinatura paga: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao processar assinatura: {str(e)}"
+        )
+
+
+@router.get("/plans")
+async def list_subscription_plans(db: AsyncSession = Depends(get_db)):
+    """
+    Lista todos os planos de assinatura disponíveis.
+    Não requer autenticação.
+    """
+    result = await db.execute(
+        select(SubscriptionPlan).where(SubscriptionPlan.is_active == True)
+    )
+    plans = result.scalars().all()
+
+    return {
+        "plans": [
+            {
+                "id": plan.id,
+                "name": plan.name,
+                "slug": plan.slug,
+                "price": plan.price,
+                "max_services": plan.max_services,
+                "can_manage_schedule": plan.can_manage_schedule,
+                "can_receive_bookings": plan.can_receive_bookings,
+                "priority_in_search": plan.priority_in_search,
+                "trial_days": plan.trial_days,
+                "is_free": plan.price == 0
+            }
+            for plan in plans
+        ]
+    }
 
 
 @router.post("/create", response_model=SubscriptionResponse)
@@ -326,11 +565,45 @@ async def get_my_subscription(
             "message": "Nenhuma assinatura encontrada"
         }
 
+    # Buscar informações do plano
+    plan_info = None
+    is_trial = False
+    trial_days_remaining = None
+
+    if subscription.plan_id:
+        result = await db.execute(
+            select(SubscriptionPlan).where(
+                SubscriptionPlan.id == subscription.plan_id
+            )
+        )
+        plan = result.scalar_one_or_none()
+        if plan:
+            is_trial = plan.slug == "trial"
+            plan_info = {
+                "id": plan.id,
+                "name": plan.name,
+                "slug": plan.slug,
+                "price": plan.price,
+                "max_services": plan.max_services
+            }
+
+    # Calcular dias restantes do trial
+    if subscription.trial_ends_at:
+        days_remaining = (subscription.trial_ends_at - date.today()).days
+        trial_days_remaining = max(0, days_remaining)
+
     return {
         "subscription": {
             "id": subscription.id,
             "status": subscription.status,
             "plan_amount": subscription.plan_amount,
+            "plan": plan_info,
+            "is_trial": is_trial,
+            "trial_ends_at": (
+                subscription.trial_ends_at.isoformat()
+                if subscription.trial_ends_at else None
+            ),
+            "trial_days_remaining": trial_days_remaining,
             "next_billing_date": (
                 subscription.next_billing_date.isoformat()
                 if subscription.next_billing_date else None
