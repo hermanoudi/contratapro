@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { Users, Briefcase, Calendar, Shield, Power, DollarSign, TrendingUp, MapPin, CheckCircle, XCircle, AlertCircle, PauseCircle, Filter, Clock } from 'lucide-react';
+import { Users, Briefcase, Calendar, Shield, Power, DollarSign, TrendingUp, MapPin, CheckCircle, XCircle, AlertCircle, PauseCircle, Filter, Clock, Settings, Lock, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { API_URL } from '../config';
@@ -270,6 +270,118 @@ const StateCard = styled.div`
   }
 `;
 
+const SettingsCard = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  max-width: 500px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 0 0 1.5rem;
+  }
+`;
+
+const FormGroup = styled.div`
+  margin-bottom: 1.25rem;
+
+  label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+`;
+
+const PasswordInputWrapper = styled.div`
+  position: relative;
+
+  input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    padding-right: 3rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+
+    &:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+  }
+
+  button {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      color: var(--text-primary);
+    }
+  }
+`;
+
+const SubmitButton = styled.button`
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  &:hover {
+    background: var(--primary-dark, #2563eb);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const PasswordRequirements = styled.ul`
+  margin: 0.75rem 0 1.5rem;
+  padding-left: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+
+  li {
+    margin-bottom: 0.25rem;
+  }
+`;
+
 export default function AdminDashboard() {
     const [dashboardData, setDashboardData] = useState(null);
     const [professionals, setProfessionals] = useState([]);
@@ -281,6 +393,10 @@ export default function AdminDashboard() {
     const [statusFilter, setStatusFilter] = useState('');
     const [stateFilter, setStateFilter] = useState('');
     const [subscriptionStatusFilter, setSubscriptionStatusFilter] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [changingPassword, setChangingPassword] = useState(false);
     const navigate = useNavigate();
 
     const formatPhoneNumber = (phone) => {
@@ -412,6 +528,49 @@ export default function AdminDashboard() {
         navigate('/login');
     };
 
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+
+        // Validações
+        if (newPassword.length < 8) {
+            toast.error('A senha deve ter pelo menos 8 caracteres');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            toast.error('As senhas não coincidem');
+            return;
+        }
+
+        setChangingPassword(true);
+        const token = localStorage.getItem('token');
+
+        try {
+            const res = await fetch(`${API_URL}/admin/change-password`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ new_password: newPassword })
+            });
+
+            if (res.ok) {
+                toast.success('Senha alterada com sucesso!');
+                setNewPassword('');
+                setConfirmPassword('');
+            } else {
+                const error = await res.json();
+                toast.error(error.detail || 'Erro ao alterar senha');
+            }
+        } catch (error) {
+            console.error('Erro ao alterar senha:', error);
+            toast.error('Erro de conexão ao alterar senha. Verifique se o backend está rodando.');
+        } finally {
+            setChangingPassword(false);
+        }
+    };
+
     const getStatusIcon = (status) => {
         switch(status) {
             case 'active': return <CheckCircle size={14} />;
@@ -536,10 +695,27 @@ export default function AdminDashboard() {
                             display: 'flex',
                             gap: '0.75rem',
                             alignItems: 'center',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            marginBottom: '0.5rem'
                         }}
                     >
                         <Clock size={20} /> Gerenciar Trials
+                    </div>
+                    <div
+                        onClick={() => setActiveTab('settings')}
+                        style={{
+                            color: activeTab === 'settings' ? 'var(--primary)' : 'var(--text-secondary)',
+                            fontWeight: 600,
+                            padding: '1rem',
+                            background: activeTab === 'settings' ? 'var(--primary-glow)' : 'transparent',
+                            borderRadius: '12px',
+                            display: 'flex',
+                            gap: '0.75rem',
+                            alignItems: 'center',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <Settings size={20} /> Configurações
                     </div>
                 </nav>
 
@@ -956,6 +1132,71 @@ export default function AdminDashboard() {
                                 </div>
                             )}
                         </Card>
+                    </>
+                )}
+
+                {activeTab === 'settings' && (
+                    <>
+                        <SettingsCard>
+                            <h2><Lock size={20} /> Alterar Senha</h2>
+                            <p>Atualize sua senha de administrador. Certifique-se de usar uma senha forte.</p>
+
+                            <form onSubmit={handleChangePassword}>
+                                <FormGroup>
+                                    <label>Nova Senha</label>
+                                    <PasswordInputWrapper>
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            placeholder="Digite sua nova senha"
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </PasswordInputWrapper>
+                                </FormGroup>
+
+                                <FormGroup>
+                                    <label>Confirmar Nova Senha</label>
+                                    <PasswordInputWrapper>
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            placeholder="Confirme sua nova senha"
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </PasswordInputWrapper>
+                                </FormGroup>
+
+                                <PasswordRequirements>
+                                    <li>Mínimo de 8 caracteres</li>
+                                    <li>Recomendado usar letras maiúsculas, minúsculas, números e símbolos</li>
+                                </PasswordRequirements>
+
+                                <SubmitButton type="submit" disabled={changingPassword}>
+                                    {changingPassword ? (
+                                        <>Alterando...</>
+                                    ) : (
+                                        <>
+                                            <Lock size={18} />
+                                            Alterar Senha
+                                        </>
+                                    )}
+                                </SubmitButton>
+                            </form>
+                        </SettingsCard>
                     </>
                 )}
             </MainContent>

@@ -316,42 +316,50 @@ async def list_all_subscriptions(
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Apenas administradores podem acessar")
 
-    from sqlalchemy.orm import selectinload
+    try:
+        from sqlalchemy.orm import selectinload
 
-    query = select(Subscription).options(
-        selectinload(Subscription.professional)
-    )
+        query = select(Subscription).options(
+            selectinload(Subscription.professional)
+        )
 
-    if status:
-        query = query.where(Subscription.status == status)
+        if status:
+            query = query.where(Subscription.status == status)
 
-    query = query.order_by(Subscription.created_at.desc())
+        query = query.order_by(Subscription.created_at.desc())
 
-    result = await db.execute(query)
-    subscriptions = result.scalars().all()
+        result = await db.execute(query)
+        subscriptions = result.scalars().all()
 
-    return {
-        "subscriptions": [
-            {
-                "id": sub.id,
-                "professional_id": sub.professional_id,
-                "professional_name": sub.professional.name if sub.professional else None,
-                "professional_email": sub.professional.email if sub.professional else None,
-                "professional_category": sub.professional.category if sub.professional else None,
-                "professional_city": sub.professional.city if sub.professional else None,
-                "professional_state": sub.professional.state if sub.professional else None,
-                "plan_amount": sub.plan_amount,
-                "status": sub.status,
-                "next_billing_date": sub.next_billing_date.isoformat() if sub.next_billing_date else None,
-                "last_payment_date": sub.last_payment_date.isoformat() if sub.last_payment_date else None,
-                "cancelled_at": sub.cancelled_at.isoformat() if sub.cancelled_at else None,
-                "created_at": sub.created_at.isoformat(),
-                "mercadopago_subscription_id": sub.mercadopago_subscription_id
-            }
-            for sub in subscriptions
-        ],
-        "total": len(subscriptions)
-    }
+        return {
+            "subscriptions": [
+                {
+                    "id": sub.id,
+                    "professional_id": sub.professional_id,
+                    "professional_name": sub.professional.name if sub.professional else None,
+                    "professional_email": sub.professional.email if sub.professional else None,
+                    "professional_category": sub.professional.category if sub.professional else None,
+                    "professional_city": sub.professional.city if sub.professional else None,
+                    "professional_state": sub.professional.state if sub.professional else None,
+                    "plan_amount": sub.plan_amount,
+                    "status": sub.status,
+                    "next_billing_date": sub.next_billing_date.isoformat() if sub.next_billing_date else None,
+                    "last_payment_date": sub.last_payment_date.isoformat() if sub.last_payment_date else None,
+                    "cancelled_at": sub.cancelled_at.isoformat() if sub.cancelled_at else None,
+                    "created_at": sub.created_at.isoformat(),
+                    "mercadopago_subscription_id": sub.mercadopago_subscription_id
+                }
+                for sub in subscriptions
+            ],
+            "total": len(subscriptions)
+        }
+    except Exception as e:
+        # Retorna lista vazia em caso de erro (ex: tabela não existe no banco local)
+        return {
+            "subscriptions": [],
+            "total": 0,
+            "error": str(e)
+        }
 
 @router.get("/trial-users")
 async def get_trial_users(
@@ -585,6 +593,51 @@ async def setup_check_plans(
         ],
         "total": len(plans)
     }
+
+
+class ChangePasswordRequest(BaseModel):
+    new_password: str
+
+
+@router.post("/change-password")
+async def change_admin_password(
+    request: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Altera a senha do administrador logado.
+    Requer autenticação como admin.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem acessar")
+
+    if len(request.new_password) < 8:
+        raise HTTPException(status_code=400, detail="A senha deve ter pelo menos 8 caracteres")
+
+    try:
+        # Buscar o usuário novamente para garantir que está na sessão atual
+        result = await db.execute(
+            select(User).where(User.id == current_user.id)
+        )
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+        # Alterar senha
+        user.hashed_password = pwd_context.hash(request.new_password)
+        await db.commit()
+
+        return {
+            "success": True,
+            "message": "Senha alterada com sucesso"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao alterar senha: {str(e)}")
 
 
 class ChangeAdminPasswordRequest(BaseModel):
