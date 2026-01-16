@@ -1,14 +1,17 @@
 # backend/app/routers/admin.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, extract
 from datetime import date, timedelta, datetime
 from pydantic import BaseModel
+from passlib.context import CryptContext
 from ..database import get_db
 from ..models import User, Subscription, Appointment, SubscriptionPlan
 from ..dependencies import get_current_user
+from ..config import settings
 
 router = APIRouter()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 @router.get("/dashboard")
 async def get_admin_dashboard(
@@ -438,4 +441,147 @@ async def extend_trial(
         "user_email": user.email,
         "trial_ends_at": user.trial_ends_at.isoformat() if user.trial_ends_at else None,
         "message": f"Data de expiração do trial atualizada para {user.trial_ends_at.strftime('%d/%m/%Y %H:%M:%S')}"
+    }
+
+
+# =============================================================================
+# ENDPOINTS DE SETUP (Protegidos por chave secreta)
+# =============================================================================
+
+class SetupRequest(BaseModel):
+    secret_key: str
+
+
+class CreateAdminRequest(BaseModel):
+    secret_key: str
+    email: str
+    password: str
+    name: str = "Administrador"
+
+
+@router.post("/setup/update-trial-days")
+async def setup_update_trial_days(
+    request: SetupRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Atualiza o plano Trial para 30 dias.
+    Requer chave secreta JWT para execução.
+    """
+    # Validar chave secreta
+    if request.secret_key != settings.SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Chave secreta inválida")
+
+    result = await db.execute(
+        select(SubscriptionPlan).where(SubscriptionPlan.slug == "trial")
+    )
+    trial_plan = result.scalar_one_or_none()
+
+    if not trial_plan:
+        raise HTTPException(status_code=404, detail="Plano Trial não encontrado")
+
+    old_value = trial_plan.trial_days
+    trial_plan.trial_days = 30
+    await db.commit()
+
+    return {
+        "success": True,
+        "message": f"Plano Trial atualizado de {old_value} para 30 dias",
+        "plan": {
+            "id": trial_plan.id,
+            "name": trial_plan.name,
+            "slug": trial_plan.slug,
+            "trial_days": trial_plan.trial_days
+        }
+    }
+
+
+@router.post("/setup/create-admin")
+async def setup_create_admin(
+    request: CreateAdminRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Cria um usuário administrador.
+    Requer chave secreta JWT para execução.
+    """
+    # Validar chave secreta
+    if request.secret_key != settings.SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Chave secreta inválida")
+
+    # Verificar se já existe
+    result = await db.execute(
+        select(User).where(User.email == request.email)
+    )
+    existing_user = result.scalar_one_or_none()
+
+    if existing_user:
+        if existing_user.is_admin:
+            return {
+                "success": True,
+                "message": f"Usuário {request.email} já existe e é administrador",
+                "user_id": existing_user.id,
+                "already_existed": True
+            }
+        else:
+            # Promover para admin
+            existing_user.is_admin = True
+            await db.commit()
+            return {
+                "success": True,
+                "message": f"Usuário {request.email} promovido para administrador",
+                "user_id": existing_user.id,
+                "promoted": True
+            }
+
+    # Criar novo admin
+    hashed_password = pwd_context.hash(request.password)
+
+    admin = User(
+        name=request.name,
+        email=request.email,
+        hashed_password=hashed_password,
+        is_active=True,
+        is_admin=True,
+        is_professional=False
+    )
+
+    db.add(admin)
+    await db.commit()
+    await db.refresh(admin)
+
+    return {
+        "success": True,
+        "message": f"Administrador criado com sucesso",
+        "user_id": admin.id,
+        "email": admin.email,
+        "created": True
+    }
+
+
+@router.get("/setup/check-plans")
+async def setup_check_plans(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Verifica os planos de assinatura configurados.
+    Endpoint público para verificação.
+    """
+    result = await db.execute(select(SubscriptionPlan))
+    plans = result.scalars().all()
+
+    return {
+        "plans": [
+            {
+                "id": plan.id,
+                "name": plan.name,
+                "slug": plan.slug,
+                "price": plan.price,
+                "trial_days": plan.trial_days,
+                "max_services": plan.max_services,
+                "is_active": plan.is_active
+            }
+            for plan in plans
+        ],
+        "total": len(plans)
     }

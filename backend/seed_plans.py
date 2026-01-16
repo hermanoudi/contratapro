@@ -45,7 +45,7 @@ PLANS = [
         "can_manage_schedule": True,
         "can_receive_bookings": True,
         "priority_in_search": 0,
-        "trial_days": 15,
+        "trial_days": 30,
         "is_active": True
     },
     {
@@ -137,7 +137,7 @@ async def run():
         print("┌──────────┬──────────┬──────────────┬─────────┬──────────┐")
         print("│   Plano  │   Preço  │  Serviços    │  Busca  │  Trial   │")
         print("├──────────┼──────────┼──────────────┼─────────┼──────────┤")
-        print("│  Trial   │  Grátis  │  3 serviços  │  Normal │ 15 dias  │")
+        print("│  Trial   │  Grátis  │  3 serviços  │  Normal │ 30 dias  │")
         print("│  Basic   │ R$ 29.90 │  5 serviços  │  Normal │    -     │")
         print("│  Premium │ R$ 49.90 │  Ilimitado   │ Destaque│    -     │")
         print("└──────────┴──────────┴──────────────┴─────────┴──────────┘")
