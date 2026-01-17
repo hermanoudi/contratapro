@@ -645,6 +645,7 @@ export default function AdminDashboard() {
     const [categoryForm, setCategoryForm] = useState({ name: '', slug: '', group: '', image_url: '' });
     const [savingCategory, setSavingCategory] = useState(false);
     const [deletingCategory, setDeletingCategory] = useState(null);
+    const [isNewGroup, setIsNewGroup] = useState(false);
     const navigate = useNavigate();
 
     const formatPhoneNumber = (phone) => {
@@ -872,9 +873,11 @@ export default function AdminDashboard() {
                 group: category.group,
                 image_url: category.image_url || ''
             });
+            setIsNewGroup(false);
         } else {
             setEditingCategory(null);
             setCategoryForm({ name: '', slug: '', group: '', image_url: '' });
+            setIsNewGroup(false);
         }
         setShowCategoryModal(true);
     };
@@ -883,6 +886,7 @@ export default function AdminDashboard() {
         setShowCategoryModal(false);
         setEditingCategory(null);
         setCategoryForm({ name: '', slug: '', group: '', image_url: '' });
+        setIsNewGroup(false);
     };
 
     const handleSaveCategory = async (e) => {
@@ -1636,20 +1640,69 @@ export default function AdminDashboard() {
 
                                         <FormInput>
                                             <label>Grupo *</label>
-                                            <input
-                                                type="text"
-                                                list="groups-list"
-                                                value={categoryForm.group}
-                                                onChange={(e) => setCategoryForm(prev => ({ ...prev, group: e.target.value }))}
-                                                placeholder="Ex: Construção e Manutenção"
-                                                required
-                                            />
-                                            <datalist id="groups-list">
-                                                {availableGroups.map(g => (
-                                                    <option key={g} value={g} />
-                                                ))}
-                                            </datalist>
-                                            <span className="help">Selecione um grupo existente ou crie um novo</span>
+                                            {!isNewGroup ? (
+                                                <>
+                                                    <select
+                                                        value={categoryForm.group}
+                                                        onChange={(e) => {
+                                                            if (e.target.value === '__new__') {
+                                                                setIsNewGroup(true);
+                                                                setCategoryForm(prev => ({ ...prev, group: '' }));
+                                                            } else {
+                                                                setCategoryForm(prev => ({ ...prev, group: e.target.value }));
+                                                            }
+                                                        }}
+                                                        required
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '0.75rem 1rem',
+                                                            border: '1px solid var(--border)',
+                                                            borderRadius: '8px',
+                                                            fontSize: '1rem',
+                                                            backgroundColor: 'white',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        <option value="">Selecione um grupo</option>
+                                                        {availableGroups.map(g => (
+                                                            <option key={g} value={g}>{g}</option>
+                                                        ))}
+                                                        <option value="__new__">+ Criar novo grupo</option>
+                                                    </select>
+                                                    <span className="help">Selecione um grupo existente ou crie um novo</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        <input
+                                                            type="text"
+                                                            value={categoryForm.group}
+                                                            onChange={(e) => setCategoryForm(prev => ({ ...prev, group: e.target.value }))}
+                                                            placeholder="Nome do novo grupo"
+                                                            required
+                                                            style={{ flex: 1 }}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setIsNewGroup(false);
+                                                                setCategoryForm(prev => ({ ...prev, group: '' }));
+                                                            }}
+                                                            style={{
+                                                                padding: '0.5rem 1rem',
+                                                                background: 'var(--bg-secondary)',
+                                                                border: '1px solid var(--border)',
+                                                                borderRadius: '8px',
+                                                                cursor: 'pointer',
+                                                                fontSize: '0.875rem'
+                                                            }}
+                                                        >
+                                                            Cancelar
+                                                        </button>
+                                                    </div>
+                                                    <span className="help">Digite o nome do novo grupo</span>
+                                                </>
+                                            )}
                                         </FormInput>
 
                                         <FormInput>
