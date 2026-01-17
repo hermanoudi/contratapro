@@ -1,0 +1,37 @@
+name,slug,group
+Marido de Aluguel,marido-de-aluguel,Construção e Manutenção
+Pedreiro,pedreiro,Construção e Manutenção
+Eletricista,eletricista,Construção e Manutenção
+Pintor,pintor,Construção e Manutenção
+Encanador,encanador,Construção e Manutenção
+Marceneiro,marceneiro,Construção e Manutenção
+Serralheiro,serralheiro,Construção e Manutenção
+Vidraceiro,vidraceiro,Construção e Manutenção
+Jardineiro,jardineiro,Construção e Manutenção
+Gesseiro,gesseiro,Construção e Manutenção
+Barbeiro,barbeiro,Beleza e Estética
+Manicure,manicure,Beleza e Estética
+Cabeleireiro,cabeleireiro,Beleza e Estética
+Esteticista,esteticista,Beleza e Estética
+Depilador,depilador,Beleza e Estética
+Massagista,massagista,Beleza e Estética
+Design de sombrancelha,sombrancelha,Beleza e Estética
+Mecânico,mecânico,Serviços Técnicos
+Técnico,técnico,Serviços Técnicos
+Chaveiro,chaveiro,Serviços Técnicos
+Diarista,diarista,Casa e Limpeza
+Passadeira,passadeira,Casa e Limpeza
+Cozinheiro,cozinheiro,Casa e Limpeza
+Churrasqueiro,churrasqueiro,Casa e Limpeza
+Confeiteiro,confeiteiro,Casa e Limpeza
+Decorador,decorador,Casa e Limpeza
+Móveis Planejados,moveis-planejados,Casa e Limpeza
+Professor Particular,professor-particular,Educação
+Inglês,ingles,Educação
+Músico,músico,Eventos e Entretenimento
+Veterinário,veterinário,Pet
+Tosador,tosador,Pet
+Adestrador,adestrador,Pet
+Programador,programador,Técnologia e Informação
+Formatar computador,formatacao,Técnologia e Informação
+Técnico Celular,celular,Técnologia e Informação

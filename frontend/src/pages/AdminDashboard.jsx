@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { Users, Briefcase, Calendar, Shield, Power, DollarSign, TrendingUp, MapPin, CheckCircle, XCircle, AlertCircle, PauseCircle, Filter, Clock, Settings, Lock, Eye, EyeOff } from 'lucide-react';
+import { Users, Briefcase, Calendar, Shield, Power, DollarSign, TrendingUp, MapPin, CheckCircle, XCircle, AlertCircle, PauseCircle, Filter, Clock, Settings, Lock, Eye, EyeOff, Tag, Plus, Edit2, Trash2, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { API_URL } from '../config';
@@ -382,6 +382,245 @@ const PasswordRequirements = styled.ul`
   }
 `;
 
+const CategoryCard = styled.div`
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+`;
+
+const CategoryHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+    margin: 0;
+  }
+`;
+
+const CategoryGroup = styled.div`
+  margin-bottom: 1.5rem;
+
+  h3 {
+    color: var(--primary);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--primary);
+  }
+`;
+
+const CategoryList = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+`;
+
+const CategoryItem = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: var(--primary);
+  }
+
+  .info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    .name {
+      font-weight: 500;
+    }
+
+    .slug {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+  }
+
+  .actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+`;
+
+const IconButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &.edit {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary);
+
+    &:hover {
+      background: var(--primary);
+      color: white;
+    }
+  }
+
+  &.delete {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+
+    &:hover {
+      background: #ef4444;
+      color: white;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const AddButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--accent);
+  }
+`;
+
+const Modal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+
+  h2 {
+    margin: 0 0 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+`;
+
+const ModalActions = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+
+  button {
+    flex: 1;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+
+    &.primary {
+      background: var(--primary);
+      color: white;
+      border: none;
+
+      &:hover {
+        background: var(--accent);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    &.secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+
+      &:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+    }
+  }
+`;
+
+const FormInput = styled.div`
+  margin-bottom: 1rem;
+
+  label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+  }
+
+  input, select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 1rem;
+
+    &:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+  }
+
+  .help {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+  }
+`;
+
 export default function AdminDashboard() {
     const [dashboardData, setDashboardData] = useState(null);
     const [professionals, setProfessionals] = useState([]);
@@ -397,6 +636,15 @@ export default function AdminDashboard() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [changingPassword, setChangingPassword] = useState(false);
+    // Estados para CRUD de categorias
+    const [categories, setCategories] = useState([]);
+    const [groupedCategories, setGroupedCategories] = useState({});
+    const [availableGroups, setAvailableGroups] = useState([]);
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [editingCategory, setEditingCategory] = useState(null);
+    const [categoryForm, setCategoryForm] = useState({ name: '', slug: '', group: '', image_url: '' });
+    const [savingCategory, setSavingCategory] = useState(false);
+    const [deletingCategory, setDeletingCategory] = useState(null);
     const navigate = useNavigate();
 
     const formatPhoneNumber = (phone) => {
@@ -571,6 +819,151 @@ export default function AdminDashboard() {
         }
     };
 
+    // ============================================
+    // Funções de CRUD de Categorias
+    // ============================================
+
+    const fetchCategories = async () => {
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch(`${API_URL}/admin/categories`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                console.log('Categorias carregadas:', data);
+                setCategories(data.categories || []);
+                setGroupedCategories(data.grouped || {});
+                setAvailableGroups(data.groups || []);
+            } else {
+                const errorData = await res.json().catch(() => ({}));
+                console.error('Erro ao buscar categorias:', res.status, errorData);
+                toast.error(`Erro ao carregar categorias: ${errorData.detail || res.statusText}`);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar categorias:', error);
+            toast.error('Erro de conexão ao carregar categorias');
+        }
+    };
+
+    const generateSlug = (name) => {
+        return name
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
+    };
+
+    const handleCategoryNameChange = (name) => {
+        setCategoryForm(prev => ({
+            ...prev,
+            name,
+            slug: editingCategory ? prev.slug : generateSlug(name)
+        }));
+    };
+
+    const openCategoryModal = (category = null) => {
+        if (category) {
+            setEditingCategory(category);
+            setCategoryForm({
+                name: category.name,
+                slug: category.slug,
+                group: category.group,
+                image_url: category.image_url || ''
+            });
+        } else {
+            setEditingCategory(null);
+            setCategoryForm({ name: '', slug: '', group: '', image_url: '' });
+        }
+        setShowCategoryModal(true);
+    };
+
+    const closeCategoryModal = () => {
+        setShowCategoryModal(false);
+        setEditingCategory(null);
+        setCategoryForm({ name: '', slug: '', group: '', image_url: '' });
+    };
+
+    const handleSaveCategory = async (e) => {
+        e.preventDefault();
+
+        if (!categoryForm.name || !categoryForm.slug || !categoryForm.group) {
+            toast.error('Preencha todos os campos obrigatórios');
+            return;
+        }
+
+        setSavingCategory(true);
+        const token = localStorage.getItem('token');
+
+        try {
+            const url = editingCategory
+                ? `${API_URL}/admin/categories/${editingCategory.id}`
+                : `${API_URL}/admin/categories`;
+
+            const method = editingCategory ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(categoryForm)
+            });
+
+            if (res.ok) {
+                toast.success(editingCategory ? 'Categoria atualizada!' : 'Categoria criada!');
+                closeCategoryModal();
+                fetchCategories();
+            } else {
+                const error = await res.json();
+                toast.error(error.detail || 'Erro ao salvar categoria');
+            }
+        } catch (error) {
+            console.error('Erro ao salvar categoria:', error);
+            toast.error('Erro de conexão');
+        } finally {
+            setSavingCategory(false);
+        }
+    };
+
+    const handleDeleteCategory = async (category) => {
+        if (!window.confirm(`Tem certeza que deseja excluir a categoria "${category.name}"?`)) {
+            return;
+        }
+
+        setDeletingCategory(category.id);
+        const token = localStorage.getItem('token');
+
+        try {
+            const res = await fetch(`${API_URL}/admin/categories/${category.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                toast.success('Categoria excluída!');
+                fetchCategories();
+            } else {
+                const error = await res.json();
+                toast.error(error.detail || 'Erro ao excluir categoria');
+            }
+        } catch (error) {
+            console.error('Erro ao excluir categoria:', error);
+            toast.error('Erro de conexão');
+        } finally {
+            setDeletingCategory(null);
+        }
+    };
+
+    // Carregar categorias quando a aba for selecionada
+    useEffect(() => {
+        if (activeTab === 'categories') {
+            fetchCategories();
+        }
+    }, [activeTab]);
+
     const getStatusIcon = (status) => {
         switch(status) {
             case 'active': return <CheckCircle size={14} />;
@@ -683,6 +1076,23 @@ export default function AdminDashboard() {
                         }}
                     >
                         <DollarSign size={20} /> Assinaturas
+                    </div>
+                    <div
+                        onClick={() => setActiveTab('categories')}
+                        style={{
+                            color: activeTab === 'categories' ? 'var(--primary)' : 'var(--text-secondary)',
+                            fontWeight: 600,
+                            padding: '1rem',
+                            background: activeTab === 'categories' ? 'var(--primary-glow)' : 'transparent',
+                            borderRadius: '12px',
+                            display: 'flex',
+                            gap: '0.75rem',
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                            marginBottom: '0.5rem'
+                        }}
+                    >
+                        <Tag size={20} /> Categorias
                     </div>
                     <div
                         onClick={() => navigate('/admin/trials')}
@@ -1132,6 +1542,139 @@ export default function AdminDashboard() {
                                 </div>
                             )}
                         </Card>
+                    </>
+                )}
+
+                {activeTab === 'categories' && (
+                    <>
+                        <CategoryCard>
+                            <CategoryHeader>
+                                <h2><Tag size={24} /> Gerenciar Categorias</h2>
+                                <AddButton onClick={() => openCategoryModal()}>
+                                    <Plus size={18} /> Nova Categoria
+                                </AddButton>
+                            </CategoryHeader>
+
+                            {Object.keys(groupedCategories).length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                    <Tag size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                                    <p>Nenhuma categoria cadastrada</p>
+                                    <p style={{ fontSize: '0.875rem' }}>Clique em "Nova Categoria" para começar</p>
+                                </div>
+                            ) : (
+                                Object.entries(groupedCategories).map(([group, cats]) => (
+                                    <CategoryGroup key={group}>
+                                        <h3>{group} ({cats.length})</h3>
+                                        <CategoryList>
+                                            {cats.map(cat => (
+                                                <CategoryItem key={cat.id}>
+                                                    <div className="info">
+                                                        <span className="name">{cat.name}</span>
+                                                        <span className="slug">{cat.slug}</span>
+                                                    </div>
+                                                    <div className="actions">
+                                                        <IconButton
+                                                            className="edit"
+                                                            onClick={() => openCategoryModal(cat)}
+                                                            title="Editar"
+                                                        >
+                                                            <Edit2 size={16} />
+                                                        </IconButton>
+                                                        <IconButton
+                                                            className="delete"
+                                                            onClick={() => handleDeleteCategory(cat)}
+                                                            disabled={deletingCategory === cat.id}
+                                                            title="Excluir"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </IconButton>
+                                                    </div>
+                                                </CategoryItem>
+                                            ))}
+                                        </CategoryList>
+                                    </CategoryGroup>
+                                ))
+                            )}
+
+                            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--bg-primary)', borderRadius: '8px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                                <strong>Total:</strong> {categories.length} categorias em {Object.keys(groupedCategories).length} grupos
+                            </div>
+                        </CategoryCard>
+
+                        {/* Modal de Criar/Editar Categoria */}
+                        {showCategoryModal && (
+                            <Modal onClick={closeCategoryModal}>
+                                <ModalContent onClick={e => e.stopPropagation()}>
+                                    <h2>
+                                        {editingCategory ? <Edit2 size={20} /> : <Plus size={20} />}
+                                        {editingCategory ? 'Editar Categoria' : 'Nova Categoria'}
+                                    </h2>
+
+                                    <form onSubmit={handleSaveCategory}>
+                                        <FormInput>
+                                            <label>Nome *</label>
+                                            <input
+                                                type="text"
+                                                value={categoryForm.name}
+                                                onChange={(e) => handleCategoryNameChange(e.target.value)}
+                                                placeholder="Ex: Eletricista"
+                                                required
+                                            />
+                                        </FormInput>
+
+                                        <FormInput>
+                                            <label>Slug *</label>
+                                            <input
+                                                type="text"
+                                                value={categoryForm.slug}
+                                                onChange={(e) => setCategoryForm(prev => ({ ...prev, slug: e.target.value }))}
+                                                placeholder="Ex: eletricista"
+                                                required
+                                            />
+                                            <span className="help">Identificador único usado na URL</span>
+                                        </FormInput>
+
+                                        <FormInput>
+                                            <label>Grupo *</label>
+                                            <input
+                                                type="text"
+                                                list="groups-list"
+                                                value={categoryForm.group}
+                                                onChange={(e) => setCategoryForm(prev => ({ ...prev, group: e.target.value }))}
+                                                placeholder="Ex: Construção e Manutenção"
+                                                required
+                                            />
+                                            <datalist id="groups-list">
+                                                {availableGroups.map(g => (
+                                                    <option key={g} value={g} />
+                                                ))}
+                                            </datalist>
+                                            <span className="help">Selecione um grupo existente ou crie um novo</span>
+                                        </FormInput>
+
+                                        <FormInput>
+                                            <label>URL da Imagem (opcional)</label>
+                                            <input
+                                                type="url"
+                                                value={categoryForm.image_url}
+                                                onChange={(e) => setCategoryForm(prev => ({ ...prev, image_url: e.target.value }))}
+                                                placeholder="https://..."
+                                            />
+                                        </FormInput>
+
+                                        <ModalActions>
+                                            <button type="button" className="secondary" onClick={closeCategoryModal}>
+                                                <X size={18} /> Cancelar
+                                            </button>
+                                            <button type="submit" className="primary" disabled={savingCategory}>
+                                                <Save size={18} />
+                                                {savingCategory ? 'Salvando...' : 'Salvar'}
+                                            </button>
+                                        </ModalActions>
+                                    </form>
+                                </ModalContent>
+                            </Modal>
+                        )}
                     </>
                 )}
 

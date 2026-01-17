@@ -1,13 +1,20 @@
 """
 Seeds para o banco de dados - Categorias de Serviços
+Categorias baseadas no arquivo data/categorias_disponiveis.csv
 """
 from sqlalchemy import select
 from .models import Category
 from .database import AsyncSessionLocal
 
-# Lista completa de categorias com imagens do Unsplash
+# Lista de categorias conforme data/categorias_disponiveis.csv
 CATEGORIES = [
     # Construção e Manutenção
+    {
+        "name": "Marido de Aluguel",
+        "slug": "marido-de-aluguel",
+        "group": "Construção e Manutenção",
+        "image_url": "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80"
+    },
     {
         "name": "Pedreiro",
         "slug": "pedreiro",
@@ -62,12 +69,6 @@ CATEGORIES = [
         "group": "Construção e Manutenção",
         "image_url": "https://images.unsplash.com/photo-1581858726788-75bc0f6a952d?auto=format&fit=crop&w=800&q=80"
     },
-    {
-        "name": "Azulejista",
-        "slug": "azulejista",
-        "group": "Construção e Manutenção",
-        "image_url": "https://images.unsplash.com/photo-1581858726788-75bc0f6a952d?auto=format&fit=crop&w=800&q=80"
-    },
 
     # Beleza e Estética
     {
@@ -95,12 +96,6 @@ CATEGORIES = [
         "image_url": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=800&q=80"
     },
     {
-        "name": "Maquiador",
-        "slug": "maquiador",
-        "group": "Beleza e Estética",
-        "image_url": "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=800&q=80"
-    },
-    {
         "name": "Depilador",
         "slug": "depilador",
         "group": "Beleza e Estética",
@@ -112,13 +107,19 @@ CATEGORIES = [
         "group": "Beleza e Estética",
         "image_url": "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=800&q=80"
     },
+    {
+        "name": "Design de sombrancelha",
+        "slug": "sombrancelha",
+        "group": "Beleza e Estética",
+        "image_url": "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80"
+    },
 
     # Serviços Técnicos
     {
         "name": "Mecânico",
         "slug": "mecânico",
         "group": "Serviços Técnicos",
-        "image_url": "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=800&q=80"
+        "image_url": "https://images.unsplash.com/photo-1486427944299-d1955d23e34d?auto=format&fit=crop&w=800&q=80"
     },
     {
         "name": "Técnico",
@@ -131,12 +132,6 @@ CATEGORIES = [
         "slug": "chaveiro",
         "group": "Serviços Técnicos",
         "image_url": "https://images.unsplash.com/photo-1582139329536-e7284fece509?auto=format&fit=crop&w=800&q=80"
-    },
-    {
-        "name": "Instalador",
-        "slug": "instalador",
-        "group": "Serviços Técnicos",
-        "image_url": "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=800&q=80"
     },
 
     # Casa e Limpeza
@@ -171,28 +166,28 @@ CATEGORIES = [
         "image_url": "https://images.unsplash.com/photo-1486427944299-d1955d23e34d?auto=format&fit=crop&w=800&q=80"
     },
     {
-        "name": "Organizador",
-        "slug": "organizador",
-        "group": "Casa e Limpeza",
-        "image_url": "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=800&q=80"
-    },
-    {
         "name": "Decorador",
         "slug": "decorador",
         "group": "Casa e Limpeza",
         "image_url": "https://images.unsplash.com/photo-1615873968403-89e068629265?auto=format&fit=crop&w=800&q=80"
     },
+    {
+        "name": "Móveis Planejados",
+        "slug": "moveis-planejados",
+        "group": "Casa e Limpeza",
+        "image_url": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80"
+    },
 
     # Educação
     {
-        "name": "Professor",
-        "slug": "professor",
+        "name": "Professor Particular",
+        "slug": "professor-particular",
         "group": "Educação",
         "image_url": "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80"
     },
     {
-        "name": "Instrutor",
-        "slug": "instrutor",
+        "name": "Inglês",
+        "slug": "ingles",
         "group": "Educação",
         "image_url": "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=800&q=80"
     },
@@ -223,6 +218,26 @@ CATEGORIES = [
         "slug": "adestrador",
         "group": "Pet",
         "image_url": "https://images.unsplash.com/photo-1444212477490-ca407925329e?auto=format&fit=crop&w=800&q=80"
+    },
+
+    # Tecnologia e Informação
+    {
+        "name": "Programador",
+        "slug": "programador",
+        "group": "Tecnologia e Informação",
+        "image_url": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        "name": "Formatar computador",
+        "slug": "formatacao",
+        "group": "Tecnologia e Informação",
+        "image_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        "name": "Técnico Celular",
+        "slug": "celular",
+        "group": "Tecnologia e Informação",
+        "image_url": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80"
     },
 ]
 

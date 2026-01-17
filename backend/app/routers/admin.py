@@ -6,7 +6,7 @@ from datetime import date, timedelta, datetime
 from pydantic import BaseModel
 from passlib.context import CryptContext
 from ..database import get_db
-from ..models import User, Subscription, Appointment, SubscriptionPlan
+from ..models import User, Subscription, Appointment, SubscriptionPlan, Category
 from ..dependencies import get_current_user
 from ..config import settings
 
@@ -679,4 +679,218 @@ async def setup_change_admin_password(
         "success": True,
         "message": f"Senha do administrador {request.email} alterada com sucesso",
         "user_id": user.id
+    }
+
+
+# ============================================
+# CRUD de Categorias
+# ============================================
+
+class CategoryCreate(BaseModel):
+    name: str
+    slug: str
+    group: str
+    image_url: str | None = None
+
+
+class CategoryUpdate(BaseModel):
+    name: str | None = None
+    slug: str | None = None
+    group: str | None = None
+    image_url: str | None = None
+
+
+@router.get("/categories")
+async def list_admin_categories(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Lista todas as categorias para o admin gerenciar.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem acessar")
+
+    try:
+        result = await db.execute(
+            select(Category).order_by(Category.group, Category.name)
+        )
+        categories = result.scalars().all()
+
+        # Agrupar por grupo
+        grouped = {}
+        for cat in categories:
+            if cat.group not in grouped:
+                grouped[cat.group] = []
+            grouped[cat.group].append({
+                "id": cat.id,
+                "name": cat.name,
+                "slug": cat.slug,
+                "group": cat.group,
+                "image_url": cat.image_url
+            })
+
+        # Lista de grupos únicos para o select
+        groups = list(grouped.keys())
+
+        return {
+            "categories": [
+                {
+                    "id": cat.id,
+                    "name": cat.name,
+                    "slug": cat.slug,
+                    "group": cat.group,
+                    "image_url": cat.image_url
+                }
+                for cat in categories
+            ],
+            "grouped": grouped,
+            "groups": groups,
+            "total": len(categories)
+        }
+    except Exception as e:
+        # Log do erro para debug
+        print(f"Erro ao listar categorias: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar categorias: {str(e)}")
+
+
+@router.post("/categories")
+async def create_category(
+    category: CategoryCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Cria uma nova categoria.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem acessar")
+
+    # Verificar se slug já existe
+    result = await db.execute(
+        select(Category).where(Category.slug == category.slug)
+    )
+    existing = result.scalar_one_or_none()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Já existe uma categoria com esse slug")
+
+    new_category = Category(
+        name=category.name,
+        slug=category.slug,
+        group=category.group,
+        image_url=category.image_url
+    )
+
+    db.add(new_category)
+    await db.commit()
+    await db.refresh(new_category)
+
+    return {
+        "success": True,
+        "message": "Categoria criada com sucesso",
+        "category": {
+            "id": new_category.id,
+            "name": new_category.name,
+            "slug": new_category.slug,
+            "group": new_category.group,
+            "image_url": new_category.image_url
+        }
+    }
+
+
+@router.put("/categories/{category_id}")
+async def update_category(
+    category_id: int,
+    category: CategoryUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Atualiza uma categoria existente.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem acessar")
+
+    result = await db.execute(
+        select(Category).where(Category.id == category_id)
+    )
+    existing = result.scalar_one_or_none()
+
+    if not existing:
+        raise HTTPException(status_code=404, detail="Categoria não encontrada")
+
+    # Verificar se novo slug já existe (se estiver sendo alterado)
+    if category.slug and category.slug != existing.slug:
+        result = await db.execute(
+            select(Category).where(Category.slug == category.slug)
+        )
+        slug_exists = result.scalar_one_or_none()
+        if slug_exists:
+            raise HTTPException(status_code=400, detail="Já existe uma categoria com esse slug")
+
+    # Atualizar campos
+    if category.name is not None:
+        existing.name = category.name
+    if category.slug is not None:
+        existing.slug = category.slug
+    if category.group is not None:
+        existing.group = category.group
+    if category.image_url is not None:
+        existing.image_url = category.image_url
+
+    await db.commit()
+    await db.refresh(existing)
+
+    return {
+        "success": True,
+        "message": "Categoria atualizada com sucesso",
+        "category": {
+            "id": existing.id,
+            "name": existing.name,
+            "slug": existing.slug,
+            "group": existing.group,
+            "image_url": existing.image_url
+        }
+    }
+
+
+@router.delete("/categories/{category_id}")
+async def delete_category(
+    category_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Remove uma categoria.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem acessar")
+
+    result = await db.execute(
+        select(Category).where(Category.id == category_id)
+    )
+    existing = result.scalar_one_or_none()
+
+    if not existing:
+        raise HTTPException(status_code=404, detail="Categoria não encontrada")
+
+    # Verificar se há profissionais usando esta categoria
+    result = await db.execute(
+        select(func.count(User.id)).where(User.category == existing.slug)
+    )
+    count = result.scalar()
+
+    if count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Não é possível excluir. {count} profissional(is) estão usando esta categoria."
+        )
+
+    await db.delete(existing)
+    await db.commit()
+
+    return {
+        "success": True,
+        "message": "Categoria excluída com sucesso"
     }
