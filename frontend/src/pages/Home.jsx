@@ -1155,7 +1155,7 @@ export default function Home() {
                         <SearchInputWrapper>
                             <Search size={20} color="var(--primary)" />
                             <SearchInput
-                                placeholder="Buscar serviços (ex: Corte de Cabelo, Pintura de Paredes...)"
+                                placeholder="Buscar serviços"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleHeaderSearch()}
