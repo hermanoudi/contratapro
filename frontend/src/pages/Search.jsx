@@ -658,7 +658,6 @@ export default function Search() {
 
   const performSearch = async (searchService, searchCity, searchCep) => {
     setLoading(true);
-    setHasSearched(true);
 
     try {
       const params = new URLSearchParams();
@@ -675,6 +674,7 @@ export default function Search() {
       console.error(e);
     } finally {
       setLoading(false);
+      setHasSearched(true);  // Só marca como "buscou" DEPOIS de terminar
     }
   };
 
@@ -706,7 +706,16 @@ export default function Search() {
         </BackButton>
       </Header>
 
-      {hasSearched && (
+      {loading && (
+        <ResultsContainer>
+          <div style={{ textAlign: 'center', padding: '3rem' }}>
+            <SearchIcon size={48} style={{ opacity: 0.3, marginBottom: '1rem', animation: 'pulse 1.5s infinite' }} />
+            <p style={{ color: 'var(--text-secondary)' }}>Buscando profissionais...</p>
+          </div>
+        </ResultsContainer>
+      )}
+
+      {!loading && hasSearched && (
         <ResultsContainer>
           <ResultsHeader>
             <ResultsCount>
