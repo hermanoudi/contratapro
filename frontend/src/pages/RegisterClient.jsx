@@ -6,6 +6,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { API_URL } from '../config';
 import logoImage from '../assets/contratapro-logo.png';
+import PasswordInput from '../components/PasswordInput';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -338,6 +339,7 @@ const MobileLogo = styled.img`
 export default function RegisterClient() {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [isPasswordValid, setIsPasswordValid] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -415,6 +417,10 @@ export default function RegisterClient() {
         if (step === 1) {
             if (!formData.name || !formData.email || !formData.password || !formData.whatsapp) {
                 toast.error('Por favor, preencha todos os campos pessoais.');
+                return;
+            }
+            if (!isPasswordValid) {
+                toast.error('Crie uma senha forte que atenda a todos os requisitos.');
                 return;
             }
         }
@@ -580,14 +586,14 @@ export default function RegisterClient() {
 
                             <InputGroup>
                                 <Label>Senha</Label>
-                                <IconWrapper><Lock size={20} /></IconWrapper>
-                                <Input
+                                <PasswordInput
                                     name="password"
-                                    type="password"
-                                    placeholder="Sua senha"
+                                    placeholder="Crie uma senha forte"
                                     value={formData.password}
                                     onChange={handleChange}
-                                    required
+                                    onValidChange={setIsPasswordValid}
+                                    showGenerateButton={true}
+                                    showTooltip={true}
                                 />
                             </InputGroup>
 

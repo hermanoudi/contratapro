@@ -5,6 +5,7 @@ import { Users, Briefcase, Calendar, Shield, Power, DollarSign, TrendingUp, MapP
 import { toast } from 'sonner';
 
 import { API_URL } from '../config';
+import PasswordInput from '../components/PasswordInput';
 const AdminContainer = styled.div`
   display: flex;
   min-height: 100vh;
@@ -636,6 +637,7 @@ export default function AdminDashboard() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [changingPassword, setChangingPassword] = useState(false);
+    const [isPasswordValid, setIsPasswordValid] = useState(false);
     // Estados para CRUD de categorias
     const [categories, setCategories] = useState([]);
     const [groupedCategories, setGroupedCategories] = useState({});
@@ -781,8 +783,8 @@ export default function AdminDashboard() {
         e.preventDefault();
 
         // Validações
-        if (newPassword.length < 8) {
-            toast.error('A senha deve ter pelo menos 8 caracteres');
+        if (!isPasswordValid) {
+            toast.error('Crie uma senha forte que atenda a todos os requisitos');
             return;
         }
 
@@ -1740,21 +1742,15 @@ export default function AdminDashboard() {
                             <form onSubmit={handleChangePassword}>
                                 <FormGroup>
                                     <label>Nova Senha</label>
-                                    <PasswordInputWrapper>
-                                        <input
-                                            type={showPassword ? 'text' : 'password'}
-                                            value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
-                                            placeholder="Digite sua nova senha"
-                                            required
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                        >
-                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                        </button>
-                                    </PasswordInputWrapper>
+                                    <PasswordInput
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        placeholder="Digite sua nova senha"
+                                        onValidChange={setIsPasswordValid}
+                                        showGenerateButton={true}
+                                        showTooltip={true}
+                                        required
+                                    />
                                 </FormGroup>
 
                                 <FormGroup>
@@ -1775,11 +1771,6 @@ export default function AdminDashboard() {
                                         </button>
                                     </PasswordInputWrapper>
                                 </FormGroup>
-
-                                <PasswordRequirements>
-                                    <li>Mínimo de 8 caracteres</li>
-                                    <li>Recomendado usar letras maiúsculas, minúsculas, números e símbolos</li>
-                                </PasswordRequirements>
 
                                 <SubmitButton type="submit" disabled={changingPassword}>
                                     {changingPassword ? (

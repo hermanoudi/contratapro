@@ -6,6 +6,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { API_URL } from '../config';
 import logoImage from '../assets/contratapro-logo.png';
+import PasswordInput from '../components/PasswordInput';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -357,6 +358,7 @@ export default function RegisterProfessional() {
     const [plans, setPlans] = useState([]);
     const [loadingPlans, setLoadingPlans] = useState(true);
     const [selectedPlan, setSelectedPlan] = useState(null);
+    const [isPasswordValid, setIsPasswordValid] = useState(false);
     const [formData, setFormData] = useState({
         name: '', email: '', password: '',
         cpf: '',
@@ -518,6 +520,10 @@ export default function RegisterProfessional() {
     const nextStep = () => {
         if (step === 1 && (!formData.name || !formData.email || !formData.password || !formData.cpf)) {
             toast.error('Preencha todos os dados básicos incluindo o CPF.');
+            return;
+        }
+        if (step === 1 && !isPasswordValid) {
+            toast.error('Crie uma senha forte que atenda a todos os requisitos.');
             return;
         }
         if (step === 1 && formData.cpf.replace(/\D/g, '').length !== 11) {
@@ -738,12 +744,14 @@ export default function RegisterProfessional() {
                             </InputGroup>
                             <InputGroup>
                                 <Label>Senha</Label>
-                                <Input
+                                <PasswordInput
                                     name="password"
-                                    type="password"
-                                    placeholder="••••••••"
+                                    placeholder="Crie uma senha forte"
                                     value={formData.password}
                                     onChange={handleChange}
+                                    onValidChange={setIsPasswordValid}
+                                    showGenerateButton={true}
+                                    showTooltip={true}
                                 />
                             </InputGroup>
                             <ButtonGroup>

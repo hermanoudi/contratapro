@@ -1,6 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from pydantic import BaseModel
+import re
+import secrets
+import string
 from ..database import get_db
 from ..models import User
 from ..schemas import UserLogin, Token, UserResponse
@@ -9,6 +13,109 @@ from ..dependencies import get_current_user
 from datetime import timedelta
 
 router = APIRouter()
+
+
+# ============================================
+# Validação de Senha Forte
+# ============================================
+
+class PasswordValidationRequest(BaseModel):
+    password: str
+
+
+class PasswordValidationResponse(BaseModel):
+    is_valid: bool
+    criteria: dict
+    message: str
+
+
+class GeneratePasswordResponse(BaseModel):
+    password: str
+
+
+def validate_password_strength(password: str) -> dict:
+    """
+    Valida a força da senha e retorna os critérios atendidos.
+    Critérios:
+    - Mínimo 8 caracteres
+    - Pelo menos uma letra maiúscula
+    - Pelo menos uma letra minúscula
+    - Pelo menos um número
+    - Pelo menos um caractere especial
+    """
+    criteria = {
+        "min_length": len(password) >= 8,
+        "has_uppercase": bool(re.search(r'[A-Z]', password)),
+        "has_lowercase": bool(re.search(r'[a-z]', password)),
+        "has_number": bool(re.search(r'[0-9]', password)),
+        "has_special": bool(re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]', password))
+    }
+
+    return criteria
+
+
+def generate_strong_password(length: int = 16) -> str:
+    """
+    Gera uma senha forte aleatória que atende a todos os critérios.
+    """
+    # Garantir que tenha pelo menos um de cada tipo
+    password_chars = [
+        secrets.choice(string.ascii_uppercase),  # Maiúscula
+        secrets.choice(string.ascii_lowercase),  # Minúscula
+        secrets.choice(string.digits),            # Número
+        secrets.choice('!@#$%^&*()_+-=[]{}|;:,.<>?')  # Especial
+    ]
+
+    # Preencher o resto com caracteres aleatórios
+    all_chars = string.ascii_letters + string.digits + '!@#$%^&*()_+-=[]{}|;:,.<>?'
+    password_chars.extend(secrets.choice(all_chars) for _ in range(length - 4))
+
+    # Embaralhar para não ter padrão previsível
+    password_list = list(password_chars)
+    secrets.SystemRandom().shuffle(password_list)
+
+    return ''.join(password_list)
+
+
+@router.post("/validate-password", response_model=PasswordValidationResponse)
+async def validate_password(request: PasswordValidationRequest):
+    """
+    Valida se a senha atende aos critérios de segurança.
+    Retorna quais critérios foram atendidos para feedback visual.
+    """
+    criteria = validate_password_strength(request.password)
+    is_valid = all(criteria.values())
+
+    if is_valid:
+        message = "Senha forte! Todos os critérios foram atendidos."
+    else:
+        missing = []
+        if not criteria["min_length"]:
+            missing.append("mínimo 8 caracteres")
+        if not criteria["has_uppercase"]:
+            missing.append("letra maiúscula")
+        if not criteria["has_lowercase"]:
+            missing.append("letra minúscula")
+        if not criteria["has_number"]:
+            missing.append("número")
+        if not criteria["has_special"]:
+            missing.append("caractere especial")
+        message = f"Senha fraca. Faltam: {', '.join(missing)}."
+
+    return PasswordValidationResponse(
+        is_valid=is_valid,
+        criteria=criteria,
+        message=message
+    )
+
+
+@router.get("/generate-password", response_model=GeneratePasswordResponse)
+async def generate_password():
+    """
+    Gera uma senha forte aleatória que atende a todos os critérios.
+    """
+    password = generate_strong_password(16)
+    return GeneratePasswordResponse(password=password)
 
 @router.post("/login", response_model=Token)
 async def login(login_data: UserLogin, db: AsyncSession = Depends(get_db)):

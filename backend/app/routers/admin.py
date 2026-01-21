@@ -9,6 +9,7 @@ from ..database import get_db
 from ..models import User, Subscription, Appointment, SubscriptionPlan, Category
 from ..dependencies import get_current_user
 from ..config import settings
+from .auth import validate_password_strength
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -612,8 +613,24 @@ async def change_admin_password(
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Apenas administradores podem acessar")
 
-    if len(request.new_password) < 8:
-        raise HTTPException(status_code=400, detail="A senha deve ter pelo menos 8 caracteres")
+    # Validar força da senha
+    password_criteria = validate_password_strength(request.new_password)
+    if not all(password_criteria.values()):
+        missing = []
+        if not password_criteria["min_length"]:
+            missing.append("mínimo 8 caracteres")
+        if not password_criteria["has_uppercase"]:
+            missing.append("letra maiúscula")
+        if not password_criteria["has_lowercase"]:
+            missing.append("letra minúscula")
+        if not password_criteria["has_number"]:
+            missing.append("número")
+        if not password_criteria["has_special"]:
+            missing.append("caractere especial")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Senha fraca. A senha deve conter: {', '.join(missing)}."
+        )
 
     try:
         # Buscar o usuário novamente para garantir que está na sessão atual
@@ -658,6 +675,25 @@ async def setup_change_admin_password(
     # Validar chave secreta
     if request.secret_key != settings.SECRET_KEY:
         raise HTTPException(status_code=403, detail="Chave secreta inválida")
+
+    # Validar força da senha
+    password_criteria = validate_password_strength(request.new_password)
+    if not all(password_criteria.values()):
+        missing = []
+        if not password_criteria["min_length"]:
+            missing.append("mínimo 8 caracteres")
+        if not password_criteria["has_uppercase"]:
+            missing.append("letra maiúscula")
+        if not password_criteria["has_lowercase"]:
+            missing.append("letra minúscula")
+        if not password_criteria["has_number"]:
+            missing.append("número")
+        if not password_criteria["has_special"]:
+            missing.append("caractere especial")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Senha fraca. A senha deve conter: {', '.join(missing)}."
+        )
 
     # Buscar usuário
     result = await db.execute(

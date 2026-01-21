@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { User, MapPin, Camera, Save, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
+import { API_URL } from '../config';
 
 const PageContainer = styled.div`
-import { API_URL } from '../config';
   max-width: 1200px;
   margin: 0 auto;
 `;

@@ -9,6 +9,7 @@ from ..schemas import UserCreate, UserResponse, ProfessionalPublic, UserUpdate
 from ..auth_utils import get_password_hash
 from ..dependencies import get_current_user
 from ..services.image_storage import image_storage
+from .auth import validate_password_strength
 
 router = APIRouter()
 
@@ -97,6 +98,25 @@ async def upload_profile_picture(
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
+    # Validar força da senha
+    password_criteria = validate_password_strength(user.password)
+    if not all(password_criteria.values()):
+        missing = []
+        if not password_criteria["min_length"]:
+            missing.append("mínimo 8 caracteres")
+        if not password_criteria["has_uppercase"]:
+            missing.append("letra maiúscula")
+        if not password_criteria["has_lowercase"]:
+            missing.append("letra minúscula")
+        if not password_criteria["has_number"]:
+            missing.append("número")
+        if not password_criteria["has_special"]:
+            missing.append("caractere especial")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Senha fraca. A senha deve conter: {', '.join(missing)}."
+        )
+
     # Check if user exists
     result = await db.execute(select(User).filter(User.email == user.email))
     db_user = result.scalars().first()
