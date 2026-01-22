@@ -11,7 +11,7 @@ import logging
 
 from ..database import get_db
 from ..models import Subscription, SubscriptionPlan, User
-from .auth import get_current_user
+from ..dependencies import get_current_user
 from ..config import settings
 
 router = APIRouter()
@@ -600,16 +600,16 @@ async def get_my_subscription(
             "plan": plan_info,
             "is_trial": is_trial,
             "trial_ends_at": (
-                subscription.trial_ends_at.isoformat()
+                str(subscription.trial_ends_at)
                 if subscription.trial_ends_at else None
             ),
             "trial_days_remaining": trial_days_remaining,
             "next_billing_date": (
-                subscription.next_billing_date.isoformat()
+                str(subscription.next_billing_date)
                 if subscription.next_billing_date else None
             ),
             "last_payment_date": (
-                subscription.last_payment_date.isoformat()
+                str(subscription.last_payment_date)
                 if subscription.last_payment_date else None
             ),
             "cancelled_at": (

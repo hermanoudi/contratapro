@@ -332,15 +332,10 @@ export default function MySubscription() {
 
             if (res.ok) {
                 const data = await res.json();
-                console.log('Dados do plano recebidos:', data);
                 setUserPlan(data);
-            } else {
-                console.error('Erro ao buscar plano - Status:', res.status);
-                const errorData = await res.json();
-                console.error('Detalhes do erro:', errorData);
             }
         } catch (error) {
-            console.error('Erro ao buscar plano do usuário:', error);
+            // Erro silencioso - usuário pode não ter plano
         }
     };
 

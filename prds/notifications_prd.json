@@ -1,0 +1,208 @@
+{
+  "meta": {
+    "product": "ContrataPro",
+    "feature": "Módulo de Notificações (E-mail)",
+    "prd_owner": "ContrataPro Product Owner",
+    "version": "1.0.0",
+    "date": "2026-01-22"
+  },
+  "context": {
+    "summary": "Implementação de um Módulo de Notificações no ContrataPro. A arquitetura será baseada em adaptadores para permitir múltiplos canais futuros, com foco inicial no canal E-mail via SMTP Titan. A feature visa notificar Profissionais e Clientes sobre criação, edição e cancelamento de agendamentos.",
+    "target_audience": [
+      "Profissionais cadastrados na plataforma",
+      "Clientes finais que contratam serviços"
+    ],
+    "key_use_cases": [
+      "Novo Agendamento: Cliente contrata um serviço e ambos recebem e-mail",
+      "Alteração/Cancelamento: Mudança na agenda dispara notificação",
+      "Conferência: Profissional acessa painel para ver histórico"
+    ],
+    "deployment_context": {
+      "type": "existing_system",
+      "description": "Backend FastAPI (Python) no Railway, Frontend React, Banco PostgreSQL e SMTP Titan"
+    },
+    "problems": [
+      {
+        "description": "No-Show (Faltas): Profissionais e clientes esquecem compromissos por falta de lembrete ativo",
+        "impact": "Alto impacto na confiabilidade da plataforma",
+        "priority": "high"
+      },
+      {
+        "description": "Insegurança: Falta de formalização do agendamento gera desconfiança no cliente",
+        "impact": "Impacto médio na percepção de qualidade",
+        "priority": "medium"
+      }
+    ]
+  },
+  "goals": [
+    {
+      "goal": "Garantir entrega das mensagens",
+      "metric": "Taxa de sucesso de envio (SMTP)",
+      "target": "99% entregue em até 5 min"
+    },
+    {
+      "goal": "Rastreabilidade técnica",
+      "metric": "Cobertura de logs de erro em falhas de envio",
+      "target": "100% dos erros registrados"
+    }
+  ],
+  "scope": {
+    "in_scope": [
+      "Arquitetura de Módulo de Notificação com padrão Adapter (foco em E-mail)",
+      "Integração com SMTP Titan (Godaddy)",
+      "Disparos automáticos em: Criação, Edição e Cancelamento de agendamentos",
+      "Tela 'Minhas Notificações' para Profissional e Cliente",
+      "Template de e-mail fixo com dados de contato e localização"
+    ],
+    "out_of_scope": [
+      "Integração com WhatsApp, SMS ou Push (nesta versão)",
+      "Editor visual de templates de e-mail (Backoffice)",
+      "Controle de status de leitura ('Lido/Não lido') na interface"
+    ]
+  },
+  "functional_requirements": [
+    {
+      "id": "RF-001",
+      "name": "Motor de Envio de Notificações (Backend)",
+      "description": "O sistema deve detectar eventos de agenda e processar o envio do e-mail de forma assíncrona.",
+      "main_flow": [
+        "Usuário realiza uma ação (Agendar, Editar, Cancelar)",
+        "Sistema grava a alteração no agendamento",
+        "Sistema cria registro de notificação no banco com status PENDING",
+        "BackgroundTasks aciona o EmailAdapter",
+        "Sistema monta o template com dados: Status, Nome, E-mail, Telefone e Endereços",
+        "Sistema envia via SMTP Titan",
+        "Se sucesso, atualiza registro para SENT"
+      ],
+      "alternative_flows": [],
+      "known_errors": [
+        "Timeout de conexão com SMTP",
+        "Credenciais inválidas no .env (atualizar para ERROR)"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "RF-002",
+      "name": "Tela 'Minhas Notificações' (Frontend)",
+      "description": "Interface para usuários visualizarem o histórico de comunicações recebidas.",
+      "main_flow": [
+        "Usuário acessa o menu 'Notificações'",
+        "Sistema exibe grid/lista com as notificações",
+        "Ordenação padrão: Mais recente para mais antiga",
+        "Usuário filtra por Tipo, Período, Nome ou Serviço"
+      ],
+      "alternative_flows": [
+        "Se não houver notificações, exibir mensagem amigável"
+      ],
+      "known_errors": [],
+      "priority": "medium"
+    }
+  ],
+  "non_functional_requirements": [
+    {
+      "category": "performance",
+      "specifications": [
+        "O envio do e-mail deve ser processado em background",
+        "API de agendamento deve responder em menos de 500ms"
+      ]
+    },
+    {
+      "category": "availability",
+      "specifications": [
+        "Dependência direta da disponibilidade do SMTP externo (Titan)"
+      ]
+    },
+    {
+      "category": "security",
+      "specifications": [
+        "Credenciais SMTP injetadas via variáveis de ambiente (.env)",
+        "Isolamento de dados: usuário só vê suas próprias notificações"
+      ]
+    },
+    {
+      "category": "observability",
+      "specifications": [
+        "Logs estruturados no backend indicando sucesso ou stack trace de erro"
+      ]
+    },
+    {
+      "category": "compatibility",
+      "specifications": [
+        "Arquitetura modular (Adapter Pattern) para plugabilidade futura de SMS/WhatsApp"
+      ]
+    }
+  ],
+  "architecture": {
+    "approach": "Design Pattern Adapter/Strategy para canais de notificação; Processamento assíncrono via BackgroundTasks nativo.",
+    "components": [
+      "Backend API (FastAPI)",
+      "Worker Interno (BackgroundTasks)",
+      "Banco de Dados (PostgreSQL - tabela notifications)",
+      "SMTP Titan"
+    ],
+    "integrations": [
+      "SMTP Godaddy/Titan (smtp.titan.email)"
+    ]
+  },
+  "decisions_tradeoffs": [
+    {
+      "decision": "Uso de BackgroundTasks (Nativo FastAPI) ao invés de Celery/Redis",
+      "justification": "O projeto é MVP hospedado no Railway. Adicionar Redis aumentaria custo e complexidade de infraestrutura desnecessariamente agora.",
+      "trade_off": "Menor robustez em retentativas automáticas complexas se o servidor reiniciar durante o processamento."
+    },
+    {
+      "decision": "Templates Hardcoded",
+      "justification": "Agilidade de desenvolvimento inicial.",
+      "trade_off": "Qualquer alteração de texto exige novo deploy da aplicação."
+    }
+  ],
+  "dependencies": [
+    {
+      "type": "technical",
+      "title": "Credenciais SMTP",
+      "description": "Configuração das variáveis SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD no Railway."
+    },
+    {
+      "type": "technical",
+      "title": "Design System",
+      "description": "Reutilização estrita dos componentes visuais já existentes no React."
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Bloqueio por Rate Limit (SMTP)",
+      "probability": "medium",
+      "impact": "E-mails param de ser enviados temporariamente",
+      "mitigation": [
+        "Monitorar logs de erro SMTP",
+        "Implementar delay entre envios se volume crescer"
+      ],
+      "contingency_plan": "Contratação de serviço transacional dedicado (AWS SES, SendGrid)"
+    },
+    {
+      "risk": "E-mail cair na caixa de SPAM",
+      "probability": "high",
+      "impact": "Usuário não vê a notificação",
+      "mitigation": [
+        "Configurar registros SPF e DKIM no DNS do domínio contratapro.com.br"
+      ],
+      "contingency_plan": "Aviso visual no Frontend para verificar spam"
+    }
+  ],
+  "acceptance_criteria": [
+    "Ao criar um agendamento, Profissional e Cliente recebem e-mail em até 5 minutos",
+    "O corpo do e-mail contém: Status, Nome, Telefone e Endereços corretos",
+    "A tela de notificações lista os envios em ordem cronológica inversa",
+    "Os filtros de Data, Tipo e Nome funcionam corretamente na listagem",
+    "Nenhuma credencial de e-mail está exposta no código fonte",
+    "A API de agendamento não trava/demora enquanto o e-mail é enviado"
+  ],
+  "testing_validation": {
+    "test_types": [
+      "Teste Unitário (EmailAdapter e Templates)",
+      "Teste de Integração (Criação de registro no banco)",
+      "Teste Manual (Envio real)"
+    ],
+    "strategy": "Validação exploratória em ambiente de Staging com envio real para e-mails de teste."
+  }
+}
