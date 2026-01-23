@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -9,6 +9,7 @@ from ..database import get_db
 from ..models import Appointment, User, Service
 from ..schemas import AppointmentCreate, AppointmentResponse, AppointmentBase, AppointmentStatusUpdate, AppointmentPagination, ManualBlockCreate
 from ..dependencies import get_current_user
+from ..services.notifications import notification_service
 
 router = APIRouter()
 
@@ -101,6 +102,7 @@ async def get_appointment_history(
 async def update_appointment_status(
     appt_id: int,
     status_update: AppointmentStatusUpdate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -131,9 +133,18 @@ async def update_appointment_status(
         
     appt.status = new_status
     appt.reason = status_update.reason
-    
+
     await db.commit()
     await db.refresh(appt)
+
+    # Disparar notificações em background
+    background_tasks.add_task(
+        notification_service.notify_appointment_status_changed,
+        db,
+        appt_id,
+        new_status
+    )
+
     return appt
 
 @router.get("/me/week", response_model=List[AppointmentResponse])
@@ -232,7 +243,12 @@ async def get_appointment_detail(
     return resp
 
 @router.post("/", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
-async def create_appointment(appt: AppointmentCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def create_appointment(
+    appt: AppointmentCreate,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     from ..models import WorkingHour
     from ..services.whatsapp import whatsapp_service
     from datetime import datetime
@@ -324,6 +340,13 @@ async def create_appointment(appt: AppointmentCreate, current_user: User = Depen
     response.professional_name = professional.name
     response.professional_whatsapp = professional.whatsapp
     response.service_title = service.title
+
+    # Disparar notificações em background
+    background_tasks.add_task(
+        notification_service.notify_appointment_created,
+        db,
+        new_appt.id
+    )
 
     return response
 @router.get("/professional/{pro_id}/week", response_model=List[AppointmentResponse])

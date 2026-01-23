@@ -211,6 +211,43 @@ class AppointmentPagination(BaseModel):
     page: int
     size: int
     pages: int
-    
+
+    class Config:
+        from_attributes = True
+
+
+# Notification Schemas
+class NotificationBase(BaseModel):
+    type: str
+    channel: str
+    title: str
+    message: str
+
+class NotificationResponse(NotificationBase):
+    id: int
+    user_id: int
+    appointment_id: Optional[int] = None
+    status: str
+    created_at: datetime
+    sent_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+
+    # Campos enriquecidos do appointment
+    appointment_date: Optional[date] = None
+    appointment_start_time: Optional[time] = None
+    service_title: Optional[str] = None
+    professional_name: Optional[str] = None
+    client_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class NotificationPagination(BaseModel):
+    items: List[NotificationResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+
     class Config:
         from_attributes = True

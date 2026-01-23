@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
     Calendar as CalendarIcon, Briefcase, Clock, Power, Menu, X,
-    PauseCircle, PlayCircle, History as HistoryIcon, CreditCard, User
+    PauseCircle, PlayCircle, History as HistoryIcon, CreditCard, User, Bell
 } from 'lucide-react';
 import { API_URL } from '../config';
 import styled from 'styled-components';
@@ -258,6 +258,9 @@ export default function ProfessionalLayout({ children }) {
                     </NavItem>
                     <NavItem $active={isActive('/history')} onClick={() => { navigate('/history'); setIsSidebarOpen(false); }}>
                         <HistoryIcon size={20} /> Histórico
+                    </NavItem>
+                    <NavItem $active={isActive('/notifications')} onClick={() => { navigate('/notifications'); setIsSidebarOpen(false); }}>
+                        <Bell size={20} /> Notificações
                     </NavItem>
                     <NavItem $active={isActive('/subscription/manage')} onClick={() => { navigate('/subscription/manage'); setIsSidebarOpen(false); }}>
                         <CreditCard size={20} /> Assinatura

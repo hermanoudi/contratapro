@@ -75,6 +75,7 @@ class User(Base):
     appointments_as_professional = relationship("Appointment", foreign_keys="[Appointment.professional_id]", back_populates="professional")
     appointments_as_client = relationship("Appointment", foreign_keys="[Appointment.client_id]", back_populates="client")
     subscription = relationship("Subscription", back_populates="professional", uselist=False)
+    notifications = relationship("Notification", back_populates="user")
 
 class Service(Base):
     __tablename__ = "services"
@@ -121,6 +122,7 @@ class Appointment(Base):
     client = relationship("User", foreign_keys=[client_id], back_populates="appointments_as_client")
     professional = relationship("User", foreign_keys=[professional_id], back_populates="appointments_as_professional")
     service = relationship("Service", back_populates="appointments")
+    notifications = relationship("Notification", back_populates="appointment")
 
 class Subscription(Base):
     __tablename__ = "subscriptions"
@@ -155,3 +157,31 @@ class Subscription(Base):
     # Relacionamentos
     professional = relationship("User", back_populates="subscription")
     plan = relationship("SubscriptionPlan", back_populates="subscriptions")
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    appointment_id = Column(Integer, ForeignKey("appointments.id"), nullable=True)
+
+    # Tipo e canal
+    type = Column(String(50), nullable=False)  # new_appointment, appointment_updated, appointment_cancelled
+    channel = Column(String(20), nullable=False, default="email")  # email, sms, whatsapp, push
+
+    # Status
+    status = Column(String(20), default="pending")  # pending, sent, error
+
+    # Conteúdo
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    error_message = Column(Text, nullable=True)
+
+    # Relacionamentos
+    user = relationship("User", back_populates="notifications")
+    appointment = relationship("Appointment", back_populates="notifications")

@@ -17,6 +17,7 @@ import SubscriptionCallback from './pages/SubscriptionCallback';
 import MySubscription from './pages/MySubscription';
 import ProfessionalProfile from './pages/ProfessionalProfile';
 import AdminTrials from './pages/AdminTrials';
+import MyNotifications from './pages/MyNotifications';
 import ProfessionalLayout from './components/ProfessionalLayout';
 import ClientLayout from './components/ClientLayout';
 import SharedLayout from './components/SharedLayout';
@@ -77,6 +78,7 @@ function App() {
           <Route path="/subscription/callback" element={<SubscriptionCallback />} />
           <Route path="/subscription/manage" element={<ProfessionalLayout><MySubscription /></ProfessionalLayout>} />
           <Route path="/profile" element={<ProfessionalLayout><ProfessionalProfile /></ProfessionalLayout>} />
+          <Route path="/notifications" element={<SharedLayout><MyNotifications /></SharedLayout>} />
         </Routes>
       </div>
     </Router>

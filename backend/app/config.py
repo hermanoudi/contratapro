@@ -57,6 +57,15 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 5 * 1024 * 1024  # 5MB
     ALLOWED_EXTENSIONS: set = {".jpg", ".jpeg", ".png", ".webp"}
 
+    # SMTP Configuration (Titan/GoDaddy)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+    SMTP_FROM_NAME: str = "ContrataPro"
+    SMTP_USE_TLS: bool = True
+
     class Config:
         env_file = ".env"
         case_sensitive = True

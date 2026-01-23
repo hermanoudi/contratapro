@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from .database import engine, Base
 from .routers import (
     users, services, appointments, subscriptions,
-    auth, schedule, categories, admin, cep, health, plans
+    auth, schedule, categories, admin, cep, health, plans, notifications
 )
 
 
@@ -93,6 +93,7 @@ app.include_router(categories)
 app.include_router(admin, prefix="/admin", tags=["admin"])
 app.include_router(cep.router)
 app.include_router(plans, prefix="/plans", tags=["plans"])
+app.include_router(notifications, prefix="/notifications", tags=["notifications"])
 
 
 if __name__ == "__main__":

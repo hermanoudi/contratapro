@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-    Calendar, Clock, User, Briefcase, ChevronLeft, Settings, LogOut, History as HistoryIcon, Menu, X
+    Calendar, Clock, User, Briefcase, ChevronLeft, Settings, LogOut, History as HistoryIcon, Menu, X, Bell
 } from 'lucide-react';
 import styled from 'styled-components';
 import { API_URL } from '../config';
@@ -237,6 +237,9 @@ export default function ClientLayout({ children }) {
                         </NavItem>
                         <NavItem $active={isActive('/history')} onClick={() => { navigate('/history'); setIsSidebarOpen(false); }}>
                             <HistoryIcon size={20} /> Histórico
+                        </NavItem>
+                        <NavItem $active={isActive('/notifications')} onClick={() => { navigate('/notifications'); setIsSidebarOpen(false); }}>
+                            <Bell size={20} /> Notificações
                         </NavItem>
                     </div>
                 </nav>
