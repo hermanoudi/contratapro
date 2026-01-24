@@ -136,6 +136,17 @@ async def get_smtp_status(
     Retorna o status da configuração SMTP (para debug).
     Não expõe a senha, apenas indica se está configurada.
     """
+    import os
+
+    # Debug: verificar se as variáveis estão no ambiente
+    env_vars = {
+        "SMTP_HOST_env": os.getenv("SMTP_HOST", "(não definido)"),
+        "SMTP_PORT_env": os.getenv("SMTP_PORT", "(não definido)"),
+        "SMTP_USER_env": os.getenv("SMTP_USER", "(não definido)"),
+        "SMTP_FROM_env": os.getenv("SMTP_FROM", "(não definido)"),
+        "SMTP_PASSWORD_set_env": bool(os.getenv("SMTP_PASSWORD")),
+    }
+
     return {
         "configured": email_adapter.is_configured(),
         "host": email_adapter.host or "(não definido)",
@@ -144,7 +155,8 @@ async def get_smtp_status(
         "from_email": email_adapter.from_email or "(não definido)",
         "from_name": email_adapter.from_name or "(não definido)",
         "password_set": bool(email_adapter.password),
-        "use_tls": email_adapter.use_tls
+        "use_tls": email_adapter.use_tls,
+        "env_debug": env_vars
     }
 
 
