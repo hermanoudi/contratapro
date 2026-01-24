@@ -174,6 +174,26 @@ async def get_notification_detail(
     return resp
 
 
+@router.get("/smtp-status")
+async def get_smtp_status(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Retorna o status da configuração SMTP (para debug).
+    Não expõe a senha, apenas indica se está configurada.
+    """
+    return {
+        "configured": email_adapter.is_configured(),
+        "host": email_adapter.host or "(não definido)",
+        "port": email_adapter.port,
+        "user": email_adapter.user or "(não definido)",
+        "from_email": email_adapter.from_email or "(não definido)",
+        "from_name": email_adapter.from_name or "(não definido)",
+        "password_set": bool(email_adapter.password),
+        "use_tls": email_adapter.use_tls
+    }
+
+
 @router.post("/test")
 async def test_email_notification(
     current_user: User = Depends(get_current_user),

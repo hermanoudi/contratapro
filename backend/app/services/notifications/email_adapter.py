@@ -23,9 +23,15 @@ class EmailAdapter(NotificationAdapter):
         self.from_name = settings.SMTP_FROM_NAME
         self.use_tls = settings.SMTP_USE_TLS
 
+        # Log configuração na inicialização (sem senha)
+        logger.info(f"EmailAdapter inicializado - Host: {self.host}, Porta: {self.port}, User: {self.user}, From: {self.from_email}")
+
     def is_configured(self) -> bool:
         """Verifica se todas as configurações SMTP estão presentes"""
-        return all([self.host, self.user, self.password, self.from_email])
+        configured = all([self.host, self.user, self.password, self.from_email])
+        if not configured:
+            logger.warning(f"SMTP não configurado - Host: {bool(self.host)}, User: {bool(self.user)}, Password: {bool(self.password)}, From: {bool(self.from_email)}")
+        return configured
 
     async def send(
         self,
@@ -51,6 +57,8 @@ class EmailAdapter(NotificationAdapter):
             return False, "SMTP não configurado"
 
         try:
+            logger.info(f"Preparando envio de e-mail para {to} via {self.host}:{self.port}")
+
             message = MIMEMultipart("alternative")
             message["Subject"] = subject
             message["From"] = f"{self.from_name} <{self.from_email}>"
@@ -67,6 +75,8 @@ class EmailAdapter(NotificationAdapter):
             # Para porta 587: usar STARTTLS (use_tls=False, start_tls=True)
             use_ssl = self.port == 465
 
+            logger.info(f"Conectando ao SMTP - SSL: {use_ssl}, STARTTLS: {not use_ssl and self.use_tls}")
+
             await aiosmtplib.send(
                 message,
                 hostname=self.host,
@@ -75,17 +85,30 @@ class EmailAdapter(NotificationAdapter):
                 password=self.password,
                 use_tls=use_ssl,
                 start_tls=not use_ssl and self.use_tls,
+                timeout=30,  # 30 segundos de timeout
             )
 
             logger.info(f"E-mail enviado com sucesso para {to}")
             return True, None
 
+        except aiosmtplib.SMTPAuthenticationError as e:
+            error_msg = f"Erro de autenticação SMTP: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
+        except aiosmtplib.SMTPConnectError as e:
+            error_msg = f"Erro de conexão SMTP (porta {self.port} pode estar bloqueada): {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
         except aiosmtplib.SMTPException as e:
-            error_msg = f"Erro SMTP: {str(e)}"
+            error_msg = f"Erro SMTP: {type(e).__name__} - {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
+        except TimeoutError as e:
+            error_msg = f"Timeout ao conectar ao SMTP {self.host}:{self.port}"
             logger.error(error_msg)
             return False, error_msg
         except Exception as e:
-            error_msg = f"Erro inesperado: {str(e)}"
+            error_msg = f"Erro inesperado ({type(e).__name__}): {str(e)}"
             logger.error(error_msg)
             return False, error_msg
 

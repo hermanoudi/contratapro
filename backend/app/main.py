@@ -1,5 +1,7 @@
 # main.py - FastAPI entry point
 
+import logging
+import sys
 import uvicorn
 from pathlib import Path
 from fastapi import FastAPI
@@ -11,6 +13,14 @@ from .routers import (
     users, services, appointments, subscriptions,
     auth, schedule, categories, admin, cep, health, plans, notifications
 )
+
+# Configurar logging para stdout (Railway)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
