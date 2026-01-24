@@ -10,7 +10,10 @@ from ..database import get_db
 from ..models import Notification, Appointment, User
 from ..schemas import NotificationResponse, NotificationPagination
 from ..dependencies import get_current_user
+from ..config import settings
 from ..services.notifications.email_adapter import email_adapter
+from ..services.notifications.sendgrid_adapter import sendgrid_adapter
+from ..services.notifications.notification_service import get_email_adapter
 
 router = APIRouter()
 
@@ -128,36 +131,48 @@ async def get_my_notifications(
 
 
 # IMPORTANTE: Rotas específicas ANTES da rota com parâmetro
+@router.get("/email-status")
+async def get_email_status(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Retorna o status da configuração de e-mail (SMTP e SendGrid).
+    """
+    import os
+
+    active_adapter = get_email_adapter()
+    active_provider = "sendgrid" if active_adapter == sendgrid_adapter else "smtp"
+
+    return {
+        "active_provider": active_provider,
+        "configured_provider": settings.EMAIL_PROVIDER,
+        "smtp": {
+            "configured": email_adapter.is_configured(),
+            "host": email_adapter.host or "(não definido)",
+            "port": email_adapter.port,
+            "user": email_adapter.user or "(não definido)",
+            "from_email": email_adapter.from_email or "(não definido)",
+        },
+        "sendgrid": {
+            "configured": sendgrid_adapter.is_configured(),
+            "from_email": sendgrid_adapter.from_email or "(não definido)",
+            "api_key_set": bool(sendgrid_adapter.api_key),
+        },
+        "env_debug": {
+            "EMAIL_PROVIDER": os.getenv("EMAIL_PROVIDER", "(não definido)"),
+            "SENDGRID_API_KEY_set": bool(os.getenv("SENDGRID_API_KEY")),
+            "SENDGRID_FROM_EMAIL": os.getenv("SENDGRID_FROM_EMAIL", "(não definido)"),
+        }
+    }
+
+
+# Manter endpoint antigo para compatibilidade
 @router.get("/smtp-status")
 async def get_smtp_status(
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Retorna o status da configuração SMTP (para debug).
-    Não expõe a senha, apenas indica se está configurada.
-    """
-    import os
-
-    # Debug: verificar se as variáveis estão no ambiente
-    env_vars = {
-        "SMTP_HOST_env": os.getenv("SMTP_HOST", "(não definido)"),
-        "SMTP_PORT_env": os.getenv("SMTP_PORT", "(não definido)"),
-        "SMTP_USER_env": os.getenv("SMTP_USER", "(não definido)"),
-        "SMTP_FROM_env": os.getenv("SMTP_FROM", "(não definido)"),
-        "SMTP_PASSWORD_set_env": bool(os.getenv("SMTP_PASSWORD")),
-    }
-
-    return {
-        "configured": email_adapter.is_configured(),
-        "host": email_adapter.host or "(não definido)",
-        "port": email_adapter.port,
-        "user": email_adapter.user or "(não definido)",
-        "from_email": email_adapter.from_email or "(não definido)",
-        "from_name": email_adapter.from_name or "(não definido)",
-        "password_set": bool(email_adapter.password),
-        "use_tls": email_adapter.use_tls,
-        "env_debug": env_vars
-    }
+    """Alias para /email-status (mantido para compatibilidade)"""
+    return await get_email_status(current_user)
 
 
 @router.post("/test")
@@ -167,12 +182,15 @@ async def test_email_notification(
 ):
     """
     Envia um e-mail de teste para o usuário atual.
-    Útil para verificar se a configuração SMTP está funcionando.
+    Usa o provedor configurado (SMTP ou SendGrid).
     """
-    if not email_adapter.is_configured():
+    adapter = get_email_adapter()
+    provider_name = "SendGrid" if adapter == sendgrid_adapter else "SMTP"
+
+    if not adapter.is_configured():
         raise HTTPException(
             status_code=500,
-            detail="SMTP não configurado. Verifique as variáveis de ambiente."
+            detail=f"{provider_name} não configurado. Verifique as variáveis de ambiente."
         )
 
     subject = "ContrataPro - E-mail de Teste"
@@ -220,7 +238,7 @@ Equipe ContrataPro
 </html>
 """
 
-    success, error = await email_adapter.send(
+    success, error = await adapter.send(
         to=current_user.email,
         subject=subject,
         body=plain_text,
@@ -230,12 +248,13 @@ Equipe ContrataPro
     if success:
         return {
             "success": True,
+            "provider": provider_name,
             "message": f"E-mail de teste enviado com sucesso para {current_user.email}"
         }
     else:
         raise HTTPException(
             status_code=500,
-            detail=f"Falha ao enviar e-mail: {error}"
+            detail=f"Falha ao enviar e-mail via {provider_name}: {error}"
         )
 
 

@@ -66,6 +66,14 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "ContrataPro"
     SMTP_USE_TLS: bool = True
 
+    # SendGrid Configuration (alternativa ao SMTP para cloud)
+    SENDGRID_API_KEY: str = ""
+    SENDGRID_FROM_EMAIL: str = ""  # Se vazio, usa SMTP_FROM
+    SENDGRID_FROM_NAME: str = ""   # Se vazio, usa SMTP_FROM_NAME
+
+    # Email Provider (smtp ou sendgrid)
+    EMAIL_PROVIDER: str = "smtp"  # Mude para "sendgrid" no Railway
+
     class Config:
         env_file = ".env"
         case_sensitive = True

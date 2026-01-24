@@ -6,17 +6,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from ...models import Notification, User, Appointment, Service
+from ...config import settings
 from .email_adapter import email_adapter
+from .sendgrid_adapter import sendgrid_adapter
 from .templates import email_templates
 
 logger = logging.getLogger(__name__)
+
+
+def get_email_adapter():
+    """Retorna o adapter de e-mail apropriado baseado na configuração"""
+    if settings.EMAIL_PROVIDER == "sendgrid" and sendgrid_adapter.is_configured():
+        logger.info("Usando SendGrid como provedor de e-mail")
+        return sendgrid_adapter
+    elif email_adapter.is_configured():
+        logger.info("Usando SMTP como provedor de e-mail")
+        return email_adapter
+    else:
+        logger.warning("Nenhum provedor de e-mail configurado")
+        return email_adapter  # Retorna o SMTP como fallback
 
 
 class NotificationService:
     """Serviço principal de notificações que orquestra o envio"""
 
     def __init__(self):
-        self.email_adapter = email_adapter
+        self.email_adapter = get_email_adapter()
 
     async def create_and_send_notification(
         self,
