@@ -11,7 +11,6 @@ from ..models import Notification, Appointment, User
 from ..schemas import NotificationResponse, NotificationPagination
 from ..dependencies import get_current_user
 from ..services.notifications.email_adapter import email_adapter
-from ..services.notifications.templates import email_templates
 
 router = APIRouter()
 
@@ -128,52 +127,7 @@ async def get_my_notifications(
     }
 
 
-@router.get("/{notification_id}", response_model=NotificationResponse)
-async def get_notification_detail(
-    notification_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Retorna detalhes de uma notificação específica."""
-    result = await db.execute(
-        select(Notification).filter(
-            Notification.id == notification_id,
-            Notification.user_id == current_user.id
-        )
-    )
-    notification = result.scalars().first()
-
-    if not notification:
-        raise HTTPException(status_code=404, detail="Notificação não encontrada")
-
-    resp = NotificationResponse.model_validate(notification)
-
-    # Enriquecer com dados do appointment
-    if notification.appointment_id:
-        appt_result = await db.execute(
-            select(Appointment)
-            .options(
-                selectinload(Appointment.service),
-                selectinload(Appointment.professional),
-                selectinload(Appointment.client)
-            )
-            .filter(Appointment.id == notification.appointment_id)
-        )
-        appt = appt_result.scalars().first()
-
-        if appt:
-            resp.appointment_date = appt.date
-            resp.appointment_start_time = appt.start_time
-            if appt.service:
-                resp.service_title = appt.service.title
-            if appt.professional:
-                resp.professional_name = appt.professional.name
-            if appt.client:
-                resp.client_name = appt.client.name
-
-    return resp
-
-
+# IMPORTANTE: Rotas específicas ANTES da rota com parâmetro
 @router.get("/smtp-status")
 async def get_smtp_status(
     current_user: User = Depends(get_current_user)
@@ -271,3 +225,50 @@ Equipe ContrataPro
             status_code=500,
             detail=f"Falha ao enviar e-mail: {error}"
         )
+
+
+# Rota com parâmetro DEPOIS das rotas específicas
+@router.get("/{notification_id}", response_model=NotificationResponse)
+async def get_notification_detail(
+    notification_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Retorna detalhes de uma notificação específica."""
+    result = await db.execute(
+        select(Notification).filter(
+            Notification.id == notification_id,
+            Notification.user_id == current_user.id
+        )
+    )
+    notification = result.scalars().first()
+
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notificação não encontrada")
+
+    resp = NotificationResponse.model_validate(notification)
+
+    # Enriquecer com dados do appointment
+    if notification.appointment_id:
+        appt_result = await db.execute(
+            select(Appointment)
+            .options(
+                selectinload(Appointment.service),
+                selectinload(Appointment.professional),
+                selectinload(Appointment.client)
+            )
+            .filter(Appointment.id == notification.appointment_id)
+        )
+        appt = appt_result.scalars().first()
+
+        if appt:
+            resp.appointment_date = appt.date
+            resp.appointment_start_time = appt.start_time
+            if appt.service:
+                resp.service_title = appt.service.title
+            if appt.professional:
+                resp.professional_name = appt.professional.name
+            if appt.client:
+                resp.client_name = appt.client.name
+
+    return resp
