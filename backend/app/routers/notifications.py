@@ -12,7 +12,7 @@ from ..schemas import NotificationResponse, NotificationPagination
 from ..dependencies import get_current_user
 from ..config import settings
 from ..services.notifications.email_adapter import email_adapter
-from ..services.notifications.sendgrid_adapter import sendgrid_adapter
+from ..services.notifications.resend_adapter import resend_adapter
 from ..services.notifications.notification_service import get_email_adapter
 
 router = APIRouter()
@@ -136,12 +136,12 @@ async def get_email_status(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Retorna o status da configuração de e-mail (SMTP e SendGrid).
+    Retorna o status da configuração de e-mail (SMTP e Resend).
     """
     import os
 
     active_adapter = get_email_adapter()
-    active_provider = "sendgrid" if active_adapter == sendgrid_adapter else "smtp"
+    active_provider = "resend" if active_adapter == resend_adapter else "smtp"
 
     return {
         "active_provider": active_provider,
@@ -153,15 +153,15 @@ async def get_email_status(
             "user": email_adapter.user or "(não definido)",
             "from_email": email_adapter.from_email or "(não definido)",
         },
-        "sendgrid": {
-            "configured": sendgrid_adapter.is_configured(),
-            "from_email": sendgrid_adapter.from_email or "(não definido)",
-            "api_key_set": bool(sendgrid_adapter.api_key),
+        "resend": {
+            "configured": resend_adapter.is_configured(),
+            "from_email": resend_adapter.from_email or "(não definido)",
+            "api_key_set": bool(resend_adapter.api_key),
         },
         "env_debug": {
             "EMAIL_PROVIDER": os.getenv("EMAIL_PROVIDER", "(não definido)"),
-            "SENDGRID_API_KEY_set": bool(os.getenv("SENDGRID_API_KEY")),
-            "SENDGRID_FROM_EMAIL": os.getenv("SENDGRID_FROM_EMAIL", "(não definido)"),
+            "RESEND_API_KEY_set": bool(os.getenv("RESEND_API_KEY")),
+            "RESEND_FROM_EMAIL": os.getenv("RESEND_FROM_EMAIL", "(não definido)"),
         }
     }
 
@@ -182,10 +182,10 @@ async def test_email_notification(
 ):
     """
     Envia um e-mail de teste para o usuário atual.
-    Usa o provedor configurado (SMTP ou SendGrid).
+    Usa o provedor configurado (SMTP ou Resend).
     """
     adapter = get_email_adapter()
-    provider_name = "SendGrid" if adapter == sendgrid_adapter else "SMTP"
+    provider_name = "Resend" if adapter == resend_adapter else "SMTP"
 
     if not adapter.is_configured():
         raise HTTPException(

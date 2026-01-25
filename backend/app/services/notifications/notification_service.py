@@ -8,7 +8,7 @@ from sqlalchemy.future import select
 from ...models import Notification, User, Appointment, Service
 from ...config import settings
 from .email_adapter import email_adapter
-from .sendgrid_adapter import sendgrid_adapter
+from .resend_adapter import resend_adapter
 from .templates import email_templates
 
 logger = logging.getLogger(__name__)
@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 
 def get_email_adapter():
     """Retorna o adapter de e-mail apropriado baseado na configuração"""
-    if settings.EMAIL_PROVIDER == "sendgrid" and sendgrid_adapter.is_configured():
-        logger.info("Usando SendGrid como provedor de e-mail")
-        return sendgrid_adapter
+    if settings.EMAIL_PROVIDER == "resend" and resend_adapter.is_configured():
+        logger.info("Usando Resend como provedor de e-mail")
+        return resend_adapter
     elif email_adapter.is_configured():
         logger.info("Usando SMTP como provedor de e-mail")
         return email_adapter
