@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { LogIn, Mail, Lock, ChevronRight, Calendar, Shield, Clock } from 'lucide-react';
+import { Mail, Lock, ChevronRight, Calendar, Shield, Clock } from 'lucide-react';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import logoImage from '../assets/contratapro-logo.png';
 import { API_URL } from '../config';
+import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -320,10 +321,28 @@ const MobileLogo = styled.img`
   }
 `;
 
+const ForgotPasswordLink = styled.button`
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 0.5rem;
+  text-align: right;
+  display: block;
+  width: 100%;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -446,6 +465,13 @@ export default function Login() {
               <IconWrapper><Lock size={20} /></IconWrapper>
             </InputGroup>
 
+            <ForgotPasswordLink
+              type="button"
+              onClick={() => setForgotPasswordOpen(true)}
+            >
+              Esqueci minha senha
+            </ForgotPasswordLink>
+
             <Button type="submit" disabled={loading}>
               {loading ? 'Entrando...' : 'Entrar'}
               {!loading && <ChevronRight size={20} />}
@@ -466,6 +492,11 @@ export default function Login() {
           </LinksContainer>
         </LoginCard>
       </RightSection>
+
+      <ForgotPasswordModal
+        isOpen={forgotPasswordOpen}
+        onClose={() => setForgotPasswordOpen(false)}
+      />
     </PageContainer>
   );
 }

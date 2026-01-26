@@ -35,3 +35,34 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+
+def create_password_reset_token(email: str) -> str:
+    """
+    Cria um token JWT especial para reset de senha com expiracao de 24h.
+    Inclui claim 'purpose' para diferenciar de tokens de acesso normais.
+    """
+    expire = datetime.utcnow() + timedelta(hours=24)
+    to_encode = {
+        "sub": email,
+        "purpose": "password_reset",
+        "exp": expire
+    }
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def verify_password_reset_token(token: str) -> str | None:
+    """
+    Verifica um token de reset de senha e retorna o email se valido.
+    Retorna None se o token for invalido ou expirado.
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # Verificar se e um token de reset de senha
+        if payload.get("purpose") != "password_reset":
+            return None
+        return payload.get("sub")
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.JWTError:
+        return None

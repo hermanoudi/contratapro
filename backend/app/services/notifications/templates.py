@@ -331,5 +331,56 @@ Acesse o ContrataPro para mais detalhes.
 
         return subject, plain_text, EmailTemplates._base_template(html_content)
 
+    @staticmethod
+    def password_reset(
+        recipient_name: str,
+        reset_link: str,
+        expiration_hours: int = 24
+    ) -> Tuple[str, str, str]:
+        """
+        Template para e-mail de recuperacao de senha.
+
+        Returns:
+            tuple: (subject, plain_text, html)
+        """
+        subject = "Redefinir sua senha - ContrataPro"
+
+        plain_text = f"""
+Ola {recipient_name},
+
+Recebemos uma solicitacao para redefinir sua senha no ContrataPro.
+
+Clique no link abaixo para criar uma nova senha:
+{reset_link}
+
+Este link expira em {expiration_hours} horas.
+
+Se voce nao solicitou a redefinicao de senha, ignore este e-mail.
+
+Atenciosamente,
+Equipe ContrataPro
+"""
+
+        html_content = f"""
+        <div class="content">
+            <h2>Ola {recipient_name},</h2>
+            <p>Recebemos uma solicitacao para redefinir sua senha no ContrataPro.</p>
+
+            <p>Clique no botao abaixo para criar uma nova senha:</p>
+
+            <a href="{reset_link}" class="button">Redefinir Senha</a>
+
+            <p style="margin-top: 1.5rem; font-size: 0.875rem; color: #64748b;">
+                Este link expira em {expiration_hours} horas.
+            </p>
+
+            <p style="margin-top: 1rem; font-size: 0.875rem; color: #64748b;">
+                Se voce nao solicitou a redefinicao de senha, ignore este e-mail.
+            </p>
+        </div>
+"""
+
+        return subject, plain_text, EmailTemplates._base_template(html_content)
+
 
 email_templates = EmailTemplates()

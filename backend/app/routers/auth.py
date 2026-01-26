@@ -1,16 +1,28 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 import re
 import secrets
 import string
+import logging
 from ..database import get_db
 from ..models import User
 from ..schemas import UserLogin, Token, UserResponse
-from ..auth_utils import verify_password, create_access_token
+from ..auth_utils import (
+    verify_password,
+    create_access_token,
+    get_password_hash,
+    create_password_reset_token,
+    verify_password_reset_token
+)
 from ..dependencies import get_current_user
+from ..config import settings
+from ..services.notifications.templates import email_templates
+from ..services.notifications.resend_adapter import resend_adapter
 from datetime import timedelta
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -149,3 +161,122 @@ async def login(login_data: UserLogin, db: AsyncSession = Depends(get_db)):
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
+
+# ============================================
+# Recuperacao de Senha
+# ============================================
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/forgot-password", status_code=200)
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Solicita recuperacao de senha.
+    Sempre retorna 200 OK (blind response) para prevenir enumeracao de emails.
+    """
+    result = await db.execute(
+        select(User).filter(User.email == request.email)
+    )
+    user = result.scalars().first()
+
+    if user:
+        # Gerar token de reset
+        reset_token = create_password_reset_token(user.email)
+
+        # Construir link de reset
+        frontend_url = settings.FRONTEND_URL or "https://contratapro.com.br"
+        reset_link = f"{frontend_url}/nova-senha?token={reset_token}"
+
+        # Gerar conteudo do email
+        subject, plain_text, html = email_templates.password_reset(
+            recipient_name=user.name,
+            reset_link=reset_link,
+            expiration_hours=24
+        )
+
+        # Enviar email em background
+        background_tasks.add_task(
+            resend_adapter.send,
+            to=user.email,
+            subject=subject,
+            body=plain_text,
+            html_body=html
+        )
+
+        logger.info(f"Password reset email queued for: {user.email}")
+    else:
+        logger.info(f"Password reset requested for unknown email")
+
+    # Sempre retorna sucesso (blind response)
+    return {
+        "message": "Se o e-mail estiver cadastrado, "
+                   "voce recebera instrucoes de recuperacao."
+    }
+
+
+@router.get("/validate-reset-token")
+async def validate_reset_token(token: str):
+    """
+    Valida um token de reset de senha.
+    """
+    email = verify_password_reset_token(token)
+
+    if email:
+        return {"valid": True, "email": email}
+
+    return {"valid": False, "email": None}
+
+
+@router.post("/reset-password")
+async def reset_password(
+    request: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Redefine a senha usando um token de reset valido.
+    """
+    # Validar token
+    email = verify_password_reset_token(request.token)
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token invalido ou expirado"
+        )
+
+    # Validar forca da senha
+    criteria = validate_password_strength(request.new_password)
+    if not all(criteria.values()):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A senha nao atende aos criterios de seguranca"
+        )
+
+    # Buscar usuario
+    result = await db.execute(select(User).filter(User.email == email))
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Usuario nao encontrado"
+        )
+
+    # Atualizar senha
+    user.hashed_password = get_password_hash(request.new_password)
+    await db.commit()
+
+    logger.info(f"Password reset successful for: {email}")
+
+    return {"message": "Senha alterada com sucesso"}

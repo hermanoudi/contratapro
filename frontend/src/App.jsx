@@ -18,6 +18,7 @@ import MySubscription from './pages/MySubscription';
 import ProfessionalProfile from './pages/ProfessionalProfile';
 import AdminTrials from './pages/AdminTrials';
 import MyNotifications from './pages/MyNotifications';
+import ResetPassword from './pages/ResetPassword';
 import ProfessionalLayout from './components/ProfessionalLayout';
 import ClientLayout from './components/ClientLayout';
 import SharedLayout from './components/SharedLayout';
@@ -65,6 +66,7 @@ function App() {
           <Route path="/register-pro" element={<RegisterProfessional />} />
           <Route path="/register-client" element={<RegisterClient />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/nova-senha" element={<ResetPassword />} />
           <Route path="/dashboard" element={<ProfessionalLayout><Dashboard /></ProfessionalLayout>} />
           <Route path="/book/:id" element={<Booking />} />
           <Route path="/my-appointments" element={<ClientLayout><ClientDashboard /></ClientLayout>} />
