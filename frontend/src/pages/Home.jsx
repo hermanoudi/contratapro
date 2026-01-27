@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CategoryMenu from '../components/CategoryMenu';
 import { API_URL } from '../config';
 import StructuredData from '../components/SEO/StructuredData';
+import SEOHead, { SEO_CONFIGS } from '../components/SEO/SEOHead';
 import logoImage from '../assets/contratapro-logo.png';
 
 const HomeContainer = styled.div`
@@ -1046,7 +1047,8 @@ export default function Home() {
 
     return (
         <HomeContainer>
-            {/* SEO: Structured Data for better Google indexing */}
+            {/* SEO: Meta tags and Structured Data */}
+            <SEOHead {...SEO_CONFIGS.home} url="https://contratapro.com.br" />
             <StructuredData type="website" />
             <StructuredData type="organization" />
             <StructuredData type="service" />

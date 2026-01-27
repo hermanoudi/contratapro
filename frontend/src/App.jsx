@@ -19,6 +19,7 @@ import ProfessionalProfile from './pages/ProfessionalProfile';
 import AdminTrials from './pages/AdminTrials';
 import MyNotifications from './pages/MyNotifications';
 import ResetPassword from './pages/ResetPassword';
+import ServiceCategory from './pages/ServiceCategory';
 import ProfessionalLayout from './components/ProfessionalLayout';
 import ClientLayout from './components/ClientLayout';
 import SharedLayout from './components/SharedLayout';
@@ -63,6 +64,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<Search />} />
+          <Route path="/servicos/:categoria" element={<ServiceCategory />} />
           <Route path="/register-pro" element={<RegisterProfessional />} />
           <Route path="/register-client" element={<RegisterClient />} />
           <Route path="/login" element={<Login />} />

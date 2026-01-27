@@ -12,6 +12,7 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import SEOHead from '../components/SEO/SEOHead';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -697,8 +698,23 @@ export default function Search() {
     setSearchParams({});
   };
 
+  // SEO dinamico baseado na busca
+  const seoTitle = service
+    ? `${service}${city ? ` em ${city}` : ''} - Encontre Profissionais`
+    : 'Buscar Profissionais';
+  const seoDescription = service
+    ? `Encontre profissionais de ${service}${city ? ` em ${city}` : ''} qualificados. Compare precos, veja avaliacoes e agende online.`
+    : 'Busque e encontre profissionais qualificados na sua regiao. Eletricista, encanador, manicure, diarista e muito mais.';
+
   return (
     <Container>
+      <SEOHead
+        title={seoTitle}
+        description={seoDescription}
+        category={service}
+        city={city}
+        url={`https://contratapro.com.br/search${service ? `?service=${encodeURIComponent(service)}` : ''}`}
+      />
       <Header>
         <BackButton to="/">
           <ChevronLeft size={20} />

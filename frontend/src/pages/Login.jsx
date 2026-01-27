@@ -329,7 +329,7 @@ const ForgotPasswordLink = styled.button`
   cursor: pointer;
   padding: 0;
   margin-top: 0.5rem;
-  text-align: right;
+  text-align: center;
   display: block;
   width: 100%;
 
