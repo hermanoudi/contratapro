@@ -55,7 +55,7 @@ class WhatsAppService:
         # Mensagem pré-formatada
         mensagem = f"Olá {profissional_nome}!\n\n"
         mensagem += (f"Meu nome é {cliente_nome} e encontrei seu perfil "
-                     f"na plataforma *Chama Eu*.\n\n")
+                     f"na plataforma *ContrataPro*.\n\n")
 
         if servico:
             mensagem += f"Tenho interesse no serviço: *{servico}*\n\n"
@@ -100,7 +100,7 @@ class WhatsAppService:
 
         # Mensagem pré-formatada
         mensagem = f"Olá {profissional_nome}!\n\n"
-        mensagem += f"Meu nome é {cliente_nome} e acabei de fazer um agendamento através da plataforma *Chama Eu*.\n\n"
+        mensagem += f"Meu nome é {cliente_nome} e acabei de fazer um agendamento através da plataforma *ContrataPro*.\n\n"
         mensagem += "*Detalhes do Agendamento:*\n"
         mensagem += f"Serviço: {servico}\n"
         mensagem += f"Data: {data_formatada}\n"
@@ -150,7 +150,7 @@ class WhatsAppService:
         mensagem = f"Olá {profissional_nome}!\n\n"
         mensagem += f"Meu nome é {cliente_nome}.\n\n"
         mensagem += ("Preciso cancelar o agendamento que fiz através da "
-                     "plataforma *Chama Eu*.\n\n")
+                     "plataforma *ContrataPro*.\n\n")
         mensagem += "*Detalhes:*\n"
         mensagem += f"Serviço: {servico}\n"
         mensagem += f"Data: {data_formatada}\n"

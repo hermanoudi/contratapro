@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Chama Eu API",
+    title="ContrataPro API",
     version="1.0.0",
     lifespan=lifespan
 )
