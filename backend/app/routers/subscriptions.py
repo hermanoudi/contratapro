@@ -157,6 +157,11 @@ async def subscribe_to_plan(
 
     # FLUXO PAGO: Criar assinatura no Mercado Pago
     try:
+        # Separar nome em first_name e last_name para o Mercado Pago
+        name_parts = current_user.name.split(" ", 1) if current_user.name else ["Usuário", ""]
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else first_name
+
         plan_data = {
             "reason": f"Plano {plan.name} - ContrataPro",
             "auto_recurring": {
@@ -165,9 +170,23 @@ async def subscribe_to_plan(
                 "transaction_amount": plan.price,
                 "currency_id": "BRL",
             },
+            "payer_email": current_user.email,
             "back_url": f"{settings.FRONTEND_URL}/subscription/callback",
             "external_reference": str(current_user.id),
         }
+
+        # Adicionar informações do pagador para melhor qualidade de integração
+        # Isso melhora a taxa de aprovação e habilita o checkout corretamente
+        if current_user.cpf:
+            plan_data["payer"] = {
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": current_user.email,
+                "identification": {
+                    "type": "CPF",
+                    "number": current_user.cpf.replace(".", "").replace("-", "")
+                }
+            }
 
         logger.info(f"Criando plano pago no MP: {plan_data}")
 
@@ -310,17 +329,36 @@ async def create_subscription(
 
     # Criar preferência de assinatura no Mercado Pago
     try:
+        # Separar nome em first_name e last_name para o Mercado Pago
+        name_parts = current_user.name.split(" ", 1) if current_user.name else ["Usuário", ""]
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else first_name
+
         # PASSO 1: Criar plano de assinatura (preapproval_plan) usando API REST diretamente
         plan_data = {
-            "reason": "Plano Mensal - Chama Eu Profissional",
+            "reason": "Plano Mensal - ContrataPro",
             "auto_recurring": {
                 "frequency": settings.SUBSCRIPTION_FREQUENCY,
                 "frequency_type": settings.SUBSCRIPTION_FREQUENCY_TYPE,
                 "transaction_amount": settings.SUBSCRIPTION_AMOUNT,
                 "currency_id": "BRL",
             },
+            "payer_email": current_user.email,
             "back_url": f"{settings.FRONTEND_URL}/subscription/callback",
+            "external_reference": str(current_user.id),
         }
+
+        # Adicionar informações do pagador para melhor qualidade de integração
+        if current_user.cpf:
+            plan_data["payer"] = {
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": current_user.email,
+                "identification": {
+                    "type": "CPF",
+                    "number": current_user.cpf.replace(".", "").replace("-", "")
+                }
+            }
 
         logger.info(f"Criando plano de assinatura: {plan_data}")
 
@@ -422,17 +460,36 @@ async def create_subscription_with_card(
         )
 
     try:
+        # Separar nome em first_name e last_name para o Mercado Pago
+        name_parts = current_user.name.split(" ", 1) if current_user.name else ["Usuário", ""]
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else first_name
+
         # PASSO 1: Criar plano de assinatura
         plan_data = {
-            "reason": "Plano Mensal - Chama Eu Profissional",
+            "reason": "Plano Mensal - ContrataPro",
             "auto_recurring": {
                 "frequency": settings.SUBSCRIPTION_FREQUENCY,
                 "frequency_type": settings.SUBSCRIPTION_FREQUENCY_TYPE,
                 "transaction_amount": settings.SUBSCRIPTION_AMOUNT,
                 "currency_id": "BRL",
             },
+            "payer_email": current_user.email,
             "back_url": f"{settings.FRONTEND_URL}/subscription/callback",
+            "external_reference": str(current_user.id),
         }
+
+        # Adicionar informações do pagador para melhor qualidade de integração
+        if current_user.cpf:
+            plan_data["payer"] = {
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": current_user.email,
+                "identification": {
+                    "type": "CPF",
+                    "number": current_user.cpf.replace(".", "").replace("-", "")
+                }
+            }
 
         logger.info(f"Criando plano de assinatura: {plan_data}")
 
@@ -460,11 +517,12 @@ async def create_subscription_with_card(
         # PASSO 2: Criar assinatura (preapproval) com o card_token_id
         preapproval_data = {
             "preapproval_plan_id": plan_id,
-            "reason": "Plano Mensal - Chama Eu Profissional",
+            "reason": "Plano Mensal - ContrataPro",
             "payer_email": current_user.email,
             "card_token_id": card_data.card_token_id,
             "status": "authorized",
             "back_url": f"{settings.FRONTEND_URL}/subscription/callback",
+            "external_reference": str(current_user.id),
             "auto_recurring": {
                 "frequency": settings.SUBSCRIPTION_FREQUENCY,
                 "frequency_type": settings.SUBSCRIPTION_FREQUENCY_TYPE,
@@ -472,6 +530,18 @@ async def create_subscription_with_card(
                 "currency_id": "BRL",
             }
         }
+
+        # Adicionar informações do pagador
+        if current_user.cpf:
+            preapproval_data["payer"] = {
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": current_user.email,
+                "identification": {
+                    "type": "CPF",
+                    "number": current_user.cpf.replace(".", "").replace("-", "")
+                }
+            }
 
         logger.info(f"Criando assinatura com card_token: {preapproval_data}")
 

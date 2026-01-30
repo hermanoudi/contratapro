@@ -40,6 +40,11 @@ database_url = os.getenv(
     "DATABASE_URL",
     "postgresql+asyncpg://postgres:postgres@db:5432/faz_de_tudo"
 )
+
+# Converter postgresql:// para postgresql+asyncpg:// (Railway usa o formato padrão)
+if database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 config.set_main_option("sqlalchemy.url", database_url)
 
 # add your model's MetaData object here
