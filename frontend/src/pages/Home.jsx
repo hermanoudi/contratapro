@@ -1606,7 +1606,7 @@ export default function Home() {
                                 <span>/mes</span>
                             </Price>
                             <PlanDescription>
-                                Maxima visibilidade e recursos ilimitados
+                                Máxima visibilidade nas buscas
                             </PlanDescription>
                             <FeatureList>
                                 <FeatureItem>
@@ -1627,7 +1627,7 @@ export default function Home() {
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
-                                    Destaque maximo na busca
+                                    Destaque máximo na busca
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />

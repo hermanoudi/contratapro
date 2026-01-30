@@ -679,11 +679,15 @@ async def cancel_subscription(
     subscription.status = "cancelled"
     subscription.cancelled_at = datetime.now()
     subscription.cancellation_reason = cancel_data.reason
+    subscription.cancellation_reason_code = cancel_data.reason_code  # Código para analytics
     current_user.subscription_status = "cancelled"
 
     await db.commit()
 
-    logger.info(f"Assinatura cancelada localmente para usuário {current_user.id}. Motivo: {cancel_data.reason}")
+    logger.info(
+        f"Assinatura cancelada para usuário {current_user.id}. "
+        f"Código: {cancel_data.reason_code}"
+    )
 
     return {"message": "Assinatura cancelada com sucesso"}
 
