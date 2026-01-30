@@ -678,7 +678,7 @@ export default function MySubscription() {
                         )}
                         <Button $variant="danger" onClick={() => setShowCancelModal(true)}>
                             <XCircle size={20} />
-                            {subscription.status === 'pending' ? 'Cancelar e Escolher Outro Plano' : 'Cancelar Assinatura'}
+                            {subscription.status === 'pending' ? 'Cancelar' : 'Cancelar Assinatura'}
                         </Button>
                     </Section>
                 )}
