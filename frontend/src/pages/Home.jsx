@@ -569,133 +569,226 @@ const CardText = styled.p`
 `;
 
 const PricingSection = styled.div`
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%);
-  border-radius: 20px;
-  padding: 3rem 1rem;
-  text-align: center;
   position: relative;
   overflow: hidden;
+`;
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
-    border-radius: 50%;
-  }
+const PlansGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-top: 1rem;
 
   @media (min-width: 768px) {
-    border-radius: 30px;
-    padding: 5rem 2rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    align-items: stretch;
+    padding-top: 1.5rem;
   }
 `;
 
 const PriceBox = styled(motion.div)`
-  max-width: 600px;
-  margin: 0 auto;
   background: white;
   border-radius: 20px;
   padding: 2rem 1.5rem;
-  border: 3px solid transparent;
-  background-image: linear-gradient(white, white), linear-gradient(135deg, var(--primary), var(--accent));
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-  box-shadow: 0 20px 60px rgba(99, 102, 241, 0.15);
+  border: 2px solid ${props => props.$featured ? 'var(--primary)' : 'var(--border)'};
+  box-shadow: ${props => props.$featured
+    ? '0 20px 60px rgba(99, 102, 241, 0.2)'
+    : '0 4px 20px rgba(0, 0, 0, 0.06)'};
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+
+  ${props => props.$featured && `
+    @media (min-width: 768px) {
+      transform: scale(1.05);
+    }
+  `}
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(99, 102, 241, 0.15);
+  }
 
   @media (min-width: 768px) {
     border-radius: 24px;
-    padding: 3rem 2.5rem;
+    padding: 2.5rem 2rem;
+
+    &:hover {
+      transform: ${props => props.$featured ? 'scale(1.05) translateY(-4px)' : 'translateY(-4px)'};
+    }
   }
 `;
 
 const PlanBadge = styled.div`
-  display: inline-block;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: ${props => props.$color || 'linear-gradient(135deg, var(--primary), var(--accent))'};
   color: white;
-  padding: 0.5rem 1.5rem;
+  padding: 0.4rem 1rem;
   border-radius: 50px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 
   @media (min-width: 768px) {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
+    padding: 0.5rem 1.25rem;
+  }
+`;
+
+const PlanName = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  text-align: center;
+  margin-top: ${props => props.$hasBadge ? '1rem' : '0'};
+
+  @media (min-width: 768px) {
+    font-size: 1.5rem;
+    margin-top: ${props => props.$hasBadge ? '0.75rem' : '0'};
   }
 `;
 
 const Price = styled.div`
-  font-size: 3rem;
+  font-size: 2.25rem;
   font-weight: 900;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
   line-height: 1;
+  text-align: center;
+
+  &.free {
+    background: linear-gradient(135deg, #10b981, #059669);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
 
   span {
-    font-size: 1.25rem;
+    font-size: 1rem;
+    font-weight: 600;
     color: var(--text-secondary);
     -webkit-text-fill-color: var(--text-secondary);
   }
 
   @media (min-width: 768px) {
-    font-size: 4.5rem;
+    font-size: 2.75rem;
 
     span {
-      font-size: 1.75rem;
+      font-size: 1.125rem;
     }
   }
+`;
+
+const PlanDescription = styled.p`
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 1.25rem;
+  line-height: 1.4;
 `;
 
 const FeatureList = styled.ul`
   list-style: none;
   padding: 0;
-  margin: 2rem 0;
+  margin: 0 0 1.5rem 0;
   text-align: left;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-    margin: 2.5rem 0;
-  }
+  flex: 1;
 `;
 
 const FeatureItem = styled.li`
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.875rem;
-  font-size: 0.9rem;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
   font-weight: 500;
   color: var(--text-primary);
-  background: var(--bg-secondary);
-  border-radius: 12px;
-  transition: all 0.2s;
+  border-bottom: 1px solid var(--border);
 
-  svg {
-    color: var(--primary);
-    flex-shrink: 0;
+  &:last-child {
+    border-bottom: none;
   }
 
-  &:hover {
-    transform: translateX(4px);
-    background: rgba(99, 102, 241, 0.05);
+  svg {
+    color: #10b981;
+    flex-shrink: 0;
+    margin-top: 2px;
   }
 
   @media (min-width: 768px) {
-    padding: 1rem;
+    font-size: 0.9rem;
+    padding: 0.625rem 0;
+  }
+`;
+
+const PlanButton = styled(Link)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: all 0.2s;
+  margin-top: auto;
+
+  ${props => props.$primary ? `
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    border: none;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+    }
+  ` : props.$green ? `
+    background: #10b981;
+    color: white;
+    border: none;
+
+    &:hover {
+      background: #059669;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+    }
+  ` : props.$orange ? `
+    background: #f59e0b;
+    color: white;
+    border: none;
+
+    &:hover {
+      background: #d97706;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
+    }
+  ` : `
+    background: white;
+    color: var(--text-primary);
+    border: 2px solid var(--border);
+
+    &:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+  `}
+
+  @media (min-width: 768px) {
+    padding: 1rem 1.25rem;
     font-size: 0.95rem;
   }
 `;
@@ -911,7 +1004,6 @@ export default function Home() {
     const [professionals, setProfessionals] = useState([]);
     const [searching, setSearching] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
-    const [plans, setPlans] = useState([]);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -951,25 +1043,6 @@ export default function Home() {
         }
     }, []);
 
-    useEffect(() => {
-        const fetchPlans = async () => {
-            try {
-                const res = await fetch(`${API_URL}/plans/`);
-                if (res.ok) {
-                    const data = await res.json();
-                    // Ordenar: Trial primeiro, depois Bronze, Prata, Ouro
-                    const ordered = data.sort((a, b) => {
-                        const order = { trial: 0, bronze: 1, prata: 2, ouro: 3 };
-                        return (order[a.slug] || 99) - (order[b.slug] || 99);
-                    });
-                    setPlans(ordered);
-                }
-            } catch (e) {
-                console.error('Error fetching plans:', e);
-            }
-        };
-        fetchPlans();
-    }, []);
 
     const handleCepChange = async (value) => {
         const cleanValue = value.replace(/\D/g, '');
@@ -1424,99 +1497,149 @@ export default function Home() {
             </Section>
 
             <Section>
-                <SectionTitle>Planos para profissionais</SectionTitle>
+                <SectionTitle>Escolha seu plano</SectionTitle>
                 <SectionSubtitle>
-                    Escolha o plano ideal para impulsionar seu negócio
+                    Comece gratis com o Trial ou escolha o plano ideal para o seu negocio
                 </SectionSubtitle>
                 <PricingSection>
-                    {plans.map((plan, index) => {
-                        const isTrial = plan.slug === 'trial';
-                        const isPrata = plan.slug === 'prata';
-                        const features = [];
+                    <PlansGrid>
+                        {/* Trial - Teste do Premium */}
+                        <PriceBox
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, delay: 0 }}
+                            viewport={{ once: true }}
+                        >
+                            <PlanBadge $color="#10b981">TESTE GRATIS</PlanBadge>
+                            <PlanName $hasBadge>Trial</PlanName>
+                            <Price className="free">
+                                GRATIS
+                                <span>/30 dias</span>
+                            </Price>
+                            <PlanDescription>
+                                Teste o plano Premium completo sem compromisso
+                            </PlanDescription>
+                            <FeatureList>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Perfil profissional completo
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Ate 5 servicos cadastrados
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Agenda online
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Receba agendamentos
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Contato via WhatsApp
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Sem cartao de credito
+                                </FeatureItem>
+                            </FeatureList>
+                            <PlanButton to="/register-pro" $green>
+                                Comecar gratis
+                                <ChevronRight size={18} />
+                            </PlanButton>
+                        </PriceBox>
 
-                        // Features comuns
-                        features.push('Perfil profissional completo');
-                        features.push('Contato com cliente via WhatsApp');
+                        {/* Basic - Mais Popular */}
+                        <PriceBox
+                            $featured
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, delay: 0.1 }}
+                            viewport={{ once: true }}
+                        >
+                            <PlanBadge>MAIS POPULAR</PlanBadge>
+                            <PlanName $hasBadge>Basic</PlanName>
+                            <Price>
+                                R$ 29,90
+                                <span>/mes</span>
+                            </Price>
+                            <PlanDescription>
+                                Deixe seu cliente te encontrar
+                            </PlanDescription>
+                            <FeatureList>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Perfil profissional completo
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Ate 3 servicos cadastrados
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Cliente faz contato via WhatsApp
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Perfil listado na busca
+                                </FeatureItem>
+                            </FeatureList>
+                            <PlanButton to="/register-pro" $primary>
+                                Assinar Basic
+                                <ChevronRight size={18} />
+                            </PlanButton>
+                        </PriceBox>
 
-                        // Features específicas por plano
-                        if (plan.slug === 'trial') {
-                            features.push('🎁 30 dias grátis para testar');
-                            features.push('Serviços ilimitados');
-                            features.push('Agenda online completa');
-                            features.push('Receba agendamentos automáticos');
-                            features.push('Portfolio de serviços com fotos');
-                            features.push('Todos os recursos liberados');
-                        } else if (plan.slug === 'bronze') {
-                            features.push('Máximo 1 serviço');
-                            features.push('Visibilidade básica na busca');
-                        } else if (plan.slug === 'prata') {
-                            features.push('Serviços ilimitados');
-                            features.push('Agenda online');
-                            features.push('Receba agendamentos automáticos');
-                            features.push('Portfolio de serviços com fotos');
-                            features.push('Visibilidade na busca');
-                        } else if (plan.slug === 'ouro') {
-                            features.push('Serviços ilimitados');
-                            features.push('Agenda online');
-                            features.push('Receba agendamentos automáticos');
-                            features.push('Portfolio de serviços com fotos');
-                            features.push('⭐ Prioridade máxima na busca');
-                            features.push('Suporte prioritário');
-                        }
-
-                        return (
-                            <PriceBox
-                                key={plan.id}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                whileInView={{ opacity: 1, scale: 1 }}
-                                transition={{ duration: 0.5, delay: index * 0.1 }}
-                                viewport={{ once: true }}
-                            >
-                                {isTrial && <PlanBadge style={{ backgroundColor: '#10b981' }}>🎁 TESTE GRÁTIS</PlanBadge>}
-                                {isPrata && <PlanBadge>✨ MAIS POPULAR</PlanBadge>}
-                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1rem' }}>
-                                    {plan.name}
-                                </h3>
-                                <Price>
-                                    {isTrial ? 'GRÁTIS' : `R$ ${plan.price.toFixed(2).replace('.', ',')}`}
-                                    <span>{isTrial ? '/30 dias' : '/mês'}</span>
-                                </Price>
-                                <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.95rem' }}>
-                                    {plan.slug === 'trial' && 'Experimente todos os recursos sem compromisso'}
-                                    {plan.slug === 'bronze' && 'Ideal para começar'}
-                                    {plan.slug === 'prata' && 'Tudo que você precisa para crescer'}
-                                    {plan.slug === 'ouro' && 'Máxima visibilidade e recursos'}
-                                </p>
-                                <FeatureList>
-                                    {features.map((feature, i) => (
-                                        <FeatureItem key={i}>
-                                            <Check size={20} />
-                                            {feature}
-                                        </FeatureItem>
-                                    ))}
-                                </FeatureList>
-                                <NavButton
-                                    to="/register-pro"
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '0.5rem',
-                                        width: '100%',
-                                        padding: '1rem 1.25rem',
-                                        textAlign: 'center',
-                                        marginTop: '1.5rem',
-                                        fontSize: '0.95rem',
-                                        fontWeight: '700',
-                                        backgroundColor: isTrial ? '#10b981' : undefined
-                                    }}
-                                >
-                                    {isTrial ? 'Começar teste grátis' : 'Começar agora'}
-                                    <ChevronRight size={20} />
-                                </NavButton>
-                            </PriceBox>
-                        );
-                    })}
+                        {/* Premium */}
+                        <PriceBox
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, delay: 0.2 }}
+                            viewport={{ once: true }}
+                        >
+                            <PlanBadge $color="#f59e0b">COMPLETO</PlanBadge>
+                            <PlanName $hasBadge>Premium</PlanName>
+                            <Price>
+                                R$ 49,90
+                                <span>/mes</span>
+                            </Price>
+                            <PlanDescription>
+                                Maxima visibilidade e recursos ilimitados
+                            </PlanDescription>
+                            <FeatureList>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Perfil profissional completo
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Até 10 servicos cadastrados
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Agenda online completa
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Agendamentos ilimitados
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Destaque maximo na busca
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Suporte prioritario
+                                </FeatureItem>
+                            </FeatureList>
+                            <PlanButton to="/register-pro" $orange>
+                                Assinar Premium
+                                <ChevronRight size={18} />
+                            </PlanButton>
+                        </PriceBox>
+                    </PlansGrid>
                 </PricingSection>
             </Section>
 
@@ -1540,7 +1663,7 @@ export default function Home() {
                         <FooterLink to="/register-pro">Sou Profissional</FooterLink>
                     </FooterLinks>
                     <p style={{ opacity: 0.7, fontSize: '0.85rem' }}>
-                        © 2025 ContrataPro. Todos os direitos reservados.
+                        © {new Date().getFullYear()} ContrataPro. Todos os direitos reservados.
                     </p>
                 </div>
             </Footer>

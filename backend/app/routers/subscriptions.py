@@ -34,6 +34,7 @@ class CardTokenRequest(BaseModel):
 
 class CancelSubscriptionRequest(BaseModel):
     reason: str
+    reason_code: Optional[str] = None  # Código do motivo para analytics
 
 
 class SubscribePlanResponse(BaseModel):

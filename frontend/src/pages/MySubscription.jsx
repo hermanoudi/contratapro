@@ -1,10 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { CreditCard, Calendar, DollarSign, AlertCircle, X, ArrowLeft, CheckCircle } from 'lucide-react';
+import { CreditCard, Calendar, DollarSign, AlertCircle, X, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { API_URL } from '../config';
+
+// Motivos de cancelamento para analytics
+const CANCELLATION_REASONS = [
+  { id: 'not_using', label: 'Não estou usando a plataforma', description: 'Poucos clientes ou sem tempo para atender' },
+  { id: 'too_expensive', label: 'Valor muito alto', description: 'O custo não compensa o retorno' },
+  { id: 'found_alternative', label: 'Encontrei outra plataforma', description: 'Estou usando outro serviço similar' },
+  { id: 'technical_issues', label: 'Problemas técnicos', description: 'Dificuldades com o sistema ou pagamento' },
+  { id: 'temporary_pause', label: 'Pausa temporária', description: 'Pretendo voltar no futuro' },
+  { id: 'closing_business', label: 'Encerrando atividades', description: 'Não vou mais prestar serviços' },
+  { id: 'payment_issue', label: 'Problema no pagamento', description: 'Pagamento não foi processado corretamente' },
+  { id: 'other', label: 'Outro motivo', description: 'Prefiro informar manualmente' }
+];
 const PageContainer = styled.div`
   min-height: 100vh;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
@@ -277,6 +289,69 @@ const AlertText = styled.div`
   line-height: 1.5;
 `;
 
+const ReasonList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+  }
+`;
+
+const ReasonOption = styled.label`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: ${props => props.$selected ? 'rgba(99, 102, 241, 0.08)' : 'var(--bg-secondary)'};
+  border: 2px solid ${props => props.$selected ? 'var(--primary)' : 'transparent'};
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: ${props => props.$selected ? 'rgba(99, 102, 241, 0.12)' : 'rgba(0, 0, 0, 0.04)'};
+  }
+
+  input {
+    margin-top: 0.25rem;
+    accent-color: var(--primary);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+`;
+
+const ReasonContent = styled.div`
+  flex: 1;
+`;
+
+const ReasonLabel = styled.div`
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+`;
+
+const ReasonDescription = styled.div`
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+`;
+
 const LoadingSpinner = styled.div`
   display: flex;
   align-items: center;
@@ -290,7 +365,8 @@ export default function MySubscription() {
     const [subscription, setSubscription] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showCancelModal, setShowCancelModal] = useState(false);
-    const [cancelReason, setCancelReason] = useState('');
+    const [selectedReason, setSelectedReason] = useState('');
+    const [cancelReasonText, setCancelReasonText] = useState('');
     const [cancelling, setCancelling] = useState(false);
     const [userPlan, setUserPlan] = useState(null);
     const navigate = useNavigate();
@@ -340,10 +416,21 @@ export default function MySubscription() {
     };
 
     const handleCancelSubscription = async () => {
-        if (!cancelReason.trim()) {
-            toast.error('Por favor, informe o motivo do cancelamento');
+        if (!selectedReason) {
+            toast.error('Por favor, selecione o motivo do cancelamento');
             return;
         }
+
+        if (selectedReason === 'other' && !cancelReasonText.trim()) {
+            toast.error('Por favor, descreva o motivo do cancelamento');
+            return;
+        }
+
+        // Montar o motivo completo para enviar
+        const reasonObj = CANCELLATION_REASONS.find(r => r.id === selectedReason);
+        const fullReason = selectedReason === 'other'
+            ? `Outro: ${cancelReasonText}`
+            : `${reasonObj.label}: ${reasonObj.description}`;
 
         setCancelling(true);
         try {
@@ -354,12 +441,17 @@ export default function MySubscription() {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ reason: cancelReason })
+                body: JSON.stringify({
+                    reason: fullReason,
+                    reason_code: selectedReason  // Código para analytics
+                })
             });
 
             if (res.ok) {
                 toast.success('Assinatura cancelada com sucesso');
                 setShowCancelModal(false);
+                setSelectedReason('');
+                setCancelReasonText('');
                 fetchSubscription(); // Atualizar dados
             } else {
                 const error = await res.json();
@@ -561,20 +653,32 @@ export default function MySubscription() {
                     </Section>
                 )}
 
-                {/* Gerenciar Assinatura - Apenas para planos pagos ativos */}
-                {!isTrial && subscription?.status === 'active' && (
+                {/* Gerenciar Assinatura - Para planos pagos ativos ou pendentes */}
+                {!isTrial && subscription && ['active', 'pending'].includes(subscription.status) && (
                     <Section>
                         <SectionTitle>Gerenciar Assinatura</SectionTitle>
-                        <Alert>
-                            <AlertCircle size={24} />
-                            <AlertText>
-                                <strong>Atenção:</strong> Ao cancelar sua assinatura, você não aparecerá mais nas buscas
-                                e não poderá receber novas solicitações de clientes. A cobrança recorrente será interrompida
-                                imediatamente no Mercado Pago.
-                            </AlertText>
-                        </Alert>
+                        {subscription.status === 'pending' ? (
+                            <Alert style={{ background: 'rgba(251, 146, 60, 0.1)', border: '2px solid rgba(251, 146, 60, 0.3)' }}>
+                                <AlertCircle size={24} />
+                                <AlertText>
+                                    <strong>Pagamento pendente:</strong> Sua assinatura ainda não foi ativada.
+                                    Se você teve problemas no pagamento ou deseja escolher outro plano,
+                                    você pode cancelar esta assinatura e iniciar uma nova.
+                                </AlertText>
+                            </Alert>
+                        ) : (
+                            <Alert>
+                                <AlertCircle size={24} />
+                                <AlertText>
+                                    <strong>Atenção:</strong> Ao cancelar sua assinatura, você não aparecerá mais nas buscas
+                                    e não poderá receber novas solicitações de clientes. A cobrança recorrente será interrompida
+                                    imediatamente no Mercado Pago.
+                                </AlertText>
+                            </Alert>
+                        )}
                         <Button $variant="danger" onClick={() => setShowCancelModal(true)}>
-                            Cancelar Assinatura
+                            <XCircle size={20} />
+                            {subscription.status === 'pending' ? 'Cancelar e Escolher Outro Plano' : 'Cancelar Assinatura'}
                         </Button>
                     </Section>
                 )}
@@ -622,49 +726,103 @@ export default function MySubscription() {
                     <ModalContent onClick={(e) => e.stopPropagation()}>
                         <ModalHeader>
                             <ModalTitle>Cancelar Assinatura</ModalTitle>
-                            <CloseButton onClick={() => setShowCancelModal(false)} disabled={cancelling}>
+                            <CloseButton onClick={() => {
+                                setShowCancelModal(false);
+                                setSelectedReason('');
+                                setCancelReasonText('');
+                            }} disabled={cancelling}>
                                 <X size={24} />
                             </CloseButton>
                         </ModalHeader>
 
-                        <Alert>
-                            <AlertCircle size={20} />
-                            <AlertText>
-                                Sentiremos sua falta! Seu perfil será removido das buscas e você não receberá mais
-                                solicitações de clientes.
-                            </AlertText>
-                        </Alert>
+                        {subscription?.status === 'pending' ? (
+                            <Alert style={{ background: 'rgba(59, 130, 246, 0.1)', border: '2px solid rgba(59, 130, 246, 0.3)' }}>
+                                <AlertCircle size={20} color="#3b82f6" />
+                                <AlertText style={{ color: '#1e40af' }}>
+                                    Ao cancelar, você poderá escolher um novo plano ou tentar o pagamento novamente.
+                                </AlertText>
+                            </Alert>
+                        ) : (
+                            <Alert>
+                                <AlertCircle size={20} />
+                                <AlertText>
+                                    Sentiremos sua falta! Seu perfil será removido das buscas e você não receberá mais
+                                    solicitações de clientes.
+                                </AlertText>
+                            </Alert>
+                        )}
 
                         <div>
                             <label style={{
                                 display: 'block',
-                                marginBottom: '0.5rem',
-                                fontWeight: 600,
-                                color: 'var(--text-primary)'
+                                marginBottom: '0.75rem',
+                                fontWeight: 700,
+                                color: 'var(--text-primary)',
+                                fontSize: '0.95rem'
                             }}>
-                                Por favor, conte-nos o motivo do cancelamento *
+                                Por que você está cancelando? *
                             </label>
-                            <TextArea
-                                value={cancelReason}
-                                onChange={(e) => setCancelReason(e.target.value)}
-                                placeholder="Seu feedback é muito importante para melhorarmos nossos serviços..."
-                                disabled={cancelling}
-                            />
+                            <ReasonList>
+                                {CANCELLATION_REASONS.map((reason) => (
+                                    <ReasonOption
+                                        key={reason.id}
+                                        $selected={selectedReason === reason.id}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="cancelReason"
+                                            value={reason.id}
+                                            checked={selectedReason === reason.id}
+                                            onChange={(e) => setSelectedReason(e.target.value)}
+                                            disabled={cancelling}
+                                        />
+                                        <ReasonContent>
+                                            <ReasonLabel>{reason.label}</ReasonLabel>
+                                            <ReasonDescription>{reason.description}</ReasonDescription>
+                                        </ReasonContent>
+                                    </ReasonOption>
+                                ))}
+                            </ReasonList>
+
+                            {selectedReason === 'other' && (
+                                <div style={{ marginTop: '1rem' }}>
+                                    <label style={{
+                                        display: 'block',
+                                        marginBottom: '0.5rem',
+                                        fontWeight: 600,
+                                        color: 'var(--text-primary)',
+                                        fontSize: '0.9rem'
+                                    }}>
+                                        Conte-nos mais sobre o motivo *
+                                    </label>
+                                    <TextArea
+                                        value={cancelReasonText}
+                                        onChange={(e) => setCancelReasonText(e.target.value)}
+                                        placeholder="Seu feedback é muito importante para melhorarmos nossos serviços..."
+                                        disabled={cancelling}
+                                        style={{ minHeight: '80px' }}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         <ModalActions>
                             <Button
                                 style={{ flex: 1, background: 'var(--border-color)', color: 'var(--text-primary)' }}
-                                onClick={() => setShowCancelModal(false)}
+                                onClick={() => {
+                                    setShowCancelModal(false);
+                                    setSelectedReason('');
+                                    setCancelReasonText('');
+                                }}
                                 disabled={cancelling}
                             >
-                                Manter Assinatura
+                                {subscription?.status === 'pending' ? 'Voltar' : 'Manter Assinatura'}
                             </Button>
                             <Button
                                 style={{ flex: 1 }}
                                 $variant="danger"
                                 onClick={handleCancelSubscription}
-                                disabled={cancelling}
+                                disabled={cancelling || !selectedReason}
                             >
                                 {cancelling ? 'Cancelando...' : 'Confirmar Cancelamento'}
                             </Button>
