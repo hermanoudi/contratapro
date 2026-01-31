@@ -156,6 +156,13 @@ async def subscribe_to_plan(
         )
 
     # FLUXO PAGO: Criar assinatura no Mercado Pago
+    # Validar CPF obrigatório para planos pagos
+    if not current_user.cpf:
+        raise HTTPException(
+            status_code=400,
+            detail="CPF é obrigatório para assinar um plano pago. Atualize seu perfil com o CPF."
+        )
+
     try:
         # Separar nome em first_name e last_name para o Mercado Pago
         name_parts = current_user.name.split(" ", 1) if current_user.name else ["Usuário", ""]
