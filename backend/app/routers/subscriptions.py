@@ -769,6 +769,123 @@ async def cancel_subscription(
     return {"message": "Assinatura cancelada com sucesso"}
 
 
+@router.post("/debug-checkout")
+async def debug_subscription_checkout(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Debug: Tenta criar uma assinatura diretamente via API
+    e retorna informações detalhadas sobre o que está acontecendo.
+    """
+    if not current_user.is_professional:
+        raise HTTPException(status_code=403, detail="Apenas profissionais")
+
+    debug_info = {
+        "user_id": current_user.id,
+        "user_email": current_user.email,
+        "user_cpf": current_user.cpf[:3] + "***" if current_user.cpf else None,
+        "has_cpf": bool(current_user.cpf),
+        "steps": []
+    }
+
+    try:
+        # Separar nome
+        name_parts = current_user.name.split(" ", 1) if current_user.name else ["Usuário", ""]
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else first_name
+
+        # Dados do plano
+        plan_data = {
+            "reason": "Plano Basic - ContrataPro",
+            "auto_recurring": {
+                "frequency": 1,
+                "frequency_type": "months",
+                "transaction_amount": 5.00,
+                "currency_id": "BRL",
+            },
+            "payer_email": current_user.email,
+            "back_url": f"{settings.FRONTEND_URL}/subscription/callback",
+            "external_reference": str(current_user.id),
+        }
+
+        # Adicionar payer info se tiver CPF
+        if current_user.cpf:
+            plan_data["payer"] = {
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": current_user.email,
+                "identification": {
+                    "type": "CPF",
+                    "number": current_user.cpf.replace(".", "").replace("-", "")
+                }
+            }
+
+        debug_info["steps"].append({
+            "step": 1,
+            "action": "Preparando dados do plano",
+            "data": {k: v for k, v in plan_data.items() if k != "payer"}
+        })
+
+        # Criar plano
+        async with httpx.AsyncClient() as client:
+            plan_response = await client.post(
+                "https://api.mercadopago.com/preapproval_plan",
+                json=plan_data,
+                headers={
+                    "Authorization": f"Bearer {settings.MERCADOPAGO_ACCESS_TOKEN}",
+                    "Content-Type": "application/json"
+                }
+            )
+
+        plan_result = plan_response.json()
+        debug_info["steps"].append({
+            "step": 2,
+            "action": "Criar preapproval_plan",
+            "status_code": plan_response.status_code,
+            "response": plan_result
+        })
+
+        if plan_response.status_code not in [200, 201]:
+            debug_info["error"] = "Falha ao criar plano"
+            return debug_info
+
+        # Verificar init_point
+        init_point = plan_result.get("init_point")
+        debug_info["steps"].append({
+            "step": 3,
+            "action": "Verificar init_point",
+            "init_point": init_point,
+            "plan_id": plan_result.get("id"),
+            "status": plan_result.get("status")
+        })
+
+        # Tentar buscar detalhes do plano criado
+        async with httpx.AsyncClient() as client:
+            detail_response = await client.get(
+                f"https://api.mercadopago.com/preapproval_plan/{plan_result.get('id')}",
+                headers={
+                    "Authorization": f"Bearer {settings.MERCADOPAGO_ACCESS_TOKEN}"
+                }
+            )
+
+        debug_info["steps"].append({
+            "step": 4,
+            "action": "Detalhes do plano criado",
+            "status_code": detail_response.status_code,
+            "response": detail_response.json() if detail_response.status_code == 200 else None
+        })
+
+        debug_info["success"] = True
+        debug_info["init_point"] = init_point
+        return debug_info
+
+    except Exception as e:
+        debug_info["error"] = str(e)
+        logger.error(f"Debug checkout error: {str(e)}")
+        return debug_info
+
+
 @router.post("/reset-pending")
 async def reset_pending_subscription(
     current_user: User = Depends(get_current_user),
