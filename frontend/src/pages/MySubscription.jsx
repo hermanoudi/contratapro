@@ -369,6 +369,7 @@ export default function MySubscription() {
     const [cancelReasonText, setCancelReasonText] = useState('');
     const [cancelling, setCancelling] = useState(false);
     const [userPlan, setUserPlan] = useState(null);
+    const [resetting, setResetting] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -412,6 +413,32 @@ export default function MySubscription() {
             }
         } catch (error) {
             // Erro silencioso - usuário pode não ter plano
+        }
+    };
+
+    const handleResetAndResubscribe = async () => {
+        setResetting(true);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/subscriptions/reset-pending`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                toast.success('Assinatura resetada! Redirecionando para nova assinatura...');
+                setTimeout(() => {
+                    navigate('/subscription/setup');
+                }, 1000);
+            } else {
+                const error = await res.json();
+                toast.error(error.detail || 'Erro ao resetar assinatura');
+            }
+        } catch (error) {
+            console.error('Erro ao resetar assinatura:', error);
+            toast.error('Erro ao processar reset');
+        } finally {
+            setResetting(false);
         }
     };
 
@@ -658,14 +685,34 @@ export default function MySubscription() {
                     <Section>
                         <SectionTitle>Gerenciar Assinatura</SectionTitle>
                         {subscription.status === 'pending' ? (
-                            <Alert style={{ background: 'rgba(251, 146, 60, 0.1)', border: '2px solid rgba(251, 146, 60, 0.3)' }}>
-                                <AlertCircle size={24} />
-                                <AlertText>
-                                    <strong>Pagamento pendente:</strong> Sua assinatura ainda não foi ativada.
-                                    Se você teve problemas no pagamento ou deseja escolher outro plano,
-                                    você pode cancelar esta assinatura e iniciar uma nova.
-                                </AlertText>
-                            </Alert>
+                            <>
+                                <Alert style={{ background: 'rgba(251, 146, 60, 0.1)', border: '2px solid rgba(251, 146, 60, 0.3)' }}>
+                                    <AlertCircle size={24} />
+                                    <AlertText>
+                                        <strong>Pagamento pendente:</strong> Sua assinatura ainda não foi ativada.
+                                        Se o botão de pagamento não está funcionando ou você teve problemas,
+                                        clique em &quot;Resetar e Tentar Novamente&quot; para criar uma nova assinatura.
+                                    </AlertText>
+                                </Alert>
+                                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                                    {subscription.init_point && (
+                                        <Button
+                                            onClick={() => window.open(subscription.init_point, '_blank')}
+                                            style={{ background: '#00b1ea' }}
+                                        >
+                                            <CreditCard size={20} />
+                                            Completar Pagamento
+                                        </Button>
+                                    )}
+                                    <Button
+                                        onClick={handleResetAndResubscribe}
+                                        disabled={resetting}
+                                        style={{ background: '#f59e0b' }}
+                                    >
+                                        {resetting ? 'Resetando...' : 'Resetar e Tentar Novamente'}
+                                    </Button>
+                                </div>
+                            </>
                         ) : (
                             <Alert>
                                 <AlertCircle size={24} />
@@ -676,10 +723,12 @@ export default function MySubscription() {
                                 </AlertText>
                             </Alert>
                         )}
-                        <Button $variant="danger" onClick={() => setShowCancelModal(true)}>
-                            <XCircle size={20} />
-                            {subscription.status === 'pending' ? 'Cancelar' : 'Cancelar Assinatura'}
-                        </Button>
+                        {subscription.status === 'active' && (
+                            <Button $variant="danger" onClick={() => setShowCancelModal(true)}>
+                                <XCircle size={20} />
+                                Cancelar Assinatura
+                            </Button>
+                        )}
                     </Section>
                 )}
 
