@@ -762,6 +762,74 @@ async def cancel_subscription(
     return {"message": "Assinatura cancelada com sucesso"}
 
 
+@router.post("/reset-pending")
+async def reset_pending_subscription(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Reseta uma assinatura pendente para permitir criar uma nova.
+    Útil quando o init_point está desatualizado ou com dados incorretos.
+    """
+    if not current_user.is_professional:
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas profissionais podem resetar assinaturas"
+        )
+
+    result = await db.execute(
+        select(Subscription).where(
+            Subscription.professional_id == current_user.id
+        )
+    )
+    subscription = result.scalar_one_or_none()
+
+    if not subscription:
+        return {"message": "Nenhuma assinatura encontrada", "can_subscribe": True}
+
+    if subscription.status == "active":
+        raise HTTPException(
+            status_code=400,
+            detail="Não é possível resetar uma assinatura ativa. Use o cancelamento."
+        )
+
+    # Cancelar no Mercado Pago se existir preapproval_id
+    if subscription.mercadopago_preapproval_id:
+        try:
+            async with httpx.AsyncClient() as client:
+                cancel_response = await client.put(
+                    f"https://api.mercadopago.com/preapproval/{subscription.mercadopago_preapproval_id}",
+                    json={"status": "cancelled"},
+                    headers={
+                        "Authorization": f"Bearer {settings.MERCADOPAGO_ACCESS_TOKEN}",
+                        "Content-Type": "application/json"
+                    }
+                )
+                logger.info(f"Reset MP preapproval: {cancel_response.status_code}")
+        except Exception as e:
+            logger.error(f"Erro ao cancelar preapproval no MP: {str(e)}")
+            # Continua mesmo com erro
+
+    # Resetar assinatura para permitir nova criação
+    subscription.status = "cancelled"
+    subscription.mercadopago_preapproval_id = None
+    subscription.init_point = None
+    subscription.cancelled_at = datetime.now()
+    subscription.cancellation_reason = "Reset para nova assinatura"
+
+    # Atualizar usuário
+    current_user.subscription_status = "inactive"
+
+    await db.commit()
+
+    logger.info(f"Assinatura resetada para usuário {current_user.id}")
+
+    return {
+        "message": "Assinatura resetada com sucesso. Você pode criar uma nova assinatura.",
+        "can_subscribe": True
+    }
+
+
 @router.post("/activate-manual")
 async def activate_subscription_manual(
     current_user: User = Depends(get_current_user),
