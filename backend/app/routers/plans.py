@@ -1,14 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List
 from datetime import datetime
+from pydantic import BaseModel
 from ..database import get_db
 from ..models import SubscriptionPlan, User, Service
 from ..schemas import SubscriptionPlanResponse, ChangePlanRequest
 from ..dependencies import get_current_user
 
 router = APIRouter()
+
+
+class RemoveExcessServicesRequest(BaseModel):
+    keep_service_ids: List[int]
 
 @router.get("/", response_model=List[SubscriptionPlanResponse])
 async def list_plans(
@@ -154,11 +159,13 @@ async def change_plan(
 
 @router.post("/me/remove-excess-services")
 async def remove_excess_services(
-    keep_service_ids: List[int],
+    request: RemoveExcessServicesRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Remove serviços excedentes ao fazer downgrade"""
+    keep_service_ids = request.keep_service_ids
+
     if not current_user.subscription_plan_id:
         raise HTTPException(
             status_code=400,

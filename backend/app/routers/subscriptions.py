@@ -10,7 +10,7 @@ import httpx
 import logging
 
 from ..database import get_db
-from ..models import Subscription, SubscriptionPlan, User
+from ..models import Subscription, SubscriptionPlan, User, Service
 from ..dependencies import get_current_user
 from ..config import settings
 
@@ -35,6 +35,15 @@ class CardTokenRequest(BaseModel):
 class CancelSubscriptionRequest(BaseModel):
     reason: str
     reason_code: Optional[str] = None  # Código do motivo para analytics
+
+
+class ChangePlanRequest(BaseModel):
+    new_plan_slug: str
+
+
+class AdminForceTrialRequest(BaseModel):
+    user_id: int
+    reason: Optional[str] = None
 
 
 class SubscribePlanResponse(BaseModel):
@@ -1004,6 +1013,410 @@ async def activate_subscription_manual(
         "message": "Assinatura ativada com sucesso (modo desenvolvimento)",
         "status": "active",
         "next_billing_date": subscription.next_billing_date.isoformat()
+    }
+
+
+@router.post("/change-plan/{new_plan_slug}")
+async def change_subscription_plan(
+    new_plan_slug: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Altera o plano do profissional.
+
+    Cenários permitidos:
+    - Trial → Qualquer plano pago (Basic, Premium)
+    - Basic → Premium (upgrade)
+    - Premium → Basic (downgrade)
+
+    Cenários bloqueados:
+    - Qualquer plano pago → Trial (apenas admin pode fazer)
+    """
+    if not current_user.is_professional:
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas profissionais podem alterar planos"
+        )
+
+    # Buscar plano atual do usuário
+    current_plan = None
+    if current_user.subscription_plan_id:
+        result = await db.execute(
+            select(SubscriptionPlan).where(
+                SubscriptionPlan.id == current_user.subscription_plan_id
+            )
+        )
+        current_plan = result.scalar_one_or_none()
+
+    # Buscar novo plano
+    result = await db.execute(
+        select(SubscriptionPlan).where(
+            SubscriptionPlan.slug == new_plan_slug,
+            SubscriptionPlan.is_active == True
+        )
+    )
+    new_plan = result.scalar_one_or_none()
+
+    if not new_plan:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Plano '{new_plan_slug}' não encontrado ou inativo"
+        )
+
+    # Verificar se é o mesmo plano
+    if current_plan and current_plan.id == new_plan.id:
+        raise HTTPException(
+            status_code=400,
+            detail="Você já está neste plano"
+        )
+
+    # REGRA: Não pode mudar de plano pago para Trial (apenas admin)
+    if new_plan_slug == "trial":
+        if current_plan and current_plan.price > 0:
+            raise HTTPException(
+                status_code=403,
+                detail="Não é possível voltar para o plano Trial. Apenas administradores podem fazer essa alteração."
+            )
+
+    # Buscar assinatura atual
+    result = await db.execute(
+        select(Subscription).where(
+            Subscription.professional_id == current_user.id
+        )
+    )
+    existing_subscription = result.scalar_one_or_none()
+
+    # Verificar limite de serviços para downgrade
+    if new_plan.max_services is not None:
+        result = await db.execute(
+            select(Service).where(
+                Service.professional_id == current_user.id
+            )
+        )
+        services = result.scalars().all()
+
+        if len(services) > new_plan.max_services:
+            return {
+                "success": False,
+                "error": "services_exceeded",
+                "message": f"Você tem {len(services)} serviços cadastrados. O plano {new_plan.name} permite apenas {new_plan.max_services}.",
+                "current_services": [
+                    {"id": s.id, "title": s.title} for s in services
+                ],
+                "max_allowed": new_plan.max_services,
+                "action_required": "remove_services"
+            }
+
+    # CENÁRIO 1: Mudança para plano gratuito (Trial) - já bloqueado acima, mas caso admin
+    # CENÁRIO 2: Mudança de Trial para pago
+    # CENÁRIO 3: Mudança entre planos pagos
+
+    # Se o novo plano é gratuito (Trial)
+    if new_plan.price == 0 or new_plan.slug == "trial":
+        # Já verificamos acima que só admin pode fazer isso
+        # Cancelar assinatura MP se existir
+        if existing_subscription and existing_subscription.mercadopago_preapproval_id:
+            try:
+                async with httpx.AsyncClient() as client:
+                    await client.put(
+                        f"https://api.mercadopago.com/preapproval/{existing_subscription.mercadopago_preapproval_id}",
+                        json={"status": "cancelled"},
+                        headers={
+                            "Authorization": f"Bearer {settings.MERCADOPAGO_ACCESS_TOKEN}",
+                            "Content-Type": "application/json"
+                        }
+                    )
+                logger.info(f"Assinatura MP cancelada para mudança de plano: {existing_subscription.mercadopago_preapproval_id}")
+            except Exception as e:
+                logger.error(f"Erro ao cancelar assinatura MP: {str(e)}")
+
+        # Ativar trial
+        trial_days = new_plan.trial_days or 15
+        trial_end_date = date.today() + timedelta(days=trial_days)
+
+        if existing_subscription:
+            existing_subscription.plan_id = new_plan.id
+            existing_subscription.status = "active"
+            existing_subscription.trial_ends_at = trial_end_date
+            existing_subscription.plan_amount = 0.0
+            existing_subscription.mercadopago_preapproval_id = None
+            existing_subscription.init_point = None
+        else:
+            new_subscription = Subscription(
+                professional_id=current_user.id,
+                plan_id=new_plan.id,
+                status="active",
+                trial_ends_at=trial_end_date,
+                plan_amount=0.0
+            )
+            db.add(new_subscription)
+
+        current_user.subscription_plan_id = new_plan.id
+        current_user.subscription_status = "active"
+        current_user.trial_ends_at = datetime.combine(trial_end_date, datetime.min.time())
+
+        await db.commit()
+
+        return {
+            "success": True,
+            "message": f"Plano alterado para {new_plan.name} com sucesso!",
+            "plan": {
+                "name": new_plan.name,
+                "slug": new_plan.slug,
+                "price": new_plan.price
+            },
+            "trial_ends_at": trial_end_date.isoformat()
+        }
+
+    # Para planos pagos: precisa criar nova assinatura no MP
+    # Validar CPF
+    if not current_user.cpf:
+        raise HTTPException(
+            status_code=400,
+            detail="CPF é obrigatório para assinar um plano pago. Atualize seu perfil com o CPF."
+        )
+
+    # Cancelar assinatura atual no MP se existir e estiver ativa
+    if existing_subscription and existing_subscription.mercadopago_preapproval_id:
+        if existing_subscription.status in ["active", "pending"]:
+            try:
+                async with httpx.AsyncClient() as client:
+                    cancel_response = await client.put(
+                        f"https://api.mercadopago.com/preapproval/{existing_subscription.mercadopago_preapproval_id}",
+                        json={"status": "cancelled"},
+                        headers={
+                            "Authorization": f"Bearer {settings.MERCADOPAGO_ACCESS_TOKEN}",
+                            "Content-Type": "application/json"
+                        }
+                    )
+                logger.info(f"Assinatura MP anterior cancelada: {existing_subscription.mercadopago_preapproval_id} - Status: {cancel_response.status_code}")
+            except Exception as e:
+                logger.error(f"Erro ao cancelar assinatura MP anterior: {str(e)}")
+                # Continua mesmo com erro
+
+    # Criar nova assinatura no MP
+    try:
+        name_parts = current_user.name.split(" ", 1) if current_user.name else ["Usuário", ""]
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else first_name
+
+        plan_data = {
+            "reason": f"Plano {new_plan.name} - ContrataPro",
+            "auto_recurring": {
+                "frequency": settings.SUBSCRIPTION_FREQUENCY,
+                "frequency_type": settings.SUBSCRIPTION_FREQUENCY_TYPE,
+                "transaction_amount": new_plan.price,
+                "currency_id": "BRL",
+            },
+            "payer_email": current_user.email,
+            "back_url": f"{settings.FRONTEND_URL}/subscription/callback",
+            "external_reference": str(current_user.id),
+        }
+
+        if current_user.cpf:
+            plan_data["payer"] = {
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": current_user.email,
+                "identification": {
+                    "type": "CPF",
+                    "number": current_user.cpf.replace(".", "").replace("-", "")
+                }
+            }
+
+        logger.info(f"Criando novo plano MP para mudança: {plan_data}")
+
+        async with httpx.AsyncClient() as client:
+            plan_response = await client.post(
+                "https://api.mercadopago.com/preapproval_plan",
+                json=plan_data,
+                headers={
+                    "Authorization": f"Bearer {settings.MERCADOPAGO_ACCESS_TOKEN}",
+                    "Content-Type": "application/json"
+                }
+            )
+
+        if plan_response.status_code not in [200, 201]:
+            logger.error(f"Erro ao criar plano MP: {plan_response.status_code} - {plan_response.text}")
+            raise HTTPException(
+                status_code=500,
+                detail="Erro ao criar novo plano no Mercado Pago"
+            )
+
+        mp_plan = plan_response.json()
+        mp_plan_id = mp_plan["id"]
+        mp_init_point = mp_plan.get("init_point")
+
+        if not mp_init_point:
+            raise HTTPException(
+                status_code=500,
+                detail="Erro: Mercado Pago não retornou URL de checkout"
+            )
+
+        # Atualizar assinatura no banco
+        if existing_subscription:
+            existing_subscription.plan_id = new_plan.id
+            existing_subscription.status = "pending"
+            existing_subscription.trial_ends_at = None
+            existing_subscription.plan_amount = new_plan.price
+            existing_subscription.mercadopago_preapproval_id = mp_plan_id
+            existing_subscription.init_point = mp_init_point
+            existing_subscription.cancelled_at = None
+            existing_subscription.cancellation_reason = None
+        else:
+            new_subscription = Subscription(
+                professional_id=current_user.id,
+                plan_id=new_plan.id,
+                status="pending",
+                plan_amount=new_plan.price,
+                mercadopago_preapproval_id=mp_plan_id,
+                init_point=mp_init_point
+            )
+            db.add(new_subscription)
+
+        # Atualizar usuário
+        current_user.subscription_plan_id = new_plan.id
+        current_user.subscription_status = "pending"
+        current_user.trial_ends_at = None
+
+        await db.commit()
+
+        logger.info(f"Mudança de plano iniciada para usuário {current_user.id}: {current_plan.slug if current_plan else 'none'} -> {new_plan.slug}")
+
+        return {
+            "success": True,
+            "message": f"Plano alterado para {new_plan.name}. Complete o pagamento para ativar.",
+            "plan": {
+                "name": new_plan.name,
+                "slug": new_plan.slug,
+                "price": new_plan.price
+            },
+            "init_point": mp_init_point,
+            "requires_payment": True
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao mudar plano: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao processar mudança de plano: {str(e)}"
+        )
+
+
+@router.post("/admin/force-trial/{user_id}")
+async def admin_force_trial(
+    user_id: int,
+    request_data: AdminForceTrialRequest = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    ADMIN ONLY: Força um usuário a voltar para o plano Trial.
+    Útil para casos excepcionais onde o usuário precisa de suporte.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas administradores podem executar esta ação"
+        )
+
+    # Buscar usuário alvo
+    result = await db.execute(
+        select(User).where(User.id == user_id)
+    )
+    target_user = result.scalar_one_or_none()
+
+    if not target_user:
+        raise HTTPException(
+            status_code=404,
+            detail="Usuário não encontrado"
+        )
+
+    if not target_user.is_professional:
+        raise HTTPException(
+            status_code=400,
+            detail="Usuário não é um profissional"
+        )
+
+    # Buscar plano Trial
+    result = await db.execute(
+        select(SubscriptionPlan).where(
+            SubscriptionPlan.slug == "trial",
+            SubscriptionPlan.is_active == True
+        )
+    )
+    trial_plan = result.scalar_one_or_none()
+
+    if not trial_plan:
+        raise HTTPException(
+            status_code=404,
+            detail="Plano Trial não encontrado no sistema"
+        )
+
+    # Buscar assinatura atual
+    result = await db.execute(
+        select(Subscription).where(
+            Subscription.professional_id == user_id
+        )
+    )
+    subscription = result.scalar_one_or_none()
+
+    # Cancelar assinatura MP se existir
+    if subscription and subscription.mercadopago_preapproval_id:
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.put(
+                    f"https://api.mercadopago.com/preapproval/{subscription.mercadopago_preapproval_id}",
+                    json={"status": "cancelled"},
+                    headers={
+                        "Authorization": f"Bearer {settings.MERCADOPAGO_ACCESS_TOKEN}",
+                        "Content-Type": "application/json"
+                    }
+                )
+            logger.info(f"[ADMIN] Assinatura MP cancelada: {subscription.mercadopago_preapproval_id}")
+        except Exception as e:
+            logger.error(f"[ADMIN] Erro ao cancelar assinatura MP: {str(e)}")
+
+    # Configurar trial
+    trial_days = trial_plan.trial_days or 15
+    trial_end_date = date.today() + timedelta(days=trial_days)
+    reason = request_data.reason if request_data and request_data.reason else "Forçado por administrador"
+
+    if subscription:
+        subscription.plan_id = trial_plan.id
+        subscription.status = "active"
+        subscription.trial_ends_at = trial_end_date
+        subscription.plan_amount = 0.0
+        subscription.mercadopago_preapproval_id = None
+        subscription.init_point = None
+        subscription.cancellation_reason = f"[ADMIN] {reason}"
+    else:
+        subscription = Subscription(
+            professional_id=user_id,
+            plan_id=trial_plan.id,
+            status="active",
+            trial_ends_at=trial_end_date,
+            plan_amount=0.0
+        )
+        db.add(subscription)
+
+    target_user.subscription_plan_id = trial_plan.id
+    target_user.subscription_status = "active"
+    target_user.trial_ends_at = datetime.combine(trial_end_date, datetime.min.time())
+
+    await db.commit()
+
+    logger.info(f"[ADMIN] Usuário {user_id} forçado para Trial por admin {current_user.id}. Motivo: {reason}")
+
+    return {
+        "success": True,
+        "message": f"Usuário {target_user.name} alterado para plano Trial com sucesso",
+        "user_id": user_id,
+        "trial_ends_at": trial_end_date.isoformat(),
+        "admin_action_by": current_user.id
     }
 
 

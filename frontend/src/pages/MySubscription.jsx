@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { CreditCard, Calendar, DollarSign, AlertCircle, X, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import { CreditCard, Calendar, DollarSign, AlertCircle, X, ArrowLeft, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { API_URL } from '../config';
@@ -724,10 +724,16 @@ export default function MySubscription() {
                             </Alert>
                         )}
                         {subscription.status === 'active' && (
-                            <Button $variant="danger" onClick={() => setShowCancelModal(true)}>
-                                <XCircle size={20} />
-                                Cancelar Assinatura
-                            </Button>
+                            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                <Button onClick={() => navigate('/alterar-plano')} style={{ background: 'var(--primary)' }}>
+                                    <RefreshCw size={20} />
+                                    Alterar Plano
+                                </Button>
+                                <Button $variant="danger" onClick={() => setShowCancelModal(true)}>
+                                    <XCircle size={20} />
+                                    Cancelar Assinatura
+                                </Button>
+                            </div>
                         )}
                     </Section>
                 )}
@@ -735,14 +741,15 @@ export default function MySubscription() {
                 {/* Botão de upgrade para Trial */}
                 {isTrial && (
                     <Section>
-                        <SectionTitle>Fazer Upgrade</SectionTitle>
+                        <SectionTitle>Alterar Plano</SectionTitle>
                         <Alert style={{ background: '#dbeafe', border: '1px solid #3b82f6' }}>
                             <AlertCircle size={24} color="#3b82f6" />
                             <AlertText style={{ color: '#1e40af' }}>
                                 Faça upgrade para um plano pago e desbloqueie todos os recursos sem limite de tempo!
                             </AlertText>
                         </Alert>
-                        <Button onClick={() => navigate('/subscription/setup')} style={{ background: '#10b981' }}>
+                        <Button onClick={() => navigate('/alterar-plano')} style={{ background: '#10b981' }}>
+                            <RefreshCw size={20} />
                             Ver Planos e Fazer Upgrade
                         </Button>
                     </Section>

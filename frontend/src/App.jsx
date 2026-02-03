@@ -15,6 +15,7 @@ import SubscriptionSetup from './pages/SubscriptionSetup';
 import SubscriptionCheckout from './pages/SubscriptionCheckout';
 import SubscriptionCallback from './pages/SubscriptionCallback';
 import MySubscription from './pages/MySubscription';
+import ChangePlan from './pages/ChangePlan';
 import ProfessionalProfile from './pages/ProfessionalProfile';
 import AdminTrials from './pages/AdminTrials';
 import MyNotifications from './pages/MyNotifications';
@@ -81,6 +82,8 @@ function App() {
           <Route path="/subscription/checkout" element={<SubscriptionCheckout />} />
           <Route path="/subscription/callback" element={<SubscriptionCallback />} />
           <Route path="/subscription/manage" element={<ProfessionalLayout><MySubscription /></ProfessionalLayout>} />
+          <Route path="/minha-assinatura" element={<ProfessionalLayout><MySubscription /></ProfessionalLayout>} />
+          <Route path="/alterar-plano" element={<ProfessionalLayout><ChangePlan /></ProfessionalLayout>} />
           <Route path="/profile" element={<ProfessionalLayout><ProfessionalProfile /></ProfessionalLayout>} />
           <Route path="/notifications" element={<SharedLayout><MyNotifications /></SharedLayout>} />
         </Routes>
