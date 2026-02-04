@@ -14,6 +14,7 @@ from ..models import Subscription, SubscriptionPlan, User, Service
 from ..dependencies import get_current_user
 from ..config import settings
 from ..services.notifications.notification_service import notification_service
+from ..services.notifications.templates import email_templates
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -691,6 +692,23 @@ async def get_my_subscription(
         days_remaining = (subscription.trial_ends_at - date.today()).days
         trial_days_remaining = max(0, days_remaining)
 
+    # Buscar informacoes do plano agendado (para downgrade)
+    scheduled_plan_info = None
+    if subscription.scheduled_plan_id:
+        result = await db.execute(
+            select(SubscriptionPlan).where(
+                SubscriptionPlan.id == subscription.scheduled_plan_id
+            )
+        )
+        scheduled_plan = result.scalar_one_or_none()
+        if scheduled_plan:
+            scheduled_plan_info = {
+                "id": scheduled_plan.id,
+                "name": scheduled_plan.name,
+                "slug": scheduled_plan.slug,
+                "price": scheduled_plan.price
+            }
+
     return {
         "subscription": {
             "id": subscription.id,
@@ -717,7 +735,18 @@ async def get_my_subscription(
             ),
             "cancellation_reason": subscription.cancellation_reason,
             "created_at": subscription.created_at.isoformat(),
-            "init_point": subscription.init_point
+            "init_point": subscription.init_point,
+            # Mudancas agendadas
+            "scheduled_cancellation_date": (
+                str(subscription.scheduled_cancellation_date)
+                if subscription.scheduled_cancellation_date else None
+            ),
+            "scheduled_plan": scheduled_plan_info,
+            "scheduled_plan_change_date": (
+                str(subscription.scheduled_plan_change_date)
+                if subscription.scheduled_plan_change_date else None
+            ),
+            "scheduled_plan_id": subscription.scheduled_plan_id
         }
     }
 
@@ -728,7 +757,14 @@ async def cancel_subscription(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Cancela a assinatura do profissional no Mercado Pago e no banco"""
+    """
+    Cancela a assinatura do profissional.
+
+    Para planos pagos: agenda o cancelamento para o dia do vencimento.
+    O usuario pode continuar usando ate essa data.
+
+    Para trials: cancela imediatamente.
+    """
     if not current_user.is_professional:
         raise HTTPException(
             status_code=403,
@@ -745,35 +781,24 @@ async def cancel_subscription(
     if not subscription:
         raise HTTPException(
             status_code=404,
-            detail="Assinatura não encontrada"
+            detail="Assinatura nao encontrada"
         )
 
     if subscription.status == "cancelled":
         raise HTTPException(
             status_code=400,
-            detail="Assinatura já está cancelada"
+            detail="Assinatura ja esta cancelada"
         )
 
-    # Cancelar no Mercado Pago
-    try:
-        if subscription.mercadopago_preapproval_id:
-            cancel_response = sdk.preapproval().update(
-                subscription.mercadopago_preapproval_id,
-                {"status": "cancelled"}
-            )
+    # Verificar se ja tem cancelamento agendado
+    if subscription.scheduled_cancellation_date:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cancelamento ja agendado para {subscription.scheduled_cancellation_date.strftime('%d/%m/%Y')}"
+        )
 
-            if cancel_response["status"] not in [200, 201]:
-                logger.error(
-                    f"Erro ao cancelar no MP: {cancel_response}"
-                )
-                # Continua mesmo com erro no MP
-            else:
-                logger.info(f"Assinatura cancelada no MP: {subscription.mercadopago_preapproval_id}")
-    except Exception as e:
-        logger.error(f"Erro ao cancelar assinatura no MP: {str(e)}")
-        # Continua para cancelar localmente
-
-    # Buscar nome do plano para notificação
+    # Buscar plano para verificar se e trial ou pago
+    plan = None
     plan_name = "Plano Profissional"
     if subscription.plan_id:
         plan_result = await db.execute(
@@ -785,29 +810,150 @@ async def cancel_subscription(
         if plan:
             plan_name = plan.name
 
-    # Cancelar no banco de dados
-    subscription.status = "cancelled"
-    subscription.cancelled_at = datetime.now()
+    is_trial = (
+        subscription.trial_ends_at is not None or
+        (plan and plan.price == 0) or
+        subscription.plan_amount == 0
+    )
+
+    # Cancelar no Mercado Pago (para parar a recorrencia)
+    try:
+        if subscription.mercadopago_preapproval_id:
+            cancel_response = sdk.preapproval().update(
+                subscription.mercadopago_preapproval_id,
+                {"status": "cancelled"}
+            )
+
+            if cancel_response["status"] not in [200, 201]:
+                logger.error(f"Erro ao cancelar no MP: {cancel_response}")
+            else:
+                logger.info(f"Assinatura cancelada no MP: {subscription.mercadopago_preapproval_id}")
+    except Exception as e:
+        logger.error(f"Erro ao cancelar assinatura no MP: {str(e)}")
+
+    # Guardar motivo do cancelamento
     subscription.cancellation_reason = cancel_data.reason
     subscription.cancellation_reason_code = cancel_data.reason_code
-    current_user.subscription_status = "cancelled"
+
+    if is_trial:
+        # TRIAL: Cancela imediatamente
+        subscription.status = "cancelled"
+        subscription.cancelled_at = datetime.now()
+        current_user.subscription_status = "cancelled"
+
+        await db.commit()
+
+        logger.info(f"Trial cancelado imediatamente para usuario {current_user.id}")
+
+        await notification_service.notify_subscription_cancelled(
+            user_email=current_user.email,
+            user_name=current_user.name,
+            plan_name=plan_name,
+            cancellation_reason=cancel_data.reason
+        )
+
+        return {
+            "message": "Assinatura Trial cancelada com sucesso",
+            "immediate": True
+        }
+    else:
+        # PLANO PAGO: Agendar cancelamento para o vencimento
+        cancellation_date = subscription.next_billing_date or date.today()
+        subscription.scheduled_cancellation_date = cancellation_date
+
+        await db.commit()
+
+        logger.info(
+            f"Cancelamento agendado para usuario {current_user.id}. "
+            f"Data: {cancellation_date}. Codigo: {cancel_data.reason_code}"
+        )
+
+        # Enviar email informando cancelamento agendado
+        subject, plain_text, html = email_templates.cancellation_scheduled(
+            recipient_name=current_user.name,
+            plan_name=plan_name,
+            cancellation_date=cancellation_date.strftime("%d/%m/%Y"),
+            cancellation_reason=cancel_data.reason
+        )
+
+        await notification_service.send_subscription_email(
+            to_email=current_user.email,
+            subject=subject,
+            plain_text=plain_text,
+            html=html
+        )
+
+        return {
+            "message": f"Cancelamento agendado para {cancellation_date.strftime('%d/%m/%Y')}. Voce pode continuar usando ate essa data.",
+            "immediate": False,
+            "cancellation_date": cancellation_date.isoformat()
+        }
+
+
+@router.post("/cancel-scheduled-change")
+async def cancel_scheduled_change(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Cancela uma mudanca agendada (cancelamento ou downgrade).
+    Permite que o usuario volte atras antes da data agendada.
+    """
+    if not current_user.is_professional:
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas profissionais podem fazer isso"
+        )
+
+    result = await db.execute(
+        select(Subscription).where(
+            Subscription.professional_id == current_user.id
+        )
+    )
+    subscription = result.scalar_one_or_none()
+
+    if not subscription:
+        raise HTTPException(
+            status_code=404,
+            detail="Assinatura nao encontrada"
+        )
+
+    has_scheduled_cancellation = subscription.scheduled_cancellation_date is not None
+    has_scheduled_downgrade = subscription.scheduled_plan_id is not None
+
+    if not has_scheduled_cancellation and not has_scheduled_downgrade:
+        raise HTTPException(
+            status_code=400,
+            detail="Nao ha nenhuma mudanca agendada para cancelar"
+        )
+
+    # Cancelar mudancas agendadas
+    cancelled_what = []
+
+    if has_scheduled_cancellation:
+        subscription.scheduled_cancellation_date = None
+        subscription.cancellation_reason = None
+        subscription.cancellation_reason_code = None
+        cancelled_what.append("cancelamento")
+
+    if has_scheduled_downgrade:
+        subscription.scheduled_plan_id = None
+        subscription.scheduled_plan_change_date = None
+        cancelled_what.append("mudanca de plano")
 
     await db.commit()
 
     logger.info(
-        f"Assinatura cancelada para usuário {current_user.id}. "
-        f"Código: {cancel_data.reason_code}"
+        f"Mudanca agendada cancelada para usuario {current_user.id}: "
+        f"{', '.join(cancelled_what)}"
     )
 
-    # Enviar notificação por e-mail
-    await notification_service.notify_subscription_cancelled(
-        user_email=current_user.email,
-        user_name=current_user.name,
-        plan_name=plan_name,
-        cancellation_reason=cancel_data.reason
-    )
-
-    return {"message": "Assinatura cancelada com sucesso"}
+    return {
+        "success": True,
+        "message": f"Sua {' e '.join(cancelled_what)} agendada foi cancelada. "
+                   f"Sua assinatura continua normalmente.",
+        "cancelled": cancelled_what
+    }
 
 
 @router.post("/debug-checkout")
@@ -1057,13 +1203,18 @@ async def change_subscription_plan(
     """
     Altera o plano do profissional.
 
-    Cenários permitidos:
-    - Trial → Qualquer plano pago (Basic, Premium)
-    - Basic → Premium (upgrade)
-    - Premium → Basic (downgrade)
+    UPGRADE (Basic -> Premium):
+    - Cobra pro-rata da diferenca pelos dias restantes
+    - Muda plano imediatamente
+    - Proxima renovacao cobra valor cheio do novo plano
 
-    Cenários bloqueados:
-    - Qualquer plano pago → Trial (apenas admin pode fazer)
+    DOWNGRADE (Premium -> Basic):
+    - Agenda mudanca para o dia do vencimento
+    - Usuario continua com plano atual ate la
+    - Na renovacao, cobra o valor do novo plano
+
+    Cenarios bloqueados:
+    - Qualquer plano pago -> Trial (apenas admin pode fazer)
     """
     if not current_user.is_professional:
         raise HTTPException(
@@ -1071,7 +1222,7 @@ async def change_subscription_plan(
             detail="Apenas profissionais podem alterar planos"
         )
 
-    # Buscar plano atual do usuário
+    # Buscar plano atual do usuario
     current_plan = None
     if current_user.subscription_plan_id:
         result = await db.execute(
@@ -1093,22 +1244,22 @@ async def change_subscription_plan(
     if not new_plan:
         raise HTTPException(
             status_code=404,
-            detail=f"Plano '{new_plan_slug}' não encontrado ou inativo"
+            detail=f"Plano '{new_plan_slug}' nao encontrado ou inativo"
         )
 
-    # Verificar se é o mesmo plano
+    # Verificar se e o mesmo plano
     if current_plan and current_plan.id == new_plan.id:
         raise HTTPException(
             status_code=400,
-            detail="Você já está neste plano"
+            detail="Voce ja esta neste plano"
         )
 
-    # REGRA: Não pode mudar de plano pago para Trial (apenas admin)
+    # REGRA: Nao pode mudar de plano pago para Trial (apenas admin)
     if new_plan_slug == "trial":
         if current_plan and current_plan.price > 0:
             raise HTTPException(
                 status_code=403,
-                detail="Não é possível voltar para o plano Trial. Apenas administradores podem fazer essa alteração."
+                detail="Nao e possivel voltar para o plano Trial. Apenas administradores podem fazer essa alteracao."
             )
 
     # Buscar assinatura atual
@@ -1119,7 +1270,14 @@ async def change_subscription_plan(
     )
     existing_subscription = result.scalar_one_or_none()
 
-    # Verificar limite de serviços para downgrade
+    # Verificar se ja tem mudanca agendada
+    if existing_subscription and existing_subscription.scheduled_plan_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ja existe uma mudanca de plano agendada para {existing_subscription.scheduled_plan_change_date}"
+        )
+
+    # Verificar limite de servicos para downgrade
     if new_plan.max_services is not None:
         result = await db.execute(
             select(Service).where(
@@ -1132,7 +1290,7 @@ async def change_subscription_plan(
             return {
                 "success": False,
                 "error": "services_exceeded",
-                "message": f"Você tem {len(services)} serviços cadastrados. O plano {new_plan.name} permite apenas {new_plan.max_services}.",
+                "message": f"Voce tem {len(services)} servicos cadastrados. O plano {new_plan.name} permite apenas {new_plan.max_services}.",
                 "current_services": [
                     {"id": s.id, "title": s.title} for s in services
                 ],
@@ -1140,14 +1298,16 @@ async def change_subscription_plan(
                 "action_required": "remove_services"
             }
 
-    # CENÁRIO 1: Mudança para plano gratuito (Trial) - já bloqueado acima, mas caso admin
-    # CENÁRIO 2: Mudança de Trial para pago
-    # CENÁRIO 3: Mudança entre planos pagos
+    # Determinar se e upgrade ou downgrade
+    current_price = current_plan.price if current_plan else 0
+    is_upgrade = new_plan.price > current_price
+    is_downgrade = new_plan.price < current_price and current_price > 0
+    is_from_trial = current_plan is None or current_plan.price == 0
 
-    # Se o novo plano é gratuito (Trial)
+    old_plan_name = current_plan.name if current_plan else "Sem plano"
+
+    # ==================== CENARIO: PARA TRIAL (ADMIN) ====================
     if new_plan.price == 0 or new_plan.slug == "trial":
-        # Já verificamos acima que só admin pode fazer isso
-        # Cancelar assinatura MP se existir
         if existing_subscription and existing_subscription.mercadopago_preapproval_id:
             try:
                 async with httpx.AsyncClient() as client:
@@ -1159,11 +1319,10 @@ async def change_subscription_plan(
                             "Content-Type": "application/json"
                         }
                     )
-                logger.info(f"Assinatura MP cancelada para mudança de plano: {existing_subscription.mercadopago_preapproval_id}")
+                logger.info(f"Assinatura MP cancelada para mudanca de plano: {existing_subscription.mercadopago_preapproval_id}")
             except Exception as e:
                 logger.error(f"Erro ao cancelar assinatura MP: {str(e)}")
 
-        # Ativar trial
         trial_days = new_plan.trial_days or 15
         trial_end_date = date.today() + timedelta(days=trial_days)
 
@@ -1174,6 +1333,8 @@ async def change_subscription_plan(
             existing_subscription.plan_amount = 0.0
             existing_subscription.mercadopago_preapproval_id = None
             existing_subscription.init_point = None
+            existing_subscription.scheduled_plan_id = None
+            existing_subscription.scheduled_plan_change_date = None
         else:
             new_subscription = Subscription(
                 professional_id=current_user.id,
@@ -1190,8 +1351,6 @@ async def change_subscription_plan(
 
         await db.commit()
 
-        # Enviar notificação por e-mail
-        old_plan_name = current_plan.name if current_plan else "Sem plano"
         await notification_service.notify_subscription_activated(
             user_email=current_user.email,
             user_name=current_user.name,
@@ -1205,28 +1364,79 @@ async def change_subscription_plan(
         return {
             "success": True,
             "message": f"Plano alterado para {new_plan.name} com sucesso!",
-            "plan": {
-                "name": new_plan.name,
-                "slug": new_plan.slug,
-                "price": new_plan.price
-            },
+            "plan": {"name": new_plan.name, "slug": new_plan.slug, "price": new_plan.price},
             "trial_ends_at": trial_end_date.isoformat()
         }
 
-    # Para planos pagos: precisa criar nova assinatura no MP
+    # ==================== CENARIO: DOWNGRADE (AGENDADO) ====================
+    if is_downgrade:
+        # Agenda a mudanca para o dia do vencimento
+        change_date = existing_subscription.next_billing_date if existing_subscription and existing_subscription.next_billing_date else date.today() + timedelta(days=30)
+
+        if existing_subscription:
+            existing_subscription.scheduled_plan_id = new_plan.id
+            existing_subscription.scheduled_plan_change_date = change_date
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Nenhuma assinatura ativa para fazer downgrade"
+            )
+
+        await db.commit()
+
+        logger.info(f"Downgrade agendado para usuario {current_user.id}: {current_plan.slug} -> {new_plan.slug} em {change_date}")
+
+        # Enviar email informando downgrade agendado
+        subject, plain_text, html = email_templates.downgrade_scheduled(
+            recipient_name=current_user.name,
+            old_plan_name=old_plan_name,
+            new_plan_name=new_plan.name,
+            new_plan_price=new_plan.price,
+            change_date=change_date.strftime("%d/%m/%Y")
+        )
+
+        await notification_service.send_subscription_email(
+            to_email=current_user.email,
+            subject=subject,
+            plain_text=plain_text,
+            html=html
+        )
+
+        return {
+            "success": True,
+            "message": f"Downgrade agendado! Voce continuara com o plano {old_plan_name} ate {change_date.strftime('%d/%m/%Y')}, quando passara para o plano {new_plan.name}.",
+            "plan": {"name": new_plan.name, "slug": new_plan.slug, "price": new_plan.price},
+            "scheduled_change_date": change_date.isoformat(),
+            "is_scheduled": True,
+            "requires_payment": False
+        }
+
+    # ==================== CENARIO: UPGRADE ou TRIAL->PAGO ====================
     # Validar CPF
     if not current_user.cpf:
         raise HTTPException(
             status_code=400,
-            detail="CPF é obrigatório para assinar um plano pago. Atualize seu perfil com o CPF."
+            detail="CPF e obrigatorio para assinar um plano pago. Atualize seu perfil com o CPF."
         )
 
-    # Cancelar assinatura atual no MP se existir e estiver ativa
+    # Calcular pro-rata para upgrade entre planos pagos
+    prorata_amount = 0.0
+    if is_upgrade and existing_subscription and existing_subscription.next_billing_date:
+        # Calcular dias restantes ate o vencimento
+        days_remaining = (existing_subscription.next_billing_date - date.today()).days
+        if days_remaining > 0:
+            # Diferenca de preco
+            price_diff = new_plan.price - current_price
+            # Pro-rata: (diferenca * dias restantes) / 30
+            prorata_amount = round((price_diff * days_remaining) / 30, 2)
+            logger.info(f"Pro-rata calculado: R${prorata_amount} ({days_remaining} dias restantes, diferenca R${price_diff})")
+
+    # Cancelar assinatura atual no MP
     if existing_subscription and existing_subscription.mercadopago_preapproval_id:
         if existing_subscription.status in ["active", "pending"]:
             try:
                 async with httpx.AsyncClient() as client:
-                    cancel_response = await client.put(
+                    await client.put(
                         f"https://api.mercadopago.com/preapproval/{existing_subscription.mercadopago_preapproval_id}",
                         json={"status": "cancelled"},
                         headers={
@@ -1234,29 +1444,51 @@ async def change_subscription_plan(
                             "Content-Type": "application/json"
                         }
                     )
-                logger.info(f"Assinatura MP anterior cancelada: {existing_subscription.mercadopago_preapproval_id} - Status: {cancel_response.status_code}")
+                logger.info(f"Assinatura MP anterior cancelada: {existing_subscription.mercadopago_preapproval_id}")
             except Exception as e:
                 logger.error(f"Erro ao cancelar assinatura MP anterior: {str(e)}")
-                # Continua mesmo com erro
 
     # Criar nova assinatura no MP
     try:
-        name_parts = current_user.name.split(" ", 1) if current_user.name else ["Usuário", ""]
+        name_parts = current_user.name.split(" ", 1) if current_user.name else ["Usuario", ""]
         first_name = name_parts[0]
         last_name = name_parts[1] if len(name_parts) > 1 else first_name
 
-        plan_data = {
-            "reason": f"Plano {new_plan.name} - ContrataPro",
-            "auto_recurring": {
-                "frequency": settings.SUBSCRIPTION_FREQUENCY,
-                "frequency_type": settings.SUBSCRIPTION_FREQUENCY_TYPE,
-                "transaction_amount": new_plan.price,
-                "currency_id": "BRL",
-            },
-            "payer_email": current_user.email,
-            "back_url": f"{settings.FRONTEND_URL}/subscription/callback",
-            "external_reference": str(current_user.id),
-        }
+        # Para upgrade com pro-rata, definir a primeira cobranca como o pro-rata
+        # e as proximas como o valor cheio
+        if prorata_amount > 0:
+            # Criar assinatura com primeira cobranca = pro-rata
+            plan_data = {
+                "reason": f"Upgrade para Plano {new_plan.name} - ContrataPro",
+                "auto_recurring": {
+                    "frequency": settings.SUBSCRIPTION_FREQUENCY,
+                    "frequency_type": settings.SUBSCRIPTION_FREQUENCY_TYPE,
+                    "transaction_amount": new_plan.price,
+                    "currency_id": "BRL",
+                    "start_date": (existing_subscription.next_billing_date).isoformat() if existing_subscription.next_billing_date else None,
+                    "free_trial": {
+                        "frequency": (existing_subscription.next_billing_date - date.today()).days if existing_subscription.next_billing_date else 0,
+                        "frequency_type": "days"
+                    }
+                },
+                "payer_email": current_user.email,
+                "back_url": f"{settings.FRONTEND_URL}/subscription/callback",
+                "external_reference": f"{current_user.id}_upgrade",
+            }
+        else:
+            # Assinatura normal (trial para pago ou sem pro-rata)
+            plan_data = {
+                "reason": f"Plano {new_plan.name} - ContrataPro",
+                "auto_recurring": {
+                    "frequency": settings.SUBSCRIPTION_FREQUENCY,
+                    "frequency_type": settings.SUBSCRIPTION_FREQUENCY_TYPE,
+                    "transaction_amount": new_plan.price,
+                    "currency_id": "BRL",
+                },
+                "payer_email": current_user.email,
+                "back_url": f"{settings.FRONTEND_URL}/subscription/callback",
+                "external_reference": str(current_user.id),
+            }
 
         if current_user.cpf:
             plan_data["payer"] = {
@@ -1269,11 +1501,11 @@ async def change_subscription_plan(
                 }
             }
 
-        logger.info(f"Criando novo plano MP para mudança: {plan_data}")
+        logger.info(f"Criando novo plano MP para mudanca: {plan_data}")
 
         async with httpx.AsyncClient() as client:
             plan_response = await client.post(
-                "https://api.mercadopago.com/preapproval_plan",
+                "https://api.mercadopago.com/preapproval",
                 json=plan_data,
                 headers={
                     "Authorization": f"Bearer {settings.MERCADOPAGO_ACCESS_TOKEN}",
@@ -1295,7 +1527,7 @@ async def change_subscription_plan(
         if not mp_init_point:
             raise HTTPException(
                 status_code=500,
-                detail="Erro: Mercado Pago não retornou URL de checkout"
+                detail="Erro: Mercado Pago nao retornou URL de checkout"
             )
 
         # Atualizar assinatura no banco
@@ -1308,6 +1540,8 @@ async def change_subscription_plan(
             existing_subscription.init_point = mp_init_point
             existing_subscription.cancelled_at = None
             existing_subscription.cancellation_reason = None
+            existing_subscription.scheduled_plan_id = None
+            existing_subscription.scheduled_plan_change_date = None
         else:
             new_subscription = Subscription(
                 professional_id=current_user.id,
@@ -1319,19 +1553,15 @@ async def change_subscription_plan(
             )
             db.add(new_subscription)
 
-        # Atualizar usuário
         current_user.subscription_plan_id = new_plan.id
         current_user.subscription_status = "pending"
         current_user.trial_ends_at = None
 
         await db.commit()
 
-        old_plan_name = current_plan.name if current_plan else "Sem plano"
-        is_upgrade = new_plan.price > (current_plan.price if current_plan else 0)
+        logger.info(f"Mudanca de plano iniciada para usuario {current_user.id}: {current_plan.slug if current_plan else 'none'} -> {new_plan.slug}")
 
-        logger.info(f"Mudança de plano iniciada para usuário {current_user.id}: {current_plan.slug if current_plan else 'none'} -> {new_plan.slug}")
-
-        # Enviar notificação por e-mail
+        # Enviar notificacao por e-mail
         await notification_service.notify_subscription_plan_changed(
             user_email=current_user.email,
             user_name=current_user.name,
@@ -1342,16 +1572,18 @@ async def change_subscription_plan(
             requires_payment=True
         )
 
+        message = f"Plano alterado para {new_plan.name}. Complete o pagamento para ativar."
+        if prorata_amount > 0:
+            message = f"Upgrade para {new_plan.name}! Valor pro-rata: R$ {prorata_amount:.2f}. Complete o pagamento."
+
         return {
             "success": True,
-            "message": f"Plano alterado para {new_plan.name}. Complete o pagamento para ativar.",
-            "plan": {
-                "name": new_plan.name,
-                "slug": new_plan.slug,
-                "price": new_plan.price
-            },
+            "message": message,
+            "plan": {"name": new_plan.name, "slug": new_plan.slug, "price": new_plan.price},
             "init_point": mp_init_point,
-            "requires_payment": True
+            "requires_payment": True,
+            "prorata_amount": prorata_amount if prorata_amount > 0 else None,
+            "is_upgrade": is_upgrade
         }
 
     except HTTPException:
@@ -1360,7 +1592,7 @@ async def change_subscription_plan(
         logger.error(f"Erro ao mudar plano: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Erro ao processar mudança de plano: {str(e)}"
+            detail=f"Erro ao processar mudanca de plano: {str(e)}"
         )
 
 

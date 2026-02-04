@@ -3,16 +3,24 @@
 import logging
 import sys
 import uvicorn
+import asyncio
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+import pytz
 from .database import engine, Base
 from .routers import (
     users, services, appointments, subscriptions,
     auth, schedule, categories, admin, cep, health, plans, notifications
 )
+from .services.subscription_jobs import subscription_jobs
+
+# Scheduler global
+scheduler = AsyncIOScheduler()
 
 # Configurar logging para stdout (Railway)
 logging.basicConfig(
@@ -26,20 +34,36 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Gerencia o ciclo de vida da aplicação.
-    Cria as tabelas do banco de dados na inicialização.
+    Gerencia o ciclo de vida da aplicacao.
+    Cria as tabelas do banco de dados na inicializacao.
+    Inicia o scheduler de jobs.
     """
     # Startup: Criar tabelas
-    print("🚀 Iniciando aplicação...")
-    print("📊 Criando tabelas do banco de dados...")
+    print("Iniciando aplicacao...")
+    print("Criando tabelas do banco de dados...")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print("✅ Tabelas criadas com sucesso!")
+    print("Tabelas criadas com sucesso!")
+
+    # Iniciar scheduler de jobs
+    print("Configurando scheduler de jobs...")
+    brasilia_tz = pytz.timezone('America/Sao_Paulo')
+    scheduler.add_job(
+        subscription_jobs.run_daily_subscription_jobs,
+        CronTrigger(hour=0, minute=30, timezone=brasilia_tz),
+        id="daily_subscription_jobs",
+        name="Jobs diarios de assinatura",
+        replace_existing=True
+    )
+    scheduler.start()
+    print("Scheduler iniciado! Jobs diarios agendados para 00:30 (Brasilia)")
 
     yield
 
-    # Shutdown: Cleanup (se necessário)
-    print("👋 Encerrando aplicação...")
+    # Shutdown: Parar scheduler
+    print("Encerrando scheduler...")
+    scheduler.shutdown()
+    print("Encerrando aplicacao...")
 
 
 app = FastAPI(

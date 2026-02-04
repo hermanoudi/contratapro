@@ -492,6 +492,31 @@ export default function MySubscription() {
         }
     };
 
+    const handleCancelScheduledChange = async () => {
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch(`${API_URL}/subscriptions/cancel-scheduled-change`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                toast.success(data.message);
+                fetchSubscription();
+            } else {
+                const error = await res.json();
+                toast.error(error.detail || 'Erro ao cancelar mudanca agendada');
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            toast.error('Erro ao processar');
+        }
+    };
+
     const formatDate = (dateString) => {
         if (!dateString) return 'Não definida';
         const date = new Date(dateString);
@@ -680,6 +705,41 @@ export default function MySubscription() {
                     </Section>
                 )}
 
+                {/* Mudancas Agendadas */}
+                {subscription && (subscription.scheduled_cancellation_date || subscription.scheduled_plan) && (
+                    <Section>
+                        <SectionTitle>Mudancas Agendadas</SectionTitle>
+                        {subscription.scheduled_cancellation_date && (
+                            <Alert style={{ background: 'rgba(239, 68, 68, 0.1)', border: '2px solid rgba(239, 68, 68, 0.3)' }}>
+                                <AlertCircle size={24} color="#ef4444" />
+                                <AlertText>
+                                    <strong>Cancelamento agendado:</strong> Sua assinatura sera cancelada em{' '}
+                                    <strong>{formatDate(subscription.scheduled_cancellation_date)}</strong>.
+                                    Voce pode continuar usando todos os recursos ate essa data.
+                                </AlertText>
+                            </Alert>
+                        )}
+                        {subscription.scheduled_plan && (
+                            <Alert style={{ background: 'rgba(251, 146, 60, 0.1)', border: '2px solid rgba(251, 146, 60, 0.3)' }}>
+                                <AlertCircle size={24} color="#f59e0b" />
+                                <AlertText>
+                                    <strong>Downgrade agendado:</strong> Seu plano sera alterado para{' '}
+                                    <strong>{subscription.scheduled_plan.name}</strong> em{' '}
+                                    <strong>{formatDate(subscription.scheduled_plan_change_date)}</strong>.
+                                    Ate la, voce continua com todos os recursos do plano atual.
+                                </AlertText>
+                            </Alert>
+                        )}
+                        <Button
+                            onClick={handleCancelScheduledChange}
+                            style={{ background: '#6366f1', marginTop: '1rem' }}
+                        >
+                            <XCircle size={20} />
+                            Cancelar Mudanca Agendada
+                        </Button>
+                    </Section>
+                )}
+
                 {/* Gerenciar Assinatura - Para planos pagos ativos ou pendentes */}
                 {!isTrial && subscription && ['active', 'pending'].includes(subscription.status) && (
                     <Section>
@@ -717,9 +777,9 @@ export default function MySubscription() {
                             <Alert>
                                 <AlertCircle size={24} />
                                 <AlertText>
-                                    <strong>Atenção:</strong> Ao cancelar sua assinatura, você não aparecerá mais nas buscas
-                                    e não poderá receber novas solicitações de clientes. A cobrança recorrente será interrompida
-                                    imediatamente no Mercado Pago.
+                                    <strong>Atencao:</strong> Ao solicitar o cancelamento, voce podera continuar
+                                    usando o sistema ate o dia do vencimento da sua assinatura. A cobranca recorrente
+                                    sera interrompida no Mercado Pago e o cancelamento sera efetivado na data de renovacao.
                                 </AlertText>
                             </Alert>
                         )}

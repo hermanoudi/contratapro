@@ -147,17 +147,33 @@ class Subscription(Base):
     
     # NOVO: Data de expiração do trial (15 dias)
     trial_ends_at = Column(Date, nullable=True)
-    
+
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
     cancellation_reason = Column(Text, nullable=True)  # Motivo do cancelamento
     cancellation_reason_code = Column(String(50), nullable=True)  # Código do motivo para analytics
+
+    # Cancelamento agendado (usuário pode usar até vencimento)
+    scheduled_cancellation_date = Column(Date, nullable=True)  # Data em que cancelamento será efetivado
+
+    # Mudança de plano agendada (para downgrades)
+    scheduled_plan_id = Column(Integer, ForeignKey("subscription_plans.id"), nullable=True)
+    scheduled_plan_change_date = Column(Date, nullable=True)  # Data em que mudança será efetivada
+
+    # Controle de falhas de pagamento
+    payment_failure_count = Column(Integer, default=0)  # Contador de falhas consecutivas
+    last_payment_failure_date = Column(Date, nullable=True)  # Data da última falha
+    grace_period_ends_at = Column(Date, nullable=True)  # Fim do período de tolerância (7 dias)
+
+    # Notificação de renovação enviada
+    renewal_reminder_sent_at = Column(Date, nullable=True)  # Quando enviou aviso de 7 dias
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relacionamentos
     professional = relationship("User", back_populates="subscription")
-    plan = relationship("SubscriptionPlan", back_populates="subscriptions")
+    plan = relationship("SubscriptionPlan", back_populates="subscriptions", foreign_keys=[plan_id])
+    scheduled_plan = relationship("SubscriptionPlan", foreign_keys=[scheduled_plan_id])
 
 
 class Notification(Base):
