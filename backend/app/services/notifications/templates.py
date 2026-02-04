@@ -383,4 +383,258 @@ Equipe ContrataPro
         return subject, plain_text, EmailTemplates._base_template(html_content)
 
 
+    # ==================== TEMPLATES DE ASSINATURA ====================
+
+    @staticmethod
+    def subscription_activated(
+        recipient_name: str,
+        plan_name: str,
+        plan_price: float,
+        is_trial: bool = False,
+        trial_days: int = None,
+        trial_end_date: str = None
+    ) -> Tuple[str, str, str]:
+        """
+        Template para assinatura ativada (trial ou paga).
+
+        Returns:
+            tuple: (subject, plain_text, html)
+        """
+        if is_trial:
+            subject = f"Bem-vindo ao ContrataPro! Seu Trial foi ativado"
+            price_text = "Gratis"
+            extra_info = f"Voce tem {trial_days} dias para experimentar todos os recursos. Seu trial expira em {trial_end_date}."
+            status_class = "status-completed"
+        else:
+            subject = f"Assinatura Ativada - Plano {plan_name}"
+            price_text = f"R$ {plan_price:.2f}/mes".replace('.', ',')
+            extra_info = "Sua assinatura esta ativa e voce ja pode comecar a receber solicitacoes de clientes!"
+            status_class = "status-completed"
+
+        plain_text = f"""
+Ola {recipient_name},
+
+Parabens! Sua assinatura foi ativada com sucesso!
+
+Plano: {plan_name}
+Valor: {price_text}
+
+{extra_info}
+
+Acesse o ContrataPro para configurar seu perfil e comecar a receber clientes.
+
+Atenciosamente,
+Equipe ContrataPro
+"""
+
+        html_content = f"""
+        <div class="content">
+            <h2>Ola {recipient_name},</h2>
+            <p class="{status_class}">Parabens! Sua assinatura foi ativada com sucesso!</p>
+
+            <div class="info-box">
+                <div class="info-item">
+                    <span class="info-label">Plano:</span>
+                    <span class="info-value">{plan_name}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Valor:</span>
+                    <span class="info-value">{price_text}</span>
+                </div>
+            </div>
+
+            <p>{extra_info}</p>
+
+            <a href="https://contratapro.com.br/dashboard" class="button">Acessar Dashboard</a>
+        </div>
+"""
+
+        return subject, plain_text, EmailTemplates._base_template(html_content)
+
+    @staticmethod
+    def subscription_cancelled(
+        recipient_name: str,
+        plan_name: str,
+        cancellation_reason: str = None
+    ) -> Tuple[str, str, str]:
+        """
+        Template para assinatura cancelada.
+
+        Returns:
+            tuple: (subject, plain_text, html)
+        """
+        subject = "Assinatura Cancelada - ContrataPro"
+
+        reason_text = f"\nMotivo informado: {cancellation_reason}" if cancellation_reason else ""
+
+        plain_text = f"""
+Ola {recipient_name},
+
+Sua assinatura do plano {plan_name} foi cancelada.{reason_text}
+
+Sentiremos sua falta! Seu perfil nao aparecera mais nas buscas e voce nao recebera novas solicitacoes de clientes.
+
+Se mudar de ideia, voce pode reativar sua assinatura a qualquer momento acessando o ContrataPro.
+
+Atenciosamente,
+Equipe ContrataPro
+"""
+
+        reason_html = f"""
+                <div class="info-item">
+                    <span class="info-label">Motivo:</span>
+                    <span class="info-value">{cancellation_reason}</span>
+                </div>
+""" if cancellation_reason else ""
+
+        html_content = f"""
+        <div class="content">
+            <h2>Ola {recipient_name},</h2>
+            <p class="status-cancelled">Sua assinatura foi cancelada.</p>
+
+            <div class="info-box">
+                <div class="info-item">
+                    <span class="info-label">Plano:</span>
+                    <span class="info-value">{plan_name}</span>
+                </div>{reason_html}
+            </div>
+
+            <p>Sentiremos sua falta! Seu perfil nao aparecera mais nas buscas e voce nao recebera novas solicitacoes de clientes.</p>
+
+            <p>Se mudar de ideia, voce pode reativar sua assinatura a qualquer momento.</p>
+
+            <a href="https://contratapro.com.br/subscription/setup" class="button">Reativar Assinatura</a>
+        </div>
+"""
+
+        return subject, plain_text, EmailTemplates._base_template(html_content)
+
+    @staticmethod
+    def subscription_plan_changed(
+        recipient_name: str,
+        old_plan_name: str,
+        new_plan_name: str,
+        new_plan_price: float,
+        is_upgrade: bool,
+        requires_payment: bool = False
+    ) -> Tuple[str, str, str]:
+        """
+        Template para mudanca de plano (upgrade/downgrade).
+
+        Returns:
+            tuple: (subject, plain_text, html)
+        """
+        change_type = "Upgrade" if is_upgrade else "Downgrade"
+        subject = f"{change_type} de Plano - {new_plan_name}"
+
+        price_text = f"R$ {new_plan_price:.2f}/mes".replace('.', ',') if new_plan_price > 0 else "Gratis"
+
+        if requires_payment:
+            action_text = "Complete o pagamento para ativar seu novo plano."
+            button_text = "Completar Pagamento"
+            button_url = "https://contratapro.com.br/minha-assinatura"
+        else:
+            action_text = "Seu novo plano ja esta ativo!"
+            button_text = "Acessar Dashboard"
+            button_url = "https://contratapro.com.br/dashboard"
+
+        plain_text = f"""
+Ola {recipient_name},
+
+Seu plano foi alterado com sucesso!
+
+Plano anterior: {old_plan_name}
+Novo plano: {new_plan_name}
+Valor: {price_text}
+
+{action_text}
+
+Atenciosamente,
+Equipe ContrataPro
+"""
+
+        status_class = "status-completed" if is_upgrade else "status-updated"
+
+        html_content = f"""
+        <div class="content">
+            <h2>Ola {recipient_name},</h2>
+            <p class="{status_class}">Seu plano foi alterado com sucesso!</p>
+
+            <div class="info-box">
+                <div class="info-item">
+                    <span class="info-label">Plano anterior:</span>
+                    <span class="info-value">{old_plan_name}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Novo plano:</span>
+                    <span class="info-value" style="font-weight: bold; color: #6366f1;">{new_plan_name}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Valor:</span>
+                    <span class="info-value">{price_text}</span>
+                </div>
+            </div>
+
+            <p>{action_text}</p>
+
+            <a href="{button_url}" class="button">{button_text}</a>
+        </div>
+"""
+
+        return subject, plain_text, EmailTemplates._base_template(html_content)
+
+    @staticmethod
+    def trial_expiring_soon(
+        recipient_name: str,
+        days_remaining: int,
+        expiration_date: str
+    ) -> Tuple[str, str, str]:
+        """
+        Template para aviso de trial expirando.
+
+        Returns:
+            tuple: (subject, plain_text, html)
+        """
+        subject = f"Seu trial expira em {days_remaining} dias - ContrataPro"
+
+        plain_text = f"""
+Ola {recipient_name},
+
+Seu periodo de trial no ContrataPro expira em {days_remaining} dias ({expiration_date}).
+
+Para continuar recebendo solicitacoes de clientes e manter seu perfil visivel, faca upgrade para um plano pago.
+
+Nao perca suas conexoes com clientes! Faca upgrade agora.
+
+Atenciosamente,
+Equipe ContrataPro
+"""
+
+        html_content = f"""
+        <div class="content">
+            <h2>Ola {recipient_name},</h2>
+            <p class="status-updated">Seu periodo de trial esta acabando!</p>
+
+            <div class="info-box">
+                <div class="info-item">
+                    <span class="info-label">Dias restantes:</span>
+                    <span class="info-value" style="font-weight: bold; color: #f59e0b;">{days_remaining} dias</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Expira em:</span>
+                    <span class="info-value">{expiration_date}</span>
+                </div>
+            </div>
+
+            <p>Para continuar recebendo solicitacoes de clientes e manter seu perfil visivel, faca upgrade para um plano pago.</p>
+
+            <p><strong>Nao perca suas conexoes com clientes!</strong></p>
+
+            <a href="https://contratapro.com.br/alterar-plano" class="button">Fazer Upgrade Agora</a>
+        </div>
+"""
+
+        return subject, plain_text, EmailTemplates._base_template(html_content)
+
+
 email_templates = EmailTemplates()

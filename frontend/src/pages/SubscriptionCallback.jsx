@@ -110,14 +110,10 @@ export default function SubscriptionCallback() {
         // Parâmetros do Mercado Pago
         const collection_status = searchParams.get('collection_status');
         const status_param = searchParams.get('status');
+        const preapproval_id = searchParams.get('preapproval_id');
 
-        // Determinar status baseado nos parâmetros
-        if (collection_status === 'approved' || status_param === 'approved') {
-            setStatus('success');
-            setMessage('Pagamento aprovado! Sua assinatura está sendo ativada. Aguarde alguns instantes...');
-            toast.success('Pagamento aprovado!');
-
-            // Verificar status várias vezes até confirmar ativação
+        // Função para iniciar polling de verificação
+        const startPolling = () => {
             let attempts = 0;
             const maxAttempts = 10;
             const checkInterval = setInterval(async () => {
@@ -127,22 +123,42 @@ export default function SubscriptionCallback() {
                 if (isActive || attempts >= maxAttempts) {
                     clearInterval(checkInterval);
                     if (isActive) {
+                        setStatus('success');
                         setMessage('Sua assinatura foi ativada com sucesso! Você já pode começar a receber solicitações de clientes.');
                         toast.success('Assinatura ativada!');
                     } else {
-                        setMessage('Pagamento aprovado! Sua assinatura será ativada em breve (até 48h).');
+                        setStatus('pending');
+                        setMessage('Pagamento processado! Sua assinatura será ativada em breve (até 48h). Você receberá uma notificação.');
                     }
                 }
-            }, 2000); // Verifica a cada 2 segundos
+            }, 2000);
+        };
+
+        // Determinar status baseado nos parâmetros
+        if (collection_status === 'approved' || status_param === 'approved') {
+            setStatus('success');
+            setMessage('Pagamento aprovado! Sua assinatura está sendo ativada. Aguarde alguns instantes...');
+            toast.success('Pagamento aprovado!');
+            startPolling();
 
         } else if (collection_status === 'pending' || status_param === 'pending') {
             setStatus('pending');
             setMessage('Seu pagamento está em análise. Você receberá uma confirmação em breve.');
             toast.info('Pagamento em análise');
+
         } else if (collection_status === 'rejected' || status_param === 'rejected') {
             setStatus('error');
             setMessage('Seu pagamento foi rejeitado. Verifique os dados do cartão e tente novamente.');
             toast.error('Pagamento rejeitado');
+
+        } else if (preapproval_id) {
+            // ASSINATURAS: Mercado Pago retorna apenas preapproval_id quando aprovado
+            // Se chegou aqui com preapproval_id, o pagamento foi processado
+            setStatus('success');
+            setMessage('Pagamento processado! Verificando ativação da sua assinatura...');
+            toast.success('Pagamento processado!');
+            startPolling();
+
         } else {
             setStatus('error');
             setMessage('Houve um problema ao processar seu pagamento. Tente novamente ou entre em contato com o suporte.');

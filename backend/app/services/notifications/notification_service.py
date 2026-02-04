@@ -257,5 +257,171 @@ class NotificationService:
         )
 
 
+    # ==================== NOTIFICAÇÕES DE ASSINATURA ====================
+
+    async def send_subscription_email(
+        self,
+        to_email: str,
+        subject: str,
+        plain_text: str,
+        html: str
+    ) -> bool:
+        """
+        Envia um e-mail de notificação de assinatura.
+
+        Args:
+            to_email: E-mail do destinatário
+            subject: Assunto do e-mail
+            plain_text: Corpo em texto puro
+            html: Corpo em HTML
+
+        Returns:
+            bool: True se enviou com sucesso
+        """
+        try:
+            success, error = await self.email_adapter.send(
+                to=to_email,
+                subject=subject,
+                body=plain_text,
+                html_body=html
+            )
+
+            if success:
+                logger.info(f"E-mail de assinatura enviado para {to_email}: {subject}")
+            else:
+                logger.error(f"Falha ao enviar e-mail de assinatura para {to_email}: {error}")
+
+            return success
+        except Exception as e:
+            logger.error(f"Erro ao enviar e-mail de assinatura: {str(e)}")
+            return False
+
+    async def notify_subscription_activated(
+        self,
+        user_email: str,
+        user_name: str,
+        plan_name: str,
+        plan_price: float,
+        is_trial: bool = False,
+        trial_days: int = None,
+        trial_end_date: str = None
+    ) -> bool:
+        """
+        Notifica o usuário que sua assinatura foi ativada.
+
+        Args:
+            user_email: E-mail do usuário
+            user_name: Nome do usuário
+            plan_name: Nome do plano
+            plan_price: Preço do plano
+            is_trial: Se é um plano trial
+            trial_days: Dias de trial (se aplicável)
+            trial_end_date: Data de expiração do trial (se aplicável)
+
+        Returns:
+            bool: True se enviou com sucesso
+        """
+        subject, plain_text, html = email_templates.subscription_activated(
+            recipient_name=user_name,
+            plan_name=plan_name,
+            plan_price=plan_price,
+            is_trial=is_trial,
+            trial_days=trial_days,
+            trial_end_date=trial_end_date
+        )
+
+        return await self.send_subscription_email(user_email, subject, plain_text, html)
+
+    async def notify_subscription_cancelled(
+        self,
+        user_email: str,
+        user_name: str,
+        plan_name: str,
+        cancellation_reason: str = None
+    ) -> bool:
+        """
+        Notifica o usuário que sua assinatura foi cancelada.
+
+        Args:
+            user_email: E-mail do usuário
+            user_name: Nome do usuário
+            plan_name: Nome do plano cancelado
+            cancellation_reason: Motivo do cancelamento
+
+        Returns:
+            bool: True se enviou com sucesso
+        """
+        subject, plain_text, html = email_templates.subscription_cancelled(
+            recipient_name=user_name,
+            plan_name=plan_name,
+            cancellation_reason=cancellation_reason
+        )
+
+        return await self.send_subscription_email(user_email, subject, plain_text, html)
+
+    async def notify_subscription_plan_changed(
+        self,
+        user_email: str,
+        user_name: str,
+        old_plan_name: str,
+        new_plan_name: str,
+        new_plan_price: float,
+        is_upgrade: bool,
+        requires_payment: bool = False
+    ) -> bool:
+        """
+        Notifica o usuário sobre mudança de plano.
+
+        Args:
+            user_email: E-mail do usuário
+            user_name: Nome do usuário
+            old_plan_name: Nome do plano anterior
+            new_plan_name: Nome do novo plano
+            new_plan_price: Preço do novo plano
+            is_upgrade: Se é um upgrade
+            requires_payment: Se requer pagamento
+
+        Returns:
+            bool: True se enviou com sucesso
+        """
+        subject, plain_text, html = email_templates.subscription_plan_changed(
+            recipient_name=user_name,
+            old_plan_name=old_plan_name,
+            new_plan_name=new_plan_name,
+            new_plan_price=new_plan_price,
+            is_upgrade=is_upgrade,
+            requires_payment=requires_payment
+        )
+
+        return await self.send_subscription_email(user_email, subject, plain_text, html)
+
+    async def notify_trial_expiring_soon(
+        self,
+        user_email: str,
+        user_name: str,
+        days_remaining: int,
+        expiration_date: str
+    ) -> bool:
+        """
+        Notifica o usuário que o trial está expirando.
+
+        Args:
+            user_email: E-mail do usuário
+            user_name: Nome do usuário
+            days_remaining: Dias restantes
+            expiration_date: Data de expiração formatada
+
+        Returns:
+            bool: True se enviou com sucesso
+        """
+        subject, plain_text, html = email_templates.trial_expiring_soon(
+            recipient_name=user_name,
+            days_remaining=days_remaining,
+            expiration_date=expiration_date
+        )
+
+        return await self.send_subscription_email(user_email, subject, plain_text, html)
+
+
 # Instância singleton
 notification_service = NotificationService()

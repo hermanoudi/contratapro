@@ -13,6 +13,7 @@ from ..database import get_db
 from ..models import Subscription, SubscriptionPlan, User, Service
 from ..dependencies import get_current_user
 from ..config import settings
+from ..services.notifications.notification_service import notification_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -156,6 +157,17 @@ async def subscribe_to_plan(
         await db.refresh(subscription)
 
         logger.info(f"Trial ativado para usuário {current_user.id}. Expira em: {trial_end_date}")
+
+        # Enviar notificação por e-mail
+        await notification_service.notify_subscription_activated(
+            user_email=current_user.email,
+            user_name=current_user.name,
+            plan_name=plan.name,
+            plan_price=0.0,
+            is_trial=True,
+            trial_days=trial_days,
+            trial_end_date=trial_end_date.strftime("%d/%m/%Y")
+        )
 
         return SubscribePlanResponse(
             message=f"Plano {plan.name} ativado com sucesso! Você tem {trial_days} dias de acesso gratuito.",
@@ -761,11 +773,23 @@ async def cancel_subscription(
         logger.error(f"Erro ao cancelar assinatura no MP: {str(e)}")
         # Continua para cancelar localmente
 
+    # Buscar nome do plano para notificação
+    plan_name = "Plano Profissional"
+    if subscription.plan_id:
+        plan_result = await db.execute(
+            select(SubscriptionPlan).where(
+                SubscriptionPlan.id == subscription.plan_id
+            )
+        )
+        plan = plan_result.scalar_one_or_none()
+        if plan:
+            plan_name = plan.name
+
     # Cancelar no banco de dados
     subscription.status = "cancelled"
     subscription.cancelled_at = datetime.now()
     subscription.cancellation_reason = cancel_data.reason
-    subscription.cancellation_reason_code = cancel_data.reason_code  # Código para analytics
+    subscription.cancellation_reason_code = cancel_data.reason_code
     current_user.subscription_status = "cancelled"
 
     await db.commit()
@@ -773,6 +797,14 @@ async def cancel_subscription(
     logger.info(
         f"Assinatura cancelada para usuário {current_user.id}. "
         f"Código: {cancel_data.reason_code}"
+    )
+
+    # Enviar notificação por e-mail
+    await notification_service.notify_subscription_cancelled(
+        user_email=current_user.email,
+        user_name=current_user.name,
+        plan_name=plan_name,
+        cancellation_reason=cancel_data.reason
     )
 
     return {"message": "Assinatura cancelada com sucesso"}
@@ -1158,6 +1190,18 @@ async def change_subscription_plan(
 
         await db.commit()
 
+        # Enviar notificação por e-mail
+        old_plan_name = current_plan.name if current_plan else "Sem plano"
+        await notification_service.notify_subscription_activated(
+            user_email=current_user.email,
+            user_name=current_user.name,
+            plan_name=new_plan.name,
+            plan_price=0.0,
+            is_trial=True,
+            trial_days=trial_days,
+            trial_end_date=trial_end_date.strftime("%d/%m/%Y")
+        )
+
         return {
             "success": True,
             "message": f"Plano alterado para {new_plan.name} com sucesso!",
@@ -1282,7 +1326,21 @@ async def change_subscription_plan(
 
         await db.commit()
 
+        old_plan_name = current_plan.name if current_plan else "Sem plano"
+        is_upgrade = new_plan.price > (current_plan.price if current_plan else 0)
+
         logger.info(f"Mudança de plano iniciada para usuário {current_user.id}: {current_plan.slug if current_plan else 'none'} -> {new_plan.slug}")
+
+        # Enviar notificação por e-mail
+        await notification_service.notify_subscription_plan_changed(
+            user_email=current_user.email,
+            user_name=current_user.name,
+            old_plan_name=old_plan_name,
+            new_plan_name=new_plan.name,
+            new_plan_price=new_plan.price,
+            is_upgrade=is_upgrade,
+            requires_payment=True
+        )
 
         return {
             "success": True,
@@ -1411,6 +1469,17 @@ async def admin_force_trial(
 
     logger.info(f"[ADMIN] Usuário {user_id} forçado para Trial por admin {current_user.id}. Motivo: {reason}")
 
+    # Enviar notificação por e-mail para o usuário
+    await notification_service.notify_subscription_activated(
+        user_email=target_user.email,
+        user_name=target_user.name,
+        plan_name=trial_plan.name,
+        plan_price=0.0,
+        is_trial=True,
+        trial_days=trial_days,
+        trial_end_date=trial_end_date.strftime("%d/%m/%Y")
+    )
+
     return {
         "success": True,
         "message": f"Usuário {target_user.name} alterado para plano Trial com sucesso",
@@ -1491,6 +1560,23 @@ async def mercadopago_webhook(
                 )
                 if user:
                     user.subscription_status = "active"
+
+                    # Buscar nome do plano e enviar notificação
+                    if subscription.plan_id:
+                        plan_result = await db.execute(
+                            select(SubscriptionPlan).where(
+                                SubscriptionPlan.id == subscription.plan_id
+                            )
+                        )
+                        plan = plan_result.scalar_one_or_none()
+                        if plan:
+                            await notification_service.notify_subscription_activated(
+                                user_email=user.email,
+                                user_name=user.name,
+                                plan_name=plan.name,
+                                plan_price=subscription.plan_amount or plan.price,
+                                is_trial=False
+                            )
 
             elif mp_status == "paused":
                 subscription.status = "paused"
