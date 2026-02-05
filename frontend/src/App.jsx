@@ -71,6 +71,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/nova-senha" element={<ResetPassword />} />
           <Route path="/dashboard" element={<ProfessionalLayout><Dashboard /></ProfessionalLayout>} />
+          <Route path="/p/:slug" element={<Booking />} />
           <Route path="/book/:id" element={<Booking />} />
           <Route path="/my-appointments" element={<ClientLayout><ClientDashboard /></ClientLayout>} />
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />

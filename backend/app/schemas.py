@@ -61,6 +61,7 @@ class UserUpdate(BaseModel):
 
 class UserResponse(UserBase):
     id: int
+    slug: Optional[str] = None
     is_active: bool
     is_professional: bool
     is_admin: bool
@@ -91,6 +92,7 @@ class UserResponse(UserBase):
 class ProfessionalPublic(BaseModel):
     id: int
     name: str
+    slug: Optional[str] = None
     category: Optional[str] = None
     description: Optional[str] = None
     city: Optional[str] = None

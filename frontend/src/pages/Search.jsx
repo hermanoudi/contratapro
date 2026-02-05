@@ -808,7 +808,7 @@ export default function Search() {
                     {pro.subscription_plan?.can_receive_bookings && (
                       <BookButton
                         className="btn-primary"
-                        onClick={() => navigate(`/book/${pro.id}`, { state: { pro, clientCep: cep } })}
+                        onClick={() => navigate(pro.slug ? `/p/${pro.slug}` : `/book/${pro.id}`, { state: { pro, clientCep: cep } })}
                       >
                         Ver Agenda e Reservar
                       </BookButton>

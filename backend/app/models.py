@@ -21,7 +21,7 @@ class SubscriptionPlan(Base):
 
     # Relacionamento
     users = relationship("User", back_populates="subscription_plan")
-    subscriptions = relationship("Subscription", back_populates="plan")
+    subscriptions = relationship("Subscription", back_populates="plan", foreign_keys="[Subscription.plan_id]")
 
 class Category(Base):
     __tablename__ = "categories"
@@ -38,9 +38,10 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
+    slug = Column(String(100), unique=True, index=True, nullable=True)  # URL amigável: hermano-flavio-de-moura
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    
+
     # Profile Data
     cpf = Column(String, nullable=True)  # CPF do profissional (apenas números, 11 dígitos)
     cep = Column(String, nullable=True)

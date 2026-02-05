@@ -1371,7 +1371,7 @@ export default function Home() {
                                     <button
                                         className="btn-primary"
                                         style={{ marginTop: '1rem', width: '100%', padding: '1rem', fontSize: '0.9rem' }}
-                                        onClick={() => navigate(`/book/${pro.id}`, { state: { pro, clientCep: cep } })}
+                                        onClick={() => navigate(pro.slug ? `/p/${pro.slug}` : `/book/${pro.id}`, { state: { pro, clientCep: cep } })}
                                     >
                                         Ver Agenda e Reservar
                                     </button>

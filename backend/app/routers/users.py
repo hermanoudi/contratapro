@@ -10,6 +10,7 @@ from ..auth_utils import get_password_hash
 from ..dependencies import get_current_user
 from ..services.image_storage import image_storage
 from .auth import validate_password_strength
+from ..slug_utils import generate_unique_slug
 
 router = APIRouter()
 
@@ -37,6 +38,8 @@ async def update_user(
     # Atualizar campos de texto
     if name is not None:
         current_user.name = name
+        # Regenerar slug quando o nome muda
+        current_user.slug = await generate_unique_slug(db, name, current_user.id)
     if whatsapp is not None:
         current_user.whatsapp = whatsapp
     if category is not None:
@@ -123,6 +126,9 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    # Gerar slug unico para o usuario
+    user_slug = await generate_unique_slug(db, user.name)
+
     # Se for profissional, buscar plano Trial
     trial_plan_id = None
     trial_ends_at = None
@@ -140,6 +146,7 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     # Create new user
     new_user = User(
         name=user.name,
+        slug=user_slug,
         email=user.email,
         hashed_password=get_password_hash(user.password.encode('utf-8')[:72].decode('utf-8', 'ignore')),
         is_professional=user.is_professional,
@@ -283,6 +290,32 @@ async def get_categories(db: AsyncSession = Depends(get_db)):
     result = await db.execute(query)
     categories = result.scalars().all()
     return categories if categories else []
+
+@router.get("/p/{slug}", response_model=ProfessionalPublic)
+async def get_professional_by_slug(slug: str, db: AsyncSession = Depends(get_db)):
+    """
+    Retorna dados publicos de um profissional pelo slug (URL amigavel).
+    Exemplo: /users/p/hermano-flavio-de-moura
+    Apenas profissionais com assinatura ativa podem ser visualizados.
+    """
+    from sqlalchemy.orm import selectinload
+    query = select(User).filter(
+        User.slug == slug,
+        User.is_professional == True,
+        User.subscription_status == 'active'
+    ).options(
+        selectinload(User.services),
+        selectinload(User.working_hours),
+        selectinload(User.subscription_plan)
+    )
+    result = await db.execute(query)
+    pro = result.scalars().first()
+    if not pro:
+        raise HTTPException(
+            status_code=404,
+            detail="Profissional nao encontrado ou sem assinatura ativa"
+        )
+    return pro
 
 @router.get("/{user_id}/public", response_model=ProfessionalPublic)
 async def get_professional_public(user_id: int, db: AsyncSession = Depends(get_db)):

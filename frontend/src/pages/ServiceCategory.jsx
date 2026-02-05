@@ -439,7 +439,7 @@ export default function ServiceCategory() {
                 <ButtonsContainer>
                   <ActionButton
                     className="primary"
-                    onClick={() => navigate(`/book/${pro.id}`)}
+                    onClick={() => navigate(pro.slug ? `/p/${pro.slug}` : `/book/${pro.id}`)}
                   >
                     Agendar
                   </ActionButton>

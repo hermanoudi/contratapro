@@ -842,11 +842,17 @@ const CalendarWrapper = styled.div`
 `;
 
 export default function Booking() {
-    const { id } = useParams();
+    // Suporta tanto /book/:id quanto /p/:slug
+    const { id, slug } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
 
+    // Determinar se e ID numerico ou slug de texto
+    const identifier = slug || id;
+    const isSlug = slug || (identifier && isNaN(parseInt(identifier)));
+
     const [pro, setPro] = useState(location.state?.pro || null);
+    const [proId, setProId] = useState(null); // ID real do profissional (para agendamentos)
     const [services, setServices] = useState([]);
     const [workingHours, setWorkingHours] = useState([]);
     const [appointments, setAppointments] = useState([]);
@@ -898,23 +904,30 @@ export default function Booking() {
     useEffect(() => {
         const fetchProData = async () => {
             try {
-                const res = await fetch(`/api/users/${id}/public`);
+                // Usar endpoint de slug ou ID conforme o tipo do parametro
+                const endpoint = isSlug
+                    ? `/api/users/p/${identifier}`
+                    : `/api/users/${identifier}/public`;
+
+                const res = await fetch(endpoint);
                 if (res.ok) {
                     const data = await res.json();
                     setPro(data);
+                    setProId(data.id); // Guardar o ID real para usar nos agendamentos
                     setServices(data.services);
                     setWorkingHours(data.working_hours);
-                }
 
-                const apptRes = await fetch(`/api/appointments/professional/${id}/week?start_date=${new Date().toISOString().split('T')[0]}`);
-                if (apptRes.ok) {
-                    setAppointments(await apptRes.json());
+                    // Buscar agendamentos usando o ID real do profissional
+                    const apptRes = await fetch(`/api/appointments/professional/${data.id}/week?start_date=${new Date().toISOString().split('T')[0]}`);
+                    if (apptRes.ok) {
+                        setAppointments(await apptRes.json());
+                    }
                 }
             } catch (e) { console.error(e); }
             finally { setLoading(false); }
         };
         fetchProData();
-    }, [id]);
+    }, [identifier, isSlug]);
 
     useEffect(() => {
         if (pro && clientCity) {
@@ -1018,7 +1031,7 @@ export default function Booking() {
                 // Para serviços diários, enviar apenas a data
                 // O backend irá buscar o horário de trabalho completo do dia
                 requestBody = {
-                    professional_id: parseInt(id),
+                    professional_id: proId,
                     service_id: selectedService.id,
                     date: formatDateToISO(selectedDate)
                     // Não envia start_time e end_time - backend preenche automaticamente
@@ -1026,7 +1039,7 @@ export default function Booking() {
             } else {
                 // Para serviços por hora, usar o slot selecionado
                 requestBody = {
-                    professional_id: parseInt(id),
+                    professional_id: proId,
                     service_id: selectedService.id,
                     date: formatDateToISO(selectedDate),
                     start_time: selectedSlot + ':00',
