@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
     Calendar as CalendarIcon, Briefcase, Clock, Power, Menu, X,
-    PauseCircle, PlayCircle, History as HistoryIcon, CreditCard, User, Bell
+    PauseCircle, PlayCircle, History as HistoryIcon, CreditCard, User, Bell, HelpCircle
 } from 'lucide-react';
 import { API_URL } from '../config';
 import styled from 'styled-components';
 import { toast } from 'sonner';
 import logoImage from '../assets/contratapro-logo.png';
+import { useTour } from '../contexts/TourContext';
 
 const LayoutContainer = styled.div`
   display: flex;
@@ -185,6 +186,7 @@ export default function ProfessionalLayout({ children }) {
     const [user, setUser] = useState(null);
     const navigate = useNavigate();
     const location = useLocation();
+    const { startWelcomeTour, startTour, hasCompletedTour } = useTour();
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -212,6 +214,22 @@ export default function ProfessionalLayout({ children }) {
         };
         fetchUser();
     }, [navigate]);
+
+    // Iniciar tour de boas-vindas no primeiro acesso
+    useEffect(() => {
+        if (user && location.pathname === '/dashboard' && !location.search) {
+            // Pequeno delay para garantir que elementos estao renderizados
+            const timer = setTimeout(() => {
+                startWelcomeTour('professional');
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [user, location.pathname, location.search, startWelcomeTour]);
+
+    // Funcao para reiniciar o tour manualmente
+    const handleRestartTour = () => {
+        startTour('welcome', 'professional');
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -246,23 +264,39 @@ export default function ProfessionalLayout({ children }) {
                     <img src={logoImage} alt="ContrataPro" style={{ height: '70px', width: 'auto', objectFit: 'contain' }} />
                 </div>
 
-                <nav style={{ flex: 1 }}>
-                    <NavItem $active={isActive('/dashboard') && !location.search} onClick={() => { navigate('/dashboard'); setIsSidebarOpen(false); }}>
+                <nav style={{ flex: 1 }} data-tour="sidebar-nav">
+                    <NavItem
+                        $active={isActive('/dashboard') && !location.search}
+                        onClick={() => { navigate('/dashboard'); setIsSidebarOpen(false); }}
+                        data-tour="nav-dashboard"
+                    >
                         <CalendarIcon size={20} /> Dashboard
                     </NavItem>
-                    <NavItem $active={location.search.includes('tab=services')} onClick={() => { navigate('/dashboard?tab=services'); setIsSidebarOpen(false); }}>
-                        <Briefcase size={20} /> Serviços
+                    <NavItem
+                        $active={location.search.includes('tab=services')}
+                        onClick={() => { navigate('/dashboard?tab=services'); setIsSidebarOpen(false); }}
+                        data-tour="nav-services"
+                    >
+                        <Briefcase size={20} /> Servicos
                     </NavItem>
-                    <NavItem $active={location.search.includes('tab=schedule')} onClick={() => { navigate('/dashboard?tab=schedule'); setIsSidebarOpen(false); }}>
-                        <Clock size={20} /> Horários
+                    <NavItem
+                        $active={location.search.includes('tab=schedule')}
+                        onClick={() => { navigate('/dashboard?tab=schedule'); setIsSidebarOpen(false); }}
+                        data-tour="nav-schedule"
+                    >
+                        <Clock size={20} /> Horarios
                     </NavItem>
                     <NavItem $active={isActive('/history')} onClick={() => { navigate('/history'); setIsSidebarOpen(false); }}>
-                        <HistoryIcon size={20} /> Histórico
+                        <HistoryIcon size={20} /> Historico
                     </NavItem>
                     <NavItem $active={isActive('/notifications')} onClick={() => { navigate('/notifications'); setIsSidebarOpen(false); }}>
-                        <Bell size={20} /> Notificações
+                        <Bell size={20} /> Notificacoes
                     </NavItem>
-                    <NavItem $active={isActive('/subscription/manage')} onClick={() => { navigate('/subscription/manage'); setIsSidebarOpen(false); }}>
+                    <NavItem
+                        $active={isActive('/subscription/manage')}
+                        onClick={() => { navigate('/subscription/manage'); setIsSidebarOpen(false); }}
+                        data-tour="nav-subscription"
+                    >
                         <CreditCard size={20} /> Assinatura
                     </NavItem>
                     <NavItem $active={isActive('/profile')} onClick={() => { navigate('/profile'); setIsSidebarOpen(false); }}>
@@ -273,6 +307,9 @@ export default function ProfessionalLayout({ children }) {
                         <NavItem onClick={toggleSuspension} style={{ color: user?.is_suspended ? '#10b981' : '#ef4444' }}>
                             {user?.is_suspended ? <PlayCircle size={20} /> : <PauseCircle size={20} />}
                             {user?.is_suspended ? 'Retomar Atendimentos' : 'Suspender Atendimentos'}
+                        </NavItem>
+                        <NavItem onClick={handleRestartTour} style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                            <HelpCircle size={20} /> Ver Tour Guiado
                         </NavItem>
                     </div>
                 </nav>

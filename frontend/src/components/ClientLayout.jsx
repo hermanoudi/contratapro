@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-    Calendar, Clock, User, Briefcase, ChevronLeft, Settings, LogOut, History as HistoryIcon, Menu, X, Bell
+    Calendar, Clock, User, Briefcase, ChevronLeft, Settings, LogOut, History as HistoryIcon, Menu, X, Bell, HelpCircle
 } from 'lucide-react';
 import styled from 'styled-components';
 import { API_URL } from '../config';
 import logoImage from '../assets/contratapro-logo.png';
+import { useTour } from '../contexts/TourContext';
 
 const LayoutContainer = styled.div`
   display: flex;
@@ -183,6 +184,7 @@ export default function ClientLayout({ children }) {
     const [user, setUser] = useState(null);
     const navigate = useNavigate();
     const location = useLocation();
+    const { startWelcomeTour, startTour } = useTour();
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -207,6 +209,20 @@ export default function ClientLayout({ children }) {
         fetchUser();
     }, [navigate]);
 
+    // Iniciar tour de boas-vindas no primeiro acesso
+    useEffect(() => {
+        if (user && location.pathname === '/my-appointments') {
+            const timer = setTimeout(() => {
+                startWelcomeTour('client');
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [user, location.pathname, startWelcomeTour]);
+
+    const handleRestartTour = () => {
+        startTour('welcome', 'client');
+    };
+
     const handleLogout = () => {
         localStorage.removeItem('token');
         navigate('/login');
@@ -227,19 +243,23 @@ export default function ClientLayout({ children }) {
                     <img src={logoImage} alt="ContrataPro" style={{ height: '70px', width: 'auto', objectFit: 'contain' }} />
                 </div>
 
-                <nav style={{ flex: 1 }}>
+                <nav style={{ flex: 1 }} data-tour="client-nav">
                     <div style={{ marginBottom: '1.5rem' }}>
                         <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.75rem', paddingLeft: '1rem', letterSpacing: '0.05em' }}>
-                            Minha Área
+                            Minha Area
                         </div>
-                        <NavItem $active={isActive('/my-appointments')} onClick={() => { navigate('/my-appointments'); setIsSidebarOpen(false); }}>
+                        <NavItem
+                            $active={isActive('/my-appointments')}
+                            onClick={() => { navigate('/my-appointments'); setIsSidebarOpen(false); }}
+                            data-tour="client-appointments"
+                        >
                             <Calendar size={20} /> Meus Agendamentos
                         </NavItem>
                         <NavItem $active={isActive('/history')} onClick={() => { navigate('/history'); setIsSidebarOpen(false); }}>
-                            <HistoryIcon size={20} /> Histórico
+                            <HistoryIcon size={20} /> Historico
                         </NavItem>
                         <NavItem $active={isActive('/notifications')} onClick={() => { navigate('/notifications'); setIsSidebarOpen(false); }}>
-                            <Bell size={20} /> Notificações
+                            <Bell size={20} /> Notificacoes
                         </NavItem>
                     </div>
                 </nav>
@@ -247,6 +267,9 @@ export default function ClientLayout({ children }) {
                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
                     <NavItem onClick={() => { navigate('/'); setIsSidebarOpen(false); }}>
                         <ChevronLeft size={20} /> Voltar para Home
+                    </NavItem>
+                    <NavItem onClick={handleRestartTour} style={{ color: 'var(--text-secondary)' }}>
+                        <HelpCircle size={20} /> Ver Tour Guiado
                     </NavItem>
                     <NavItem onClick={() => { handleLogout(); setIsSidebarOpen(false); }}>
                         <LogOut size={20} /> Sair

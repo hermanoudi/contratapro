@@ -1395,17 +1395,18 @@ export default function Dashboard() {
 
         return (
             <div>
-                <SectionTitle>Meus Serviços</SectionTitle>
-                <Card>
+                <SectionTitle>Meus Servicos</SectionTitle>
+                <Card data-tour="add-service-form">
                     <form onSubmit={handleAddService} style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                         <input
-                            placeholder="Nome do serviço (ex: Pintura de Paredes)"
+                            placeholder="Nome do servico (ex: Pintura de Paredes)"
                             value={newService.title}
                             onChange={e => setNewService({ ...newService, title: e.target.value })}
                             style={{ flex: '2 1 100%', minWidth: '0', padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                             required
+                            data-tour="service-title"
                         />
-                        <div style={{ position: 'relative', flex: '1 1 100%', minWidth: '0' }}>
+                        <div style={{ position: 'relative', flex: '1 1 100%', minWidth: '0' }} data-tour="service-price">
                             <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>R$</span>
                             <input
                                 placeholder="0,00"
@@ -1415,8 +1416,8 @@ export default function Dashboard() {
                                 style={{ width: '100%', padding: '0.875rem 0.875rem 0.875rem 2.8rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                             />
                         </div>
-                        <div style={{ flex: '1 1 100%', minWidth: '0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: '500' }}>Tipo de cobrança:</label>
+                        <div style={{ flex: '1 1 100%', minWidth: '0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-tour="service-duration">
+                            <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: '500' }}>Tipo de cobranca:</label>
                             <div style={{ display: 'flex', gap: '1rem' }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.95rem' }}>
                                     <input
@@ -1438,7 +1439,7 @@ export default function Dashboard() {
                                         onChange={e => setNewService({ ...newService, duration_type: e.target.value })}
                                         style={{ cursor: 'pointer' }}
                                     />
-                                    Diária
+                                    Diaria
                                 </label>
                             </div>
                         </div>
@@ -1448,7 +1449,7 @@ export default function Dashboard() {
                     </form>
                 </Card>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: '1rem' }} data-tour="services-list">
                     {services.map(s => (
                         <ServiceCard key={s.id} service={s} onDelete={handleDeleteService} onUpdate={fetchData} />
                     ))}
@@ -1534,10 +1535,10 @@ export default function Dashboard() {
 
         return (
             <div>
-                <SectionTitle>Horários de Atendimento</SectionTitle>
-                <Card>
+                <SectionTitle>Horarios de Atendimento</SectionTitle>
+                <Card data-tour="schedule-form">
                     <form onSubmit={handleAddWH} style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{ flex: '1 1 100%', minWidth: '0' }}>
+                        <div style={{ flex: '1 1 100%', minWidth: '0' }} data-tour="schedule-day">
                             <Label>Dia da Semana</Label>
                             <select
                                 value={newWH.day_of_week}
@@ -1548,8 +1549,8 @@ export default function Dashboard() {
                             </select>
                         </div>
 
-                        <div style={{ flex: '1 1 calc(50% - 0.5rem)', minWidth: '0' }}>
-                            <Label>Início (HH:mm)</Label>
+                        <div style={{ flex: '1 1 calc(50% - 0.5rem)', minWidth: '0' }} data-tour="schedule-start">
+                            <Label>Inicio (HH:mm)</Label>
                             <input
                                 type="text"
                                 placeholder="08:00"
@@ -1560,8 +1561,8 @@ export default function Dashboard() {
                             />
                         </div>
 
-                        <div style={{ flex: '1 1 calc(50% - 0.5rem)', minWidth: '0' }}>
-                            <Label>Término (HH:mm)</Label>
+                        <div style={{ flex: '1 1 calc(50% - 0.5rem)', minWidth: '0' }} data-tour="schedule-end">
+                            <Label>Termino (HH:mm)</Label>
                             <input
                                 type="text"
                                 placeholder="18:00"
@@ -1580,7 +1581,7 @@ export default function Dashboard() {
                     </form>
                 </Card>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: '1rem', marginTop: '2rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: '1rem', marginTop: '2rem' }} data-tour="schedule-list">
                     {sortedWorkingHours.map(wh => (
                         <Card key={wh.id} style={{ padding: '1.25rem', marginBottom: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--primary)' }}>
                             <div>
