@@ -1,4 +1,5 @@
 # Endpoints publicos para avaliacoes de prestadores
+import math
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -95,6 +96,53 @@ async def submit_review(
     await db.refresh(new_review)
 
     return new_review
+
+
+@router.get("/providers/{provider_id}/reviews")
+async def get_provider_reviews(
+    provider_id: int,
+    page: int = 1,
+    size: int = 5,
+    db: AsyncSession = Depends(get_db),
+):
+    """Endpoint publico para listagem paginada de avaliacoes."""
+    offset = (page - 1) * size
+
+    # Total de avaliacoes
+    count_result = await db.execute(
+        select(func.count(Review.id)).filter(
+            Review.professional_id == provider_id
+        )
+    )
+    total = count_result.scalar() or 0
+
+    # Buscar pagina
+    reviews_result = await db.execute(
+        select(Review)
+        .filter(Review.professional_id == provider_id)
+        .order_by(Review.created_at.desc())
+        .offset(offset)
+        .limit(size)
+    )
+    reviews_list = reviews_result.scalars().all()
+
+    items = [
+        ReviewCommentResponse(
+            rating=r.rating,
+            comment=r.comment,
+            customer_name=r.customer_name,
+            created_at=r.created_at,
+        )
+        for r in reviews_list
+    ]
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": math.ceil(total / size) if total > 0 else 0,
+    }
 
 
 @router.get(

@@ -869,6 +869,8 @@ export default function Booking() {
     const [matching, setMatching] = useState(null); // null, true, false
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [reviews, setReviews] = useState([]);
+    const [reviewsPage, setReviewsPage] = useState(1);
+    const [reviewsPages, setReviewsPages] = useState(0);
 
     // Buscar dados do cliente logado (incluindo CEP)
     useEffect(() => {
@@ -924,11 +926,13 @@ export default function Booking() {
                         setAppointments(await apptRes.json());
                     }
 
-                    // Buscar avaliacoes do profissional
-                    const reviewRes = await fetch(`${API_URL}/reviews/providers/${data.id}/summary`);
+                    // Buscar avaliacoes do profissional (pagina 1)
+                    const reviewRes = await fetch(`${API_URL}/reviews/providers/${data.id}/reviews?page=1&size=5`);
                     if (reviewRes.ok) {
                         const reviewData = await reviewRes.json();
-                        setReviews(reviewData.latest_comments || []);
+                        setReviews(reviewData.items || []);
+                        setReviewsPage(1);
+                        setReviewsPages(reviewData.pages || 0);
                     }
                 }
             } catch (e) { console.error(e); }
@@ -936,6 +940,20 @@ export default function Booking() {
         };
         fetchProData();
     }, [identifier, isSlug]);
+
+    // Carregar mais avaliacoes
+    const loadMoreReviews = async (page) => {
+        if (!proId) return;
+        try {
+            const res = await fetch(`${API_URL}/reviews/providers/${proId}/reviews?page=${page}&size=5`);
+            if (res.ok) {
+                const data = await res.json();
+                setReviews(data.items || []);
+                setReviewsPage(page);
+                setReviewsPages(data.pages || 0);
+            }
+        } catch (e) { console.error(e); }
+    };
 
     useEffect(() => {
         if (pro && clientCity) {
@@ -1157,52 +1175,6 @@ export default function Booking() {
                     </div>
                 </ProHeader>
 
-                {reviews.length > 0 && (
-                    <Section style={{ marginBottom: '2rem' }}>
-                        <h2>
-                            <Star size={20} color="var(--accent)" /> Avaliações
-                            <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>
-                                ({pro.total_reviews} {pro.total_reviews === 1 ? 'avaliação' : 'avaliações'})
-                            </span>
-                        </h2>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {reviews.slice(0, 3).map((review, idx) => (
-                                <div
-                                    key={idx}
-                                    style={{
-                                        background: 'var(--bg-primary)',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: '12px',
-                                        padding: '1rem 1.25rem',
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{review.customer_name}</span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                            {[...Array(5)].map((_, i) => (
-                                                <Star
-                                                    key={i}
-                                                    size={14}
-                                                    fill={i < review.rating ? '#f59e0b' : 'transparent'}
-                                                    color={i < review.rating ? '#f59e0b' : 'var(--text-secondary)'}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-                                    {review.comment && (
-                                        <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                                            {review.comment}
-                                        </p>
-                                    )}
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', marginBottom: 0, opacity: 0.7 }}>
-                                        {new Date(review.created_at).toLocaleDateString('pt-BR')}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    </Section>
-                )}
-
                 <BookingGrid>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                         <Section>
@@ -1392,6 +1364,90 @@ export default function Booking() {
                         {selectedSlot && matching === false && <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#ef4444', marginTop: '1rem' }}>Profissional não atende sua região</p>}
                     </Section>
                 </BookingGrid>
+
+                {reviews.length > 0 && (
+                    <Section style={{ marginTop: '2rem' }}>
+                        <h2>
+                            <Star size={20} color="var(--accent)" /> Avaliações
+                            <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>
+                                ({pro.total_reviews} {pro.total_reviews === 1 ? 'avaliação' : 'avaliações'})
+                            </span>
+                        </h2>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {reviews.map((review, idx) => (
+                                <div
+                                    key={`${reviewsPage}-${idx}`}
+                                    style={{
+                                        background: 'var(--bg-primary)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '12px',
+                                        padding: '1rem 1.25rem',
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{review.customer_name}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            {[...Array(5)].map((_, i) => (
+                                                <Star
+                                                    key={i}
+                                                    size={14}
+                                                    fill={i < review.rating ? '#f59e0b' : 'transparent'}
+                                                    color={i < review.rating ? '#f59e0b' : 'var(--text-secondary)'}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {review.comment && (
+                                        <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                                            {review.comment}
+                                        </p>
+                                    )}
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', marginBottom: 0, opacity: 0.7 }}>
+                                        {new Date(review.created_at).toLocaleDateString('pt-BR')}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+
+                        {reviewsPages > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem' }}>
+                                <button
+                                    onClick={() => loadMoreReviews(reviewsPage - 1)}
+                                    disabled={reviewsPage <= 1}
+                                    style={{
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--border)',
+                                        background: reviewsPage <= 1 ? 'var(--bg-secondary)' : 'var(--bg-primary)',
+                                        color: reviewsPage <= 1 ? 'var(--text-secondary)' : 'var(--text-primary)',
+                                        cursor: reviewsPage <= 1 ? 'not-allowed' : 'pointer',
+                                        fontSize: '0.85rem',
+                                    }}
+                                >
+                                    Anterior
+                                </button>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                    {reviewsPage} de {reviewsPages}
+                                </span>
+                                <button
+                                    onClick={() => loadMoreReviews(reviewsPage + 1)}
+                                    disabled={reviewsPage >= reviewsPages}
+                                    style={{
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--border)',
+                                        background: reviewsPage >= reviewsPages ? 'var(--bg-secondary)' : 'var(--bg-primary)',
+                                        color: reviewsPage >= reviewsPages ? 'var(--text-secondary)' : 'var(--text-primary)',
+                                        cursor: reviewsPage >= reviewsPages ? 'not-allowed' : 'pointer',
+                                        fontSize: '0.85rem',
+                                    }}
+                                >
+                                    Próxima
+                                </button>
+                            </div>
+                        )}
+                    </Section>
+                )}
             </Content>
         </BookingContainer >
     );
