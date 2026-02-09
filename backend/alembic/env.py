@@ -23,7 +23,8 @@ load_dotenv()
 from app.database import Base
 from app.models import (
     User, Service, WorkingHour, Appointment,
-    Subscription, Category
+    Subscription, Category, SubscriptionPlan,
+    Notification, ReviewToken, Review,
 )
 
 # this is the Alembic Config object, which provides

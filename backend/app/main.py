@@ -15,9 +15,11 @@ import pytz
 from .database import engine, Base
 from .routers import (
     users, services, appointments, subscriptions,
-    auth, schedule, categories, admin, cep, health, plans, notifications
+    auth, schedule, categories, admin, cep, health, plans,
+    notifications, reviews,
 )
 from .services.subscription_jobs import subscription_jobs
+from .services.review_jobs import review_jobs
 
 # Scheduler global
 scheduler = AsyncIOScheduler()
@@ -55,8 +57,15 @@ async def lifespan(app: FastAPI):
         name="Jobs diarios de assinatura",
         replace_existing=True
     )
+    scheduler.add_job(
+        review_jobs.run_daily_review_jobs,
+        CronTrigger(hour=1, minute=0, timezone=brasilia_tz),
+        id="daily_review_jobs",
+        name="Jobs diarios de avaliacao",
+        replace_existing=True,
+    )
     scheduler.start()
-    print("Scheduler iniciado! Jobs diarios agendados para 00:30 (Brasilia)")
+    print("Scheduler iniciado! Jobs agendados: 00:30 assinaturas, 01:00 avaliacoes (Brasilia)")
 
     yield
 
@@ -128,6 +137,7 @@ app.include_router(admin, prefix="/admin", tags=["admin"])
 app.include_router(cep.router)
 app.include_router(plans, prefix="/plans", tags=["plans"])
 app.include_router(notifications, prefix="/notifications", tags=["notifications"])
+app.include_router(reviews, prefix="/reviews", tags=["reviews"])
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ import ProfessionalProfile from './pages/ProfessionalProfile';
 import AdminTrials from './pages/AdminTrials';
 import MyNotifications from './pages/MyNotifications';
 import ResetPassword from './pages/ResetPassword';
+import ReviewSubmit from './pages/ReviewSubmit';
 import ServiceCategory from './pages/ServiceCategory';
 import ProfessionalLayout from './components/ProfessionalLayout';
 import ClientLayout from './components/ClientLayout';
@@ -72,6 +73,7 @@ function App() {
           <Route path="/register-client" element={<RegisterClient />} />
           <Route path="/login" element={<Login />} />
           <Route path="/nova-senha" element={<ResetPassword />} />
+          <Route path="/avaliar/:token" element={<ReviewSubmit />} />
           <Route path="/dashboard" element={<ProfessionalLayout><Dashboard /></ProfessionalLayout>} />
           <Route path="/p/:slug" element={<Booking />} />
           <Route path="/book/:id" element={<Booking />} />

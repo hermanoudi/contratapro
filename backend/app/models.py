@@ -55,7 +55,11 @@ class User(Base):
     category = Column(String, nullable=True)
     description = Column(String, nullable=True)
     profile_picture = Column(String, nullable=True)  # URL ou caminho da foto de perfil
-    
+
+    # Avaliacao (denormalizados para performance em buscas)
+    average_rating = Column(Float, nullable=True)
+    total_reviews = Column(Integer, default=0)
+
     is_active = Column(Boolean, default=True)
     is_professional = Column(Boolean, default=False)
     is_admin = Column(Boolean, default=False)
@@ -77,6 +81,7 @@ class User(Base):
     appointments_as_client = relationship("Appointment", foreign_keys="[Appointment.client_id]", back_populates="client")
     subscription = relationship("Subscription", back_populates="professional", uselist=False)
     notifications = relationship("Notification", back_populates="user")
+    reviews_received = relationship("Review", back_populates="professional")
 
 class Service(Base):
     __tablename__ = "services"
@@ -203,3 +208,49 @@ class Notification(Base):
     # Relacionamentos
     user = relationship("User", back_populates="notifications")
     appointment = relationship("Appointment", back_populates="notifications")
+
+
+class ReviewToken(Base):
+    """Token UUID para avaliacao de servico - uso unico"""
+    __tablename__ = "review_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String(36), unique=True, nullable=False, index=True)
+    appointment_id = Column(
+        Integer, ForeignKey("appointments.id"),
+        nullable=False, unique=True
+    )
+    created_at = Column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    used_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relacionamentos
+    appointment = relationship("Appointment", backref="review_token")
+
+
+class Review(Base):
+    """Avaliacao de um servico prestado"""
+    __tablename__ = "reviews"
+
+    id = Column(Integer, primary_key=True, index=True)
+    appointment_id = Column(
+        Integer, ForeignKey("appointments.id"),
+        nullable=False, unique=True
+    )
+    professional_id = Column(
+        Integer, ForeignKey("users.id"),
+        nullable=False, index=True
+    )
+    rating = Column(Integer, nullable=False)
+    comment = Column(Text, nullable=True)
+    customer_name = Column(String(255), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    # Relacionamentos
+    appointment = relationship("Appointment", backref="review")
+    professional = relationship(
+        "User", back_populates="reviews_received"
+    )

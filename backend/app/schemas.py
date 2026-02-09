@@ -1,5 +1,5 @@
 # backend/app/schemas.py
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import time, date, datetime
 
@@ -102,6 +102,8 @@ class ProfessionalPublic(BaseModel):
     services: List["ServiceResponse"] = []
     working_hours: List["WorkingHourResponse"] = []
     subscription_plan: Optional[SubscriptionPlanResponse] = None
+    average_rating: Optional[float] = None
+    total_reviews: int = 0
 
     class Config:
         from_attributes = True
@@ -250,6 +252,41 @@ class NotificationPagination(BaseModel):
     page: int
     size: int
     pages: int
+
+    class Config:
+        from_attributes = True
+
+# Review Schemas
+class ReviewCreate(BaseModel):
+    rating: int = Field(..., ge=1, le=5)
+    comment: Optional[str] = None
+    customer_name: str
+
+class ReviewResponse(BaseModel):
+    id: int
+    appointment_id: int
+    professional_id: int
+    rating: int
+    comment: Optional[str] = None
+    customer_name: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ReviewCommentResponse(BaseModel):
+    rating: int
+    comment: Optional[str] = None
+    customer_name: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ReviewsSummaryResponse(BaseModel):
+    average_rating: Optional[float] = None
+    total_reviews: int = 0
+    latest_comments: List[ReviewCommentResponse] = []
 
     class Config:
         from_attributes = True

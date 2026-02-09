@@ -16,6 +16,7 @@ from . import admin as _admin
 from . import categories as _categories
 from . import plans as _plans
 from . import notifications as _notifications
+from . import reviews as _reviews
 
 # Re‑export only the router objects expected by main.py
 users = _users.router
@@ -28,8 +29,10 @@ admin = _admin.router
 categories = _categories.router
 plans = _plans.router
 notifications = _notifications.router
+reviews = _reviews.router
 
 __all__ = [
     "users", "services", "appointments", "subscriptions",
-    "auth", "schedule", "admin", "categories", "plans", "notifications"
+    "auth", "schedule", "admin", "categories", "plans",
+    "notifications", "reviews",
 ]

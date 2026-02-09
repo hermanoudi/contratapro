@@ -1,0 +1,147 @@
+{
+  "meta": {
+    "product_or_system": "ContrataPro",
+    "feature_name": "Sistema de Avaliação de Prestadores",
+    "fdd_owner": "Equipe de Engenharia",
+    "version": "1.0",
+    "date": "2026-02-09"
+  },
+  "context": {
+    "technical_motivation": "Implementação de feedback pós-serviço para gerar reputação técnica dos prestadores através de gatilhos manuais e automáticos.",
+    "fit_with_hld": "Integra-se ao módulo de Agendamento e utiliza o serviço de e-mail (Resend) já existente.",
+    "actors": ["Prestador de Serviço", "Cliente", "Scheduler (Sistema)"],
+    "assumptions": [
+      "O cliente avaliará apenas uma vez por serviço",
+      "O link não expira por tempo, mas por uso"
+    ],
+    "constraints": [
+      "Uso obrigatório de background_tasks do FastAPI para assincronismo",
+      "Manter padrão de e-mail via Resend"
+    ]
+  },
+  "technical_objectives": [
+    {
+      "objective": "Idempotência de Envio",
+      "measure_or_invariant": "Apenas um e-mail por booking_id, validado via Token UUID"
+    },
+    {
+      "objective": "Processamento Assíncrono",
+      "measure_or_invariant": "Uso de background_tasks para não onerar o tempo de resposta da API"
+    },
+    {
+      "objective": "Consistência de Dados",
+      "measure_or_invariant": "Recálculo automático da média do prestador após submissão"
+    }
+  ],
+  "scope": {
+    "included": [
+      "Geração de Token UUID",
+      "Endpoint de submissão de avaliação",
+      "Scheduler diário para conclusões automáticas",
+      "Endpoint de resumo de perfil (média/comentários)",
+      "Integração com Resend"
+    ],
+    "excluded": [
+      "Edição de avaliações",
+      "Moderação de comentários",
+      "Notificações via WhatsApp ou Push"
+    ]
+  },
+  "detailed_flows": {
+    "main_flow": [
+      "Profissional clica em Concluir",
+      "Status do agendamento muda para COMPLETED",
+      "Geração de Token vinculado ao booking_id",
+      "Disparo de e-mail via background_task",
+      "Cliente submete avaliação via endpoint público",
+      "Sistema invalida token e atualiza médias"
+    ],
+    "alternative_flows": [
+      "Scheduler identifica agendamentos passados e dispara o fluxo de conclusão e e-mail automaticamente"
+    ]
+  },
+  "public_contracts": [
+    {
+      "name": "Submissão de Avaliação",
+      "kind": "http_endpoint",
+      "signature_or_route": "/v1/reviews/{token}",
+      "method": "POST",
+      "request_example": {
+        "rating": 5,
+        "comment": "Excelente serviço",
+        "customer_name": "Dayane Oliveira",
+        "evaluated_at": "2026-02-09T14:30:00Z"
+      },
+      "status_semantics": [
+        "201: Created",
+        "404: Token Inválido",
+        "409: Avaliação já realizada"
+      ],
+      "limits": {
+        "timeout": "5s"
+      }
+    },
+    {
+      "name": "Resumo do Prestador",
+      "kind": "http_endpoint",
+      "signature_or_route": "/v1/providers/{id}/reviews-summary",
+      "method": "GET",
+      "response_example": {
+        "average_rating": 4.8,
+        "total_reviews": 125,
+        "latest_comments": []
+      }
+    }
+  ],
+  "errors_exceptions_fallback": {
+    "error_matrix": [
+      {
+        "condition": "Token já utilizado",
+        "treatment": "Retornar 409 Conflict",
+        "notes": "Garante que o cliente não avalie o mesmo serviço múltiplas vezes"
+      }
+    ],
+    "resilience_strategies": ["retries", "backoff"],
+    "fallback_policy": "Logar erro de envio de e-mail para que o Scheduler tente novamente no próximo ciclo",
+    "invariants": ["Um booking_id possui no máximo uma review"]
+  },
+  "observability": {
+    "metrics": [
+      "Taxa de conversão (envios vs respostas)",
+      "Contagem de conclusões via Scheduler"
+    ],
+    "logs": {
+      "format": "JSON estruturado",
+      "fields": ["booking_id", "provider_id", "token_status"]
+    },
+    "dashboards_alerts": [
+      "Alerta se falhas no Resend > 5/hora"
+    ]
+  },
+  "dependencies_compatibility": {
+    "dependencies": [
+      {
+        "component": "FastAPI",
+        "min_version": "0.95.0"
+      },
+      {
+        "component": "Resend SDK",
+        "min_version": "latest"
+      }
+    ]
+  },
+  "acceptance_criteria": [
+    "O link deve ser invalidado após o primeiro uso",
+    "O e-mail não deve atrasar a resposta da API de conclusão",
+    "A nota média deve ser atualizada em até 30s"
+  ],
+  "risks": [
+    {
+      "risk": "Serviço não realizado concluído pelo Scheduler",
+      "probability": "medium",
+      "impact": "Envio de e-mail indevido",
+      "mitigation": ["Assumir risco de negócio"],
+      "contingency_plan": "Futura implementação de link para reportar serviço não realizado"
+    }
+  ]
+}

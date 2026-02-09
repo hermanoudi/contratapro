@@ -1,3 +1,6 @@
+import logging
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -6,10 +9,14 @@ from typing import List, Optional
 from datetime import date, timedelta
 from sqlalchemy import func, or_, and_
 from ..database import get_db
-from ..models import Appointment, User, Service
+from ..models import Appointment, User, Service, ReviewToken
 from ..schemas import AppointmentCreate, AppointmentResponse, AppointmentBase, AppointmentStatusUpdate, AppointmentPagination, ManualBlockCreate
 from ..dependencies import get_current_user
 from ..services.notifications import notification_service
+from ..services.notifications.templates import email_templates
+from ..config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -134,16 +141,35 @@ async def update_appointment_status(
     appt.status = new_status
     appt.reason = status_update.reason
 
+    # Se concluido, gerar token de avaliacao na mesma transacao
+    token_value = None
+    if new_status == "completed":
+        token_value = str(uuid.uuid4())
+        review_token = ReviewToken(
+            token=token_value,
+            appointment_id=appt_id,
+        )
+        db.add(review_token)
+
     await db.commit()
     await db.refresh(appt)
 
-    # Disparar notificações em background
+    # Disparar notificacoes em background
     background_tasks.add_task(
         notification_service.notify_appointment_status_changed,
         db,
         appt_id,
-        new_status
+        new_status,
     )
+
+    # Enviar email de avaliacao em background
+    if token_value:
+        background_tasks.add_task(
+            _send_review_email,
+            db,
+            appt_id,
+            token_value,
+        )
 
     return appt
 
@@ -513,3 +539,66 @@ async def delete_manual_block(
 
     await db.delete(block)
     await db.commit()
+
+
+async def _send_review_email(
+    db: AsyncSession,
+    appointment_id: int,
+    token_value: str,
+):
+    """
+    Envia email de avaliacao ao cliente apos conclusao do servico.
+    Executado em background para nao atrasar a resposta da API.
+    """
+    try:
+        result = await db.execute(
+            select(Appointment)
+            .options(
+                selectinload(Appointment.client),
+                selectinload(Appointment.professional),
+                selectinload(Appointment.service),
+            )
+            .filter(Appointment.id == appointment_id)
+        )
+        appt = result.scalars().first()
+        if not appt or not appt.client:
+            return
+
+        frontend_url = settings.FRONTEND_URL.rstrip("/")
+        review_link = f"{frontend_url}/avaliar/{token_value}"
+
+        professional_name = (
+            appt.professional.name
+            if appt.professional
+            else "Profissional"
+        )
+        service_title = (
+            appt.service.title
+            if appt.service
+            else "Servico"
+        )
+
+        subject, plain_text, html = email_templates.review_request(
+            recipient_name=appt.client.name,
+            professional_name=professional_name,
+            service_title=service_title,
+            appointment_date=appt.date,
+            review_link=review_link,
+        )
+
+        await notification_service.send_subscription_email(
+            to_email=appt.client.email,
+            subject=subject,
+            plain_text=plain_text,
+            html=html,
+        )
+
+        logger.info(
+            f"Email de avaliacao enviado para "
+            f"{appt.client.email} (appointment {appointment_id})"
+        )
+    except Exception as e:
+        logger.error(
+            f"Erro ao enviar email de avaliacao "
+            f"(appointment {appointment_id}): {str(e)}"
+        )

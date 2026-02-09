@@ -1006,4 +1006,79 @@ Equipe ContrataPro
         return subject, plain_text, EmailTemplates._base_template(html_content)
 
 
+    # ==================== TEMPLATES DE AVALIACAO ====================
+
+    @staticmethod
+    def review_request(
+        recipient_name: str,
+        professional_name: str,
+        service_title: str,
+        appointment_date: date,
+        review_link: str
+    ) -> Tuple[str, str, str]:
+        """
+        Template para solicitacao de avaliacao apos conclusao do servico.
+
+        Returns:
+            tuple: (subject, plain_text, html)
+        """
+        date_str = appointment_date.strftime("%d/%m/%Y")
+
+        subject = (
+            f"Como foi seu atendimento? "
+            f"Avalie {professional_name}"
+        )
+
+        plain_text = f"""
+Ola {recipient_name},
+
+Seu atendimento com {professional_name} foi concluido!
+
+Servico: {service_title}
+Data: {date_str}
+
+Sua opiniao e muito importante. Avalie o servico clicando no link abaixo:
+
+{review_link}
+
+Leva menos de 1 minuto e ajuda outros clientes a encontrar bons profissionais.
+
+Atenciosamente,
+Equipe ContrataPro
+"""
+
+        html_content = f"""
+        <div class="content">
+            <h2>Ola {recipient_name},</h2>
+            <p>Seu atendimento com <strong>{professional_name}</strong> foi concluido!</p>
+
+            <div class="info-box">
+                <div class="info-item">
+                    <span class="info-label">Servico:</span>
+                    <span class="info-value">{service_title}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Data:</span>
+                    <span class="info-value">{date_str}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Profissional:</span>
+                    <span class="info-value">{professional_name}</span>
+                </div>
+            </div>
+
+            <p>Sua opiniao e muito importante! Avalie o servico e ajude outros clientes a encontrar bons profissionais.</p>
+
+            <p><strong>Leva menos de 1 minuto!</strong></p>
+
+            <a href="{review_link}" class="button">Avaliar Agora</a>
+        </div>
+"""
+
+        return (
+            subject, plain_text,
+            EmailTemplates._base_template(html_content)
+        )
+
+
 email_templates = EmailTemplates()
