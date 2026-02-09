@@ -766,13 +766,15 @@ export default function Search() {
                     </ProInfo>
                   </ProHeader>
 
-                  <RatingContainer>
-                    <Star size={16} fill="#f59e0b" color="#f59e0b" />
-                    <RatingScore>4.9</RatingScore>
-                    <RatingCount>
-                      (128 avaliações)
-                    </RatingCount>
-                  </RatingContainer>
+                  {pro.total_reviews > 0 && (
+                    <RatingContainer>
+                      <Star size={16} fill="#f59e0b" color="#f59e0b" />
+                      <RatingScore>{(pro.average_rating || 0).toFixed(1)}</RatingScore>
+                      <RatingCount>
+                        ({pro.total_reviews} {pro.total_reviews === 1 ? 'avaliação' : 'avaliações'})
+                      </RatingCount>
+                    </RatingContainer>
+                  )}
 
                   <ProDescription>
                     {pro.description || 'Sem descrição disponível.'}

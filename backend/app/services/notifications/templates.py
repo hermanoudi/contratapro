@@ -74,7 +74,7 @@ class EmailTemplates:
         .button {{
             display: inline-block;
             background: #6366f1;
-            color: white;
+            color: #FFFFFF !important;
             padding: 12px 24px;
             border-radius: 8px;
             text-decoration: none;
@@ -172,7 +172,7 @@ Acesse o ContrataPro para mais detalhes.
                 </div>
             </div>
 
-            <a href="https://contratapro.com.br" class="button">Ver Detalhes</a>
+            <a href="https://contratapro.com.br" class="button" style="color: #FFFFFF;">Ver Detalhes</a>
         </div>
 """
 
@@ -253,7 +253,7 @@ Acesse o ContrataPro para mais detalhes.
                 </div>
             </div>
 
-            <a href="https://contratapro.com.br" class="button">Ver Detalhes</a>
+            <a href="https://contratapro.com.br" class="button" style="color: #FFFFFF;">Ver Detalhes</a>
         </div>
 """
 

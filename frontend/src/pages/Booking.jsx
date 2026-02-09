@@ -868,6 +868,7 @@ export default function Booking() {
     const [clientCity, setClientCity] = useState('');
     const [matching, setMatching] = useState(null); // null, true, false
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [reviews, setReviews] = useState([]);
 
     // Buscar dados do cliente logado (incluindo CEP)
     useEffect(() => {
@@ -921,6 +922,13 @@ export default function Booking() {
                     const apptRes = await fetch(`/api/appointments/professional/${data.id}/week?start_date=${new Date().toISOString().split('T')[0]}`);
                     if (apptRes.ok) {
                         setAppointments(await apptRes.json());
+                    }
+
+                    // Buscar avaliacoes do profissional
+                    const reviewRes = await fetch(`${API_URL}/reviews/providers/${data.id}/summary`);
+                    if (reviewRes.ok) {
+                        const reviewData = await reviewRes.json();
+                        setReviews(reviewData.latest_comments || []);
                     }
                 }
             } catch (e) { console.error(e); }
@@ -1133,10 +1141,13 @@ export default function Booking() {
                                 <h1>{pro.name}</h1>
                                 <p className="pro-category">{pro.category}</p>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-primary)', padding: '0.5rem 0.75rem', borderRadius: '12px', border: '1px solid var(--border)', flexShrink: 0 }}>
-                                <Star size={16} fill="var(--accent)" color="var(--accent)" />
-                                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>4.9</span>
-                            </div>
+                            {pro.total_reviews > 0 && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-primary)', padding: '0.5rem 0.75rem', borderRadius: '12px', border: '1px solid var(--border)', flexShrink: 0 }}>
+                                    <Star size={16} fill="var(--accent)" color="var(--accent)" />
+                                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{(pro.average_rating || 0).toFixed(1)}</span>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({pro.total_reviews})</span>
+                                </div>
+                            )}
                         </div>
                         <p className="pro-description">{pro.description}</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', marginTop: '1rem', fontSize: '0.9rem' }}>
@@ -1145,6 +1156,52 @@ export default function Booking() {
                         </div>
                     </div>
                 </ProHeader>
+
+                {reviews.length > 0 && (
+                    <Section style={{ marginBottom: '2rem' }}>
+                        <h2>
+                            <Star size={20} color="var(--accent)" /> Avaliações
+                            <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>
+                                ({pro.total_reviews} {pro.total_reviews === 1 ? 'avaliação' : 'avaliações'})
+                            </span>
+                        </h2>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {reviews.slice(0, 3).map((review, idx) => (
+                                <div
+                                    key={idx}
+                                    style={{
+                                        background: 'var(--bg-primary)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '12px',
+                                        padding: '1rem 1.25rem',
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{review.customer_name}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            {[...Array(5)].map((_, i) => (
+                                                <Star
+                                                    key={i}
+                                                    size={14}
+                                                    fill={i < review.rating ? '#f59e0b' : 'transparent'}
+                                                    color={i < review.rating ? '#f59e0b' : 'var(--text-secondary)'}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {review.comment && (
+                                        <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                                            {review.comment}
+                                        </p>
+                                    )}
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', marginBottom: 0, opacity: 0.7 }}>
+                                        {new Date(review.created_at).toLocaleDateString('pt-BR')}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </Section>
+                )}
 
                 <BookingGrid>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>

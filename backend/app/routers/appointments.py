@@ -113,22 +113,26 @@ async def update_appointment_status(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Appointment).filter(Appointment.id == appt_id)
+    query = select(Appointment).options(
+        selectinload(Appointment.client),
+        selectinload(Appointment.professional),
+        selectinload(Appointment.service),
+    ).filter(Appointment.id == appt_id)
     result = await db.execute(query)
     appt = result.scalars().first()
-    
+
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
-        
+
     # Permission check
     is_professional = appt.professional_id == current_user.id
     is_client = appt.client_id == current_user.id
-    
+
     if not is_professional and not is_client:
         raise HTTPException(status_code=403, detail="Not authorized")
-        
+
     new_status = status_update.status.lower()
-    
+
     if new_status == "completed":
         if not is_professional:
             raise HTTPException(status_code=403, detail="Only professionals can mark as completed")
@@ -137,7 +141,7 @@ async def update_appointment_status(
             raise HTTPException(status_code=400, detail="Reason is mandatory and must be at least 5 characters")
     else:
         raise HTTPException(status_code=400, detail="Invalid status")
-        
+
     appt.status = new_status
     appt.reason = status_update.reason
 
@@ -171,7 +175,35 @@ async def update_appointment_status(
             token_value,
         )
 
-    return appt
+    # Enriquecer resposta com dados dos relacionamentos
+    resp = AppointmentResponse.model_validate(appt)
+    if appt.client:
+        resp.client_name = appt.client.name
+        resp.client_email = appt.client.email
+        resp.client_whatsapp = appt.client.whatsapp
+        resp.client_street = appt.client.street
+        resp.client_number = appt.client.number
+        resp.client_complement = appt.client.complement
+        resp.client_neighborhood = appt.client.neighborhood
+        resp.client_city = appt.client.city
+        resp.client_state = appt.client.state
+        resp.client_cep = appt.client.cep
+    if appt.professional:
+        resp.professional_name = appt.professional.name
+        resp.professional_category = appt.professional.category
+        resp.professional_whatsapp = appt.professional.whatsapp
+        resp.professional_street = appt.professional.street
+        resp.professional_number = appt.professional.number
+        resp.professional_complement = appt.professional.complement
+        resp.professional_neighborhood = appt.professional.neighborhood
+        resp.professional_city = appt.professional.city
+        resp.professional_state = appt.professional.state
+        resp.professional_cep = appt.professional.cep
+    if appt.service:
+        resp.service_title = appt.service.title
+        resp.service_duration_type = appt.service.duration_type
+
+    return resp
 
 @router.get("/me/week", response_model=List[AppointmentResponse])
 async def get_weekly_appointments(
