@@ -1,6 +1,8 @@
-# Chama Eu - Plataforma de Agendamento de Serviços
+# ContrataPro - Plataforma de Agendamento de Servicos
 
-Plataforma web que conecta clientes a profissionais autônomos, facilitando o agendamento de serviços com sistema de pagamento integrado via Mercado Pago.
+Plataforma web que conecta clientes a profissionais autonomos, facilitando o agendamento de servicos com sistema de assinatura integrado via Mercado Pago.
+
+**URL Producao:** [contratapro.com.br](https://contratapro.com.br)
 
 ## 🚀 Tecnologias
 

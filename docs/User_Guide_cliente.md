@@ -1,6 +1,6 @@
 # Guia do Cliente - ContrataPro
 
-> Este guia explica como utilizar a plataforma ContrataPro para encontrar e agendar servicos com profissionais verificados.
+> Este guia explica como utilizar a plataforma ContrataPro para encontrar e agendar servicos com profissionais da sua região.
 
 ---
 
@@ -70,7 +70,7 @@ Apos o cadastro, voce pode:
 2. **Acessar seu painel** para ver agendamentos
 3. **Completar seu perfil** se necessario
 
-> **Dica Tour:** "Pronto! Agora voce pode buscar e agendar servicos com profissionais verificados."
+> **Dica Tour:** "Pronto! Agora voce pode buscar e agendar servicos com profissionais da sua região."
 
 ---
 
@@ -364,7 +364,7 @@ const tourStepsClient = [
     id: 'tour-client-first-login',
     target: '.main-container',
     title: 'Bem-vindo ao ContrataPro!',
-    content: 'Aqui voce encontra profissionais verificados para qualquer servico.',
+    content: 'Aqui voce encontra profissionais da sua região para qualquer servico.',
     placement: 'center'
   },
   {

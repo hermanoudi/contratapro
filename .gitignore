@@ -99,7 +99,10 @@ backend/uploads/
 .DS_Store
 *.sublime-project
 *.sublime-workspace
-.claude/
+.claude/*
+!.claude/guidelines/
+.claude/guidelines/*
+!.claude/guidelines/*.md
 .playwright-mcp/
 
 # ===========================================

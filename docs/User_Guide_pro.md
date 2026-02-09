@@ -77,9 +77,8 @@ O cadastro de profissional e feito em 5 etapas simples:
 | Plano | Preco | Beneficios |
 |-------|-------|------------|
 | **Trial** | Gratis por 30 dias | Teste todas as funcionalidades |
-| **Bronze** | R$ 19,90/mes | Perfil basico, ate 3 servicos |
-| **Silver** | R$ 39,90/mes | Servicos ilimitados, prioridade na busca |
-| **Gold** | R$ 59,90/mes | Maxima visibilidade, destaque nos resultados |
+| **Basic** | R$ 29,90/mes | Perfil basico, ate 3 servicos |
+| **Premium** | R$ 59,90/mes | Maxima visibilidade, destaque nos resultados da busca|
 
 > **Dica Tour:** "Comece com o Trial gratuito e conheca a plataforma sem compromisso!"
 
@@ -447,10 +446,7 @@ const tourStepsPro = [
 
 ## Precisa de Ajuda?
 
-- **WhatsApp Suporte:** (xx) xxxxx-xxxx
-- **E-mail:** suporte@contratapro.com.br
-- **Central de Ajuda:** contratapro.com.br/ajuda
-
+- **E-mail:** contato@contratapro.com.br
 ---
 
 *Ultima atualizacao: Fevereiro 2026*
