@@ -108,6 +108,25 @@ class ProfessionalPublic(BaseModel):
     class Config:
         from_attributes = True
 
+class ProfessionalSearchResult(BaseModel):
+    """Schema para resultados de busca — sem working_hours (não usado nos cards)"""
+    id: int
+    name: str
+    slug: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    whatsapp: Optional[str] = None
+    profile_picture: Optional[str] = None
+    services: List["ServiceResponse"] = []
+    subscription_plan: Optional[SubscriptionPlanResponse] = None
+    average_rating: Optional[float] = None
+    total_reviews: int = 0
+
+    class Config:
+        from_attributes = True
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str

@@ -5,7 +5,7 @@ from sqlalchemy.future import select
 from datetime import datetime, timedelta
 from ..database import get_db
 from ..models import User, SubscriptionPlan
-from ..schemas import UserCreate, UserResponse, ProfessionalPublic, UserUpdate
+from ..schemas import UserCreate, UserResponse, ProfessionalPublic, ProfessionalSearchResult, UserUpdate
 from ..auth_utils import get_password_hash
 from ..dependencies import get_current_user
 from ..services.image_storage import image_storage
@@ -189,7 +189,7 @@ async def toggle_suspension(current_user: User = Depends(get_current_user), db: 
     await db.refresh(current_user)
     return {"is_suspended": current_user.is_suspended}
 
-@router.get("/search", response_model=List[ProfessionalPublic])
+@router.get("/search", response_model=List[ProfessionalSearchResult])
 async def search_professionals(
     category: Optional[str] = None,
     city: Optional[str] = None,
@@ -217,7 +217,7 @@ async def search_professionals(
     result = await db.execute(query)
     return result.scalars().all()
 
-@router.get("/search-by-service", response_model=List[ProfessionalPublic])
+@router.get("/search-by-service", response_model=List[ProfessionalSearchResult])
 async def search_professionals_by_service(
     service: Optional[str] = None,
     city: Optional[str] = None,
