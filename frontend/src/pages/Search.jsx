@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import styled from 'styled-components';
+import { API_URL } from '../config';
 import {
   Search as SearchIcon,
   MapPin,
@@ -634,8 +635,8 @@ export default function Search() {
     const cityParam = searchParams.get('city') || localStorage.getItem('userCity');
     const cepParam = searchParams.get('cep') || localStorage.getItem('userCep');
 
-    if (serviceParam || cityParam || cepParam) {
-      performSearch(serviceParam, cityParam, cepParam);
+    if (serviceParam || cityParam) {
+      performSearch(serviceParam, cityParam);
     }
   }, []); // Executar apenas uma vez ao montar
 
@@ -644,10 +645,10 @@ export default function Search() {
     setCep(value);
     if (value.length === 8) {
       try {
-        const res = await fetch(`https://viacep.com.br/ws/${value}/json/`);
-        const data = await res.json();
-        if (!data.erro) {
-          setCity(data.localidade);
+        const res = await fetch(`${API_URL}/cep/${value}`);
+        if (res.ok) {
+          const data = await res.json();
+          setCity(data.city);
         }
       } catch (e) {
         console.error(e);
@@ -657,16 +658,15 @@ export default function Search() {
     }
   };
 
-  const performSearch = async (searchService, searchCity, searchCep) => {
+  const performSearch = async (searchService, searchCity) => {
     setLoading(true);
 
     try {
       const params = new URLSearchParams();
       if (searchService) params.append('service', searchService);
       if (searchCity) params.append('city', searchCity);
-      if (searchCep) params.append('cep', searchCep);
 
-      const res = await fetch(`/api/users/search-by-service?${params.toString()}`);
+      const res = await fetch(`${API_URL}/users/search-by-service?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setProfessionals(data);
@@ -680,7 +680,7 @@ export default function Search() {
   };
 
   const handleSearch = () => {
-    performSearch(service, city, cep);
+    performSearch(service, city);
     // Atualizar URL
     const params = new URLSearchParams();
     if (service) params.set('service', service);

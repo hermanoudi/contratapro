@@ -206,7 +206,6 @@ async def search_professionals(
         User.subscription_status == 'active'  # Apenas profissionais com assinatura ativa
     ).options(
         selectinload(User.services),
-        selectinload(User.working_hours),
         selectinload(User.subscription_plan)
     )
 
@@ -221,7 +220,6 @@ async def search_professionals(
 @router.get("/search-by-service", response_model=List[ProfessionalPublic])
 async def search_professionals_by_service(
     service: Optional[str] = None,
-    cep: Optional[str] = None,
     city: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
@@ -243,7 +241,6 @@ async def search_professionals_by_service(
         User.subscription_status == 'active'
     ).options(
         selectinload(User.services),
-        selectinload(User.working_hours),
         selectinload(User.subscription_plan)  # Carregar dados do plano
     )
 
