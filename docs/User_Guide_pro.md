@@ -76,9 +76,9 @@ O cadastro de profissional e feito em 5 etapas simples:
 
 | Plano | Preco | Beneficios |
 |-------|-------|------------|
-| **Trial** | Gratis por 30 dias | Teste todas as funcionalidades |
-| **Basic** | R$ 29,90/mes | Perfil basico, ate 3 servicos |
-| **Premium** | R$ 59,90/mes | Maxima visibilidade, destaque nos resultados da busca|
+| **Trial** | Gratis por 30 dias | Teste a plataforma com ate 3 servicos |
+| **Basic** | R$ 29,90/mes | Perfil basico, ate 5 servicos |
+| **Premium** | R$ 49,90/mes | Maxima visibilidade, destaque nos resultados da busca|
 
 > **Dica Tour:** "Comece com o Trial gratuito e conheca a plataforma sem compromisso!"
 

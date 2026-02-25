@@ -29,7 +29,7 @@ uvicorn[standard]==0.24.0
 sqlalchemy==2.0.23
 asyncpg==0.29.0
 python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
+bcrypt==4.2.1
 python-multipart==0.0.6
 mercadopago==2.3.0
 pydantic-settings==2.1.0
@@ -175,27 +175,46 @@ SUBSCRIPTION_FREQUENCY_TYPE=months
 
 **✅ O Railway conecta automaticamente!**
 
-### 2.4 Deploy do Frontend (React)
+### 2.4 Deploy do Frontend (React) → Vercel
 
-#### Passo 1: Adicionar Serviço Frontend
+> **⚠️ O frontend do ContrataPro é hospedado na Vercel, não no Railway.**
+> O Railway fica responsável apenas pelo **backend (FastAPI) + PostgreSQL**.
 
-1. Clique **"+ New"** → **"GitHub Repo"**
-2. Selecione o mesmo repositório `faz_de_tudo`
+#### Passo 1: Conectar repositório na Vercel
+
+1. Acesse https://vercel.com e faça login
+2. Clique em **"Add New Project"** → importe o repositório `faz_de_tudo`
 3. Configure:
    - **Root Directory**: `frontend`
-   - **Build Command**: `npm run build`
-   - **Start Command**: `npm run preview` (ou configure Nginx)
+   - **Build Command**: `npm run build` (detectado automaticamente)
+   - **Output Directory**: `dist`
 
-#### Passo 2: Variáveis de Ambiente do Frontend
+#### Passo 2: Variável de Ambiente na Vercel
 
-1. Clique no serviço Frontend → **Variables**
-2. Adicione:
+1. Em **Settings** → **Environment Variables**, adicione:
 
 ```env
-VITE_API_URL=https://seu-backend.railway.app/api
+VITE_API_URL=
 ```
 
-**⚠️ Vamos pegar essa URL no próximo passo**
+> Deixe vazio — em produção o `config.js` usa `/api` como prefixo padrão, e o `vercel.json` redireciona `/api/*` para o backend Railway.
+
+#### Passo 3: Configurar rewrite no vercel.json
+
+Certifique-se que `frontend/vercel.json` contém o rewrite para o backend:
+
+```json
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://seu-backend.railway.app/:path*"
+    }
+  ]
+}
+```
+
+**⚠️ Substitua `seu-backend.railway.app` pela URL real do seu serviço Railway**
 
 ### 2.5 Configurar URLs e Domínios
 
@@ -218,29 +237,38 @@ BACKEND_URL=https://backend-production-xxxx.up.railway.app
 
 **Frontend Variables:**
 ```env
-VITE_API_URL=https://backend-production-xxxx.up.railway.app/api
+VITE_API_URL=https://backend-production-xxxx.up.railway.app
 ```
 
 ### 2.6 Configurar CORS no Backend
 
-Certifique-se que o `main.py` tem:
+Certifique-se que o `main.py` tem (origens explícitas + Vercel preview deploys):
 
 ```python
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
+
+origins = [
+    "http://localhost:5173",           # Dev - Vite
+    "http://localhost:3000",           # Dev alternativo
+    "https://contratapro.com.br",      # Produção
+    "https://www.contratapro.com.br",  # Produção com www
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origin_regex=r"https://.*\.vercel\.app",  # Aceita preview deploys
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 ```
 
-### 2.7 Criar Tabelas do Banco de Dados
+### 2.7 Aplicar Migrations do Banco de Dados
 
-#### Opção 1: Via Railway CLI
+O projeto usa **Alembic** para gerenciar o schema do banco. Nunca use `Base.metadata.create_all` — ele ignora as migrations e pode criar o schema errado.
+
+#### Via Railway CLI
 
 ```bash
 # Instalar Railway CLI
@@ -252,21 +280,14 @@ railway login
 # Conectar ao projeto
 railway link
 
-# Rodar comando para criar tabelas
-railway run python -c "from app.database import engine; from app.models import Base; Base.metadata.create_all(bind=engine)"
+# Aplicar todas as migrations pendentes
+railway run alembic upgrade head
+
+# Rodar seed de planos (necessário apenas uma vez)
+railway run python seed_plans.py
 ```
 
-#### Opção 2: Via Script de Inicialização
-
-Adicionar ao `main.py`:
-
-```python
-@app.on_event("startup")
-async def startup_event():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("✅ Database tables created")
-```
+> **Atenção:** O Railway injeta `DATABASE_URL` automaticamente. A aplicação converte `postgresql://` para `postgresql+asyncpg://` em runtime (ver `database.py` e `config.py`).
 
 ---
 
@@ -277,21 +298,21 @@ async def startup_event():
 1. Clique no serviço (Backend ou Frontend)
 2. Vá em **Settings** → **Networking**
 3. Em **Custom Domain**, adicione seu domínio:
-   - Backend: `api.chamaeu.com.br`
-   - Frontend: `app.chamaeu.com.br` ou `chamaeu.com.br`
+   - Backend: `api.contratapro.com.br`
+   - Frontend: `app.contratapro.com.br` ou `contratapro.com.br`
 
 ### 3.2 No seu Provedor de Domínio (Registro.br, etc)
 
 Adicione os registros DNS:
 
-**Para o Backend (api.chamaeu.com.br):**
+**Para o Backend (api.contratapro.com.br):**
 ```
 Type: CNAME
 Name: api
 Value: backend-production-xxxx.up.railway.app
 ```
 
-**Para o Frontend (app.chamaeu.com.br):**
+**Para o Frontend (app.contratapro.com.br):**
 ```
 Type: CNAME
 Name: app
@@ -304,13 +325,13 @@ Value: frontend-production-xxxx.up.railway.app
 
 **Backend:**
 ```env
-FRONTEND_URL=https://app.chamaeu.com.br
-BACKEND_URL=https://api.chamaeu.com.br
+FRONTEND_URL=https://app.contratapro.com.br
+BACKEND_URL=https://api.contratapro.com.br
 ```
 
 **Frontend:**
 ```env
-VITE_API_URL=https://api.chamaeu.com.br/api
+VITE_API_URL=https://api.contratapro.com.br
 ```
 
 ---
@@ -332,11 +353,11 @@ VITE_API_URL=https://api.chamaeu.com.br/api
 2. Clique em **Configurar**
 3. Adicione a URL:
    ```
-   https://api.chamaeu.com.br/api/subscriptions/webhook
+   https://api.contratapro.com.br/subscriptions/webhook
    ```
    Ou se usando URL gerada:
    ```
-   https://backend-production-xxxx.up.railway.app/api/subscriptions/webhook
+   https://backend-production-xxxx.up.railway.app/subscriptions/webhook
    ```
 
 4. Selecione os eventos:
@@ -349,7 +370,7 @@ VITE_API_URL=https://api.chamaeu.com.br/api
 
 ```bash
 # Criar um profissional de teste
-curl -X POST https://api.chamaeu.com.br/api/auth/register-professional \
+curl -X POST https://api.contratapro.com.br/auth/register-professional \
   -H "Content-Type: application/json" \
   -d '{
     "email": "teste@teste.com",
@@ -426,8 +447,8 @@ VITE_SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
 **BetterUptime (Grátis):**
 
 1. Acesse https://betteruptime.com
-2. Adicione seu site: `https://app.chamaeu.com.br`
-3. Adicione sua API: `https://api.chamaeu.com.br/health` (criar endpoint)
+2. Adicione seu site: `https://app.contratapro.com.br`
+3. Adicione sua API: `https://api.contratapro.com.br/health` (criar endpoint)
 4. Configure alertas por email/SMS
 
 **Endpoint de Health Check:**
@@ -439,7 +460,7 @@ async def health_check():
     return {
         "status": "ok",
         "timestamp": datetime.now().isoformat(),
-        "service": "chama-eu-api"
+        "service": "contratapro-api"
     }
 ```
 
@@ -517,7 +538,7 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-@app.post("/api/auth/login")
+@app.post("/auth/login")
 @limiter.limit("5/minute")
 async def login(request: Request, ...):
     # ...
@@ -601,20 +622,20 @@ Após deploy, testar:
 
 ```bash
 # 1. Health Check
-curl https://api.chamaeu.com.br/health
+curl https://api.contratapro.com.br/health
 
 # 2. Criar usuário
-curl -X POST https://api.chamaeu.com.br/api/auth/register-client \
+curl -X POST https://api.contratapro.com.br/auth/register-client \
   -H "Content-Type: application/json" \
   -d '{"email":"teste@teste.com","password":"Teste123!","name":"Teste"}'
 
 # 3. Login
-curl -X POST https://api.chamaeu.com.br/api/auth/login \
+curl -X POST https://api.contratapro.com.br/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"teste@teste.com","password":"Teste123!"}'
 
 # 4. Buscar profissionais
-curl https://api.chamaeu.com.br/api/services/search?city=São%20Paulo
+curl https://api.contratapro.com.br/services/search?city=São%20Paulo
 ```
 
 ### 9.2 Testar Fluxo de Assinatura
@@ -627,7 +648,7 @@ curl https://api.chamaeu.com.br/api/services/search?city=São%20Paulo
 
 **Cartões de teste MP:**
 - **Aprovado:** 5031 4332 1540 6351 - CVV: 123 - Validade: 11/25
-- **Recusado:** 5031 4332 1540 6351 - CVV: 123 - Validade: 11/25
+- **Recusado:** 4235 6477 2802 5682 - CVV: 123 - Validade: 11/25
 
 ---
 
@@ -677,7 +698,7 @@ app.add_middleware(
 1. Verificar URL no Mercado Pago
 2. Testar endpoint manualmente:
    ```bash
-   curl -X POST https://api.chamaeu.com.br/api/subscriptions/webhook \
+   curl -X POST https://api.contratapro.com.br/subscriptions/webhook \
      -H "Content-Type: application/json" \
      -d '{"type":"test"}'
    ```
@@ -724,7 +745,7 @@ app.add_middleware(
 Railway Developer Plan:           R$ 100,00
 Domínio (.com.br/ano):             R$   3,33 (40/12)
 Cloudinary (fotos - free):         R$   0,00
-SendGrid (email - free):           R$   0,00
+Resend (email - free tier):        R$   0,00
 Sentry (erros - free):             R$   0,00
 BetterUptime (uptime - free):      R$   0,00
 WhatsApp Business API:             R$  50,00
@@ -752,7 +773,7 @@ TOTAL:                             R$ 153,33/mês
 
 Após deploy bem-sucedido:
 
-1. **Implementar features faltantes** (ver [GAP_ANALYSIS.md](./GAP_ANALYSIS.md))
+1. **Implementar features faltantes** (ver backlog no repositório)
 2. **Configurar analytics** (Google Analytics, Hotjar)
 3. **Implementar testes automatizados** (Pytest, Jest)
 4. **Documentar API** (Swagger/OpenAPI já incluído no FastAPI)
@@ -781,7 +802,7 @@ Após deploy bem-sucedido:
 
 ## ✅ Conclusão
 
-Com este guia, você terá o **Chama Eu** rodando em produção no Railway em **2-4 horas**, com:
+Com este guia, você terá o **ContrataPro** rodando em produção no Railway em **2-4 horas**, com:
 
 - ✅ Deploy automático via Git
 - ✅ PostgreSQL gerenciado com backups

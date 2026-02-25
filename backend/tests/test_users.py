@@ -8,7 +8,7 @@ async def test_create_user_success(async_client):
     payload = {
         "name": "Test User",
         "email": unique_email,
-        "password": "securepassword123",
+        "password": "Secure@123",
         "is_professional": True,
         "cep": "12345678",
         "city": "Test City",
@@ -26,7 +26,7 @@ async def test_create_user_success(async_client):
 @pytest.mark.asyncio
 async def test_create_user_long_password(async_client):
     # Test password longer than 72 bytes
-    long_password = "a" * 100
+    long_password = "Aa@1" + "a" * 96
     unique_email = f"long_{uuid.uuid4()}@example.com"
     payload = {
         "name": "Long Password User",
@@ -43,7 +43,7 @@ async def test_create_user_duplicate_email(async_client):
     payload = {
         "name": "Duplicate User",
         "email": unique_email,
-        "password": "123",
+        "password": "Secure@123",
         "is_professional": False
     }
     # First creation

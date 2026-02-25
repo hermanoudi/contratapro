@@ -1,4 +1,4 @@
-# Guia Completo de Deploy - Chama Eu Platform
+# Guia Completo de Deploy - ContrataPro
 
 ## 📊 Análise de Opções de Hospedagem
 
@@ -249,7 +249,7 @@ VPS Linux (Ubuntu 22.04)
 
 ## 💡 Minha Recomendação Personalizada
 
-### Para o "Chama Eu" MVP:
+### Para o "ContrataPro" MVP:
 
 **1ª Escolha: Railway.app**
 
@@ -328,8 +328,8 @@ Responda SIM ou NÃO:
 - DigitalOcean Spaces: R$ 25/mês (250GB)
 
 **3. Email Transacional**
+- Resend: Grátis até 3.000 emails/mês (usado no projeto)
 - SendGrid: Grátis até 100 emails/dia
-- Mailgun: $35/mês (50k emails)
 - Amazon SES: $0.10 per 1000 emails
 
 **4. Monitoramento**
@@ -351,7 +351,7 @@ Responda SIM ou NÃO:
 Railway Developer Plan:     R$ 100
 Domínio (.com.br):          R$   3 (40/12)
 Cloudinary (fotos):         R$   0 (free tier)
-SendGrid (email):           R$   0 (free tier)
+Resend (email):             R$   0 (free tier)
 WhatsApp API:               R$  50 (estimado)
 Sentry (monitoring):        R$   0 (free tier)
 ────────────────────────────────────
@@ -423,7 +423,7 @@ TOTAL:                      R$ 178/mês
 
 ## ✅ Conclusão
 
-Para o MVP do **Chama Eu**:
+Para o MVP do **ContrataPro**:
 
 **Deploy em:** Railway.app
 **Custo:** R$ 153/mês (incluindo WhatsApp)

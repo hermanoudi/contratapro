@@ -50,12 +50,12 @@ Incluso
 - Funcionalidade de Busca por CEP/Cidade (filtro obrigatório e exclusivo por cidade).
 - Funcionalidade de Agendamento (seleção de data/hora que bloqueia a agenda).
 - Cobrança da Mensalidade do Profissional via cartão de crédito (R$ 50,00/mês).
-- Painel básico do Administrador com KPIs (Profissionais e Agendamentos) e gestão de bloqueio/desbloqueio de perfil.
+- Painel básico do Administrador com KPIs (Profissionais e Agendamentos) e gestão de suspensão/reativação de perfil.
 
 Fora de escopo
 - Pagamento do serviço pelo Cliente Consumidor dentro da plataforma.
 - Métodos de pagamento para a mensalidade do profissional que não sejam cartão de crédito (Ex: PIX, Boleto).
-- Avaliações e comentários dos clientes.
+- Avaliações e comentários dos clientes. *(Implementado pós-MVP via sistema de tokens por e-mail — ver `backend/app/routers/reviews.py`)*
 - Funcionalidade de chat interno entre cliente e profissional.
 - Múltiplos agendamentos simultâneos para o mesmo profissional.
 - Atendimento baseado em "raio de ação" (distância em quilômetros).
@@ -91,7 +91,7 @@ Permitir que o Profissional, após o cadastro, defina os detalhes de cada servi�
 **Fluxo principal**
 - O Profissional acessa o painel e clica em **"Adicionar Novo Serviço"**.
 - Preenche o **Nome** e a **Descrição** detalhada.
-- Define a **Unidade de Cobrança**: **"Por Hora"** ou **"Por Execução"**.
+- Define a **Unidade de Cobrança**: **"Por Hora"** ou **"Por Dia"**.
 - Informa os valores em R$ (formato brasileiro): **Custo Médio Estimado, Menor Custo e Maior Custo**.
 - Faz o upload de **1 (mínimo) a 5 (máximo)** fotos de portfólio.
 - Confirma e clica em **"Salvar Serviço"**.
@@ -114,12 +114,12 @@ O sistema deve apresentar o plano de R$ 50,00/mês ao Profissional e permitir qu
 - Profissional é direcionado para a tela de **"Assinatura/Pagamento"**.
 - O sistema apresenta o plano de **R$ 50,00/mês** (recorrência mensal).
 - Profissional insere dados do **Cartão de Crédito**.
-- Dados são processados pelo Gateway (**Stripe** - Hipótese).
+- Dados são processados pelo Gateway (**Mercado Pago**).
 - O sistema confirma o pagamento e **libera o botão de Agendamento/Contato**.
 
 **Fluxos alternativos e exceções**
 - Transação Negada: O Profissional **não é ativado**.
-- Cobranças Futuras Falhas: 3 tentativas de retry do sistema, seguido de **bloqueio de perfil** e **remoção da visibilidade**.
+- Cobranças Futuras Falhas: O Mercado Pago executa tentativas automáticas de retry conforme sua política interna (tipicamente 3 tentativas em dias consecutivos). Após esgotar as tentativas, o status da assinatura muda para `cancelled` via webhook, seguido de **bloqueio de perfil** e **remoção da visibilidade**.
 - Cancelamento pelo Profissional: Perfil é **bloqueado** na busca.
 
 **Erros previstos**
@@ -176,14 +176,14 @@ O sistema deve permitir que o Cliente Consumidor informe seu CEP para que o sist
 ---
 
 #### FR-006 Painel do Administrador e KPIs
-O sistema deve prover uma interface restrita e segura para o Administrador visualizar de forma agregada os principais indicadores de crescimento da plataforma (KPIs), e também permitir a busca e o gerenciamento básico dos dados de Profissionais (incluindo a ação de bloquear/desbloquear perfil).
+O sistema deve prover uma interface restrita e segura para o Administrador visualizar de forma agregada os principais indicadores de crescimento da plataforma (KPIs), e também permitir a busca e o gerenciamento básico dos dados de Profissionais (incluindo a ação de suspender/reativar perfil via `POST /admin/professionals/{id}/suspend` e `/reactivate`).
 
 **Fluxo principal**
 - O Administrador acessa a URL restrita e realiza o login (Autenticação).
 - O sistema exibe o Dashboard, contendo KPIs (Profissionais Cadastrados, Agendamentos Realizados).
 - O Administrador utiliza a **Busca** para localizar um Profissional por **Nome** ou **E-mail**.
 - O Administrador visualiza o **Status de Pagamento** (data do último pagamento) e dados cadastrais.
-- O Administrador executa a ação de **Bloquear Perfil** ou **Desbloquear Perfil**.
+- O Administrador executa a ação de **Suspender Perfil** ou **Reativar Perfil** (sets `is_suspended=True/False`).
 - O sistema permite a **exportação da lista de Profissionais (CSV)**.
 
 **Fluxos alternativos e exceções**
@@ -202,7 +202,7 @@ Performance
 - Latência de Resposta (APIs Críticas): O tempo de resposta para $95\%$ das requisições (p95) nas APIs de Busca, Agendamento e Cobrança deve ser **menor que 150 milissegundos (ms)**.
 
 Disponibilidade
-- Uptime Mensal (MVP): A disponibilidade alvo em ambiente de Produção é de **90%** (Restrição de MVP/Custo inicial).
+- Uptime Mensal (MVP): A disponibilidade alvo em ambiente de Produção é de **99%** (Railway SLA para projetos pagos).
 
 Segurança e autorização
 - Autenticação: Login e senha obrigatórios para Profissionais e Administradores.
@@ -235,7 +235,7 @@ Componentes
 - **Banco de Dados Único (PostgreSQL - Hipótese)** como fonte de verdade para todos os dados.
 
 Integrações
-- **Stripe** (Hipótese) para processamento de pagamentos e recorrência.
+- **Mercado Pago** para processamento de pagamentos e recorrência (assinaturas via Preapprovals).
 - **API de Mensageria (WhatsApp)** para notificações automáticas a Clientes e Profissionais.
 - **Serviço de Geolocalização/CEP** para validação e coleta de dados de endereço.
 
@@ -271,11 +271,11 @@ A área Jurídica e Comercial deve definir e aprovar os termos de uso, política
 - **Probabilidade:** media
 - **Impacto:** Alto (Compromete diretamente a meta de receita).
 - **Mitigação:**
-  - Garantir que o fluxo de pagamento recorrente (Stripe - Hipótese) utilize recursos de *retry* eficientes e validação de cartão em tempo real.
+  - O retry de cobranças recorrentes é gerenciado pelo próprio Mercado Pago (3+ tentativas automáticas antes de cancelar). Verificar documentação do MP para a política vigente.
   - Comunicar de forma clara no frontend a **necessidade de um cartão válido**.
-- **Plano de contingência:** Notificar o Profissional via **E-mail e WhatsApp** quando a cobrança falhar, e oferecer um link direto para a atualização dos dados do cartão, antes de bloquear o perfil.
+- **Plano de contingência:** Notificar o Profissional via **E-mail e WhatsApp** quando a cobrança falhar, e oferecer um link direto para a atualização dos dados do cartão, antes de suspender o perfil.
 
-#### Perda de Agendamentos devido à baixa disponibilidade (90%)
+#### Perda de Agendamentos devido à indisponibilidade
 - **Probabilidade:** alta
 - **Impacto:** Alto (Gera frustração para Clientes e Profissionais).
 - **Mitigação:**
@@ -288,11 +288,11 @@ A área Jurídica e Comercial deve definir e aprovar os termos de uso, política
 ### Critérios de aceitação
 Checklist objetivo que define se a feature está pronta.
 
-- Um novo Profissional consegue concluir o cadastro inicial, e o sistema registra as coordenadas geográficas (latitude/longitude) da cidade com base no CEP fornecido.
+- Um novo Profissional consegue concluir o cadastro inicial, e o sistema registra a cidade e o estado com base no CEP fornecido (busca por texto usando índices GIN/trigram — sem coordenadas geográficas).
 - É possível cadastrar um serviço com os 5 campos de preço (Médio, Menor, Maior, Unidade) e realizar o upload de no mínimo 1 e no máximo 5 fotos por serviço.
 - O sistema impede o salvamento do serviço se o campo 'Menor Custo' for maior que o 'Custo Médio Estimado'.
 - Todo Profissional com pagamento da mensalidade negado **não** tem o botão **"Agendar"** exibido em seu perfil público.
-- Se o Profissional ativo for bloqueado pelo Administrador, seu perfil é **removido imediatamente** da lista de resultados da Busca.
+- Se o Profissional ativo for suspenso pelo Administrador (`is_suspended=True`), seu perfil é **removido imediatamente** da lista de resultados da Busca.
 - A busca de serviços na cidade **X** não retorna resultados de profissionais cadastrados na cidade **Y**.
 - Ao pesquisar em uma cidade sem profissionais cadastrados, a mensagem de erro amigável **"Infelizmente, ainda não temos atendimento que cobre a localidade desejada..."** é exibida.
 - Ao selecionar um slot de 1 hora na agenda, o sistema registra o agendamento no backend e **bloqueia imediatamente** o horário para novos clientes.

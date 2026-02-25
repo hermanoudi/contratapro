@@ -1,8 +1,8 @@
 # backend/app/routers/admin.py
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, extract
-from datetime import date, timedelta, datetime
+from datetime import date, datetime
 from pydantic import BaseModel
 from passlib.context import CryptContext
 from ..database import get_db
@@ -13,6 +13,7 @@ from .auth import validate_password_strength
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 @router.get("/dashboard")
 async def get_admin_dashboard(
@@ -27,20 +28,23 @@ async def get_admin_dashboard(
 
     # Total de profissionais cadastrados
     result = await db.execute(
-        select(func.count(User.id)).where(User.is_professional == True)
+        select(func.count(User.id)).where(User.is_professional.is_(True))
     )
     total_professionals = result.scalar()
 
     # Total de clientes cadastrados
     result = await db.execute(
-        select(func.count(User.id)).where(User.is_professional == False, User.is_admin == False)
+        select(func.count(User.id)).where(
+            User.is_professional.is_(False),
+            User.is_admin.is_(False)
+        )
     )
     total_clients = result.scalar()
 
     # Profissionais por status de assinatura
     result = await db.execute(
         select(User.subscription_status, func.count(User.id))
-        .where(User.is_professional == True)
+        .where(User.is_professional.is_(True))
         .group_by(User.subscription_status)
     )
     subscription_stats = {status: count for status, count in result.all()}
@@ -55,7 +59,7 @@ async def get_admin_dashboard(
     # Profissionais por estado
     result = await db.execute(
         select(User.state, func.count(User.id))
-        .where(User.is_professional == True, User.state.isnot(None))
+        .where(User.is_professional.is_(True), User.state.isnot(None))
         .group_by(User.state)
     )
     professionals_by_state = [{"state": state, "count": count} for state, count in result.all()]
@@ -65,7 +69,7 @@ async def get_admin_dashboard(
         select(User.state, func.count(User.id))
         .where(
             and_(
-                User.is_professional == True,
+                User.is_professional.is_(True),
                 User.subscription_status == 'active',
                 User.state.isnot(None)
             )
@@ -91,7 +95,10 @@ async def get_admin_dashboard(
     # Último agendamento realizado na plataforma
     result = await db.execute(
         select(Appointment)
-        .where(Appointment.status == "scheduled", Appointment.is_manual_block == False)
+        .where(
+            Appointment.status == "scheduled",
+            Appointment.is_manual_block.is_(False)
+        )
         .order_by(Appointment.created_at.desc())
         .limit(1)
     )
@@ -132,7 +139,7 @@ async def get_admin_dashboard(
     # Profissionais mais recentes (últimos 10)
     result = await db.execute(
         select(User)
-        .where(User.is_professional == True)
+        .where(User.is_professional.is_(True))
         .order_by(User.created_at.desc())
         .limit(10)
     )
@@ -180,10 +187,11 @@ async def get_admin_dashboard(
         ]
     }
 
+
 @router.get("/professionals")
 async def list_all_professionals(
-    status: str = None,
-    state: str = None,
+    status: str | None = None,
+    state: str | None = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -193,7 +201,7 @@ async def list_all_professionals(
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Apenas administradores podem acessar")
 
-    query = select(User).where(User.is_professional == True)
+    query = select(User).where(User.is_professional.is_(True))
 
     if status:
         query = query.where(User.subscription_status == status)
@@ -224,6 +232,7 @@ async def list_all_professionals(
         "total": len(professionals)
     }
 
+
 @router.get("/clients")
 async def list_all_clients(
     current_user: User = Depends(get_current_user),
@@ -237,7 +246,7 @@ async def list_all_clients(
 
     result = await db.execute(
         select(User)
-        .where(User.is_professional == False, User.is_admin == False)
+        .where(User.is_professional.is_(False), User.is_admin.is_(False))
         .order_by(User.created_at.desc())
     )
     clients = result.scalars().all()
@@ -257,6 +266,7 @@ async def list_all_clients(
         "total": len(clients)
     }
 
+
 @router.post("/professionals/{professional_id}/suspend")
 async def suspend_professional(
     professional_id: int,
@@ -268,7 +278,10 @@ async def suspend_professional(
         raise HTTPException(status_code=403, detail="Apenas administradores podem acessar")
 
     result = await db.execute(
-        select(User).where(User.id == professional_id, User.is_professional == True)
+        select(User).where(
+            User.id == professional_id,
+            User.is_professional.is_(True)
+        )
     )
     professional = result.scalar_one_or_none()
 
@@ -281,6 +294,7 @@ async def suspend_professional(
 
     return {"message": f"Profissional {professional.name} suspenso com sucesso"}
 
+
 @router.post("/professionals/{professional_id}/reactivate")
 async def reactivate_professional(
     professional_id: int,
@@ -292,7 +306,10 @@ async def reactivate_professional(
         raise HTTPException(status_code=403, detail="Apenas administradores podem acessar")
 
     result = await db.execute(
-        select(User).where(User.id == professional_id, User.is_professional == True)
+        select(User).where(
+            User.id == professional_id,
+            User.is_professional.is_(True)
+        )
     )
     professional = result.scalar_one_or_none()
 
@@ -305,9 +322,10 @@ async def reactivate_professional(
 
     return {"message": f"Profissional {professional.name} reativado com sucesso"}
 
+
 @router.get("/subscriptions")
 async def list_all_subscriptions(
-    status: str = None,
+    status: str | None = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -362,6 +380,7 @@ async def list_all_subscriptions(
             "error": str(e)
         }
 
+
 @router.get("/trial-users")
 async def get_trial_users(
     current_user: User = Depends(get_current_user),
@@ -384,7 +403,7 @@ async def get_trial_users(
     # Buscar usuários com plano trial
     query = select(User).filter(
         User.subscription_plan_id == trial_plan.id,
-        User.is_professional == True
+        User.is_professional.is_(True)
     ).order_by(User.trial_ends_at.desc())
 
     result = await db.execute(query)
@@ -405,9 +424,11 @@ async def get_trial_users(
         "total": len(trial_users)
     }
 
+
 class ExtendTrialRequest(BaseModel):
     user_id: int
     new_trial_end_date: str  # ISO format: "2026-02-15T23:59:59"
+
 
 @router.post("/extend-trial")
 async def extend_trial(
@@ -561,7 +582,7 @@ async def setup_create_admin(
 
     return {
         "success": True,
-        "message": f"Administrador criado com sucesso",
+        "message": "Administrador criado com sucesso",
         "user_id": admin.id,
         "email": admin.email,
         "created": True

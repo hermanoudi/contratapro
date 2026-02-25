@@ -30,7 +30,7 @@ O cadastro de cliente e simples e gratuito!
 | Nome completo | Como voce quer ser chamado | Sim |
 | E-mail | Usado para login e notificacoes | Sim |
 | WhatsApp | Para confirmacao de agendamentos | Sim |
-| Senha | Minimo 8 caracteres seguros | Sim |
+| Senha | Minimo 8 caracteres, com letra maiuscula, minuscula, numero e caractere especial | Sim |
 
 > **Dica Tour:** "Preencha seus dados. E rapido e gratuito!"
 

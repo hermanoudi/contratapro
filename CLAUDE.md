@@ -80,6 +80,26 @@ frontend/src/
 |-------|-------|----------|-------|
 | Trial | Gratis | 3 | 30 dias |
 | Basic | R$ 29,90/mes | 5 | - |
-| Premium | R$ 59,90/mes | Ilimitado | - |
+| Premium | R$ 49,90/mes | Ilimitado | - |
 
 **URLs**: Prod `contratapro.com.br` | API `api.contratapro.com.br` | Docs `api.contratapro.com.br/docs`
+
+## Subscription Lifecycle
+
+| Estado `subscription_status` | Significado | Visível na busca? | Pode agendar? |
+|-------------------------------|-------------|:-----------------:|:-------------:|
+| `trial` | Dentro do período de 30 dias | Sim | Sim |
+| `active` | Plano pago ativo | Sim | Sim |
+| `expired` | Trial vencido sem upgrade | Não | Não |
+| `canceled` | Cancelou a assinatura | Não | Não |
+| `inactive` | Bloqueado pelo admin | Não | Não |
+
+**Expiração do Trial** (`backend/app/tasks/expire_trials.py`):
+- Cron diário às 3h: busca `Subscription` com `status="active"` + `trial_ends_at < hoje`
+- Muda `subscription.status` → `"expired"` e `user.subscription_status` → `"expired"`
+- Notificação de aviso 3 dias antes (email — `notify_expiring_soon`)
+- Guard em `dependencies.py` (`check_can_create_service`, `check_can_manage_schedule`) rejeita com 403 se `trial_ends_at` estiver no passado
+
+**Downgrade de plano** (`backend/app/routers/plans.py`):
+- Se profissional tem mais serviços do que o novo limite, é necessário escolher quais manter
+- Endpoint retorna `409` com `max_allowed` e lista dos serviços para resolução manual antes de confirmar o downgrade
