@@ -1526,7 +1526,7 @@ export default function Home() {
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
-                                    Ate 5 servicos cadastrados
+                                    Até 3 serviços cadastrados
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
@@ -1575,7 +1575,7 @@ export default function Home() {
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
-                                    Ate 3 servicos cadastrados
+                                    Até 5 serviços cadastrados
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
@@ -1615,7 +1615,7 @@ export default function Home() {
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
-                                    Até 10 servicos cadastrados
+                                    Serviços ilimitados
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />

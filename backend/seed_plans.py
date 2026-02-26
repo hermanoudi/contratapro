@@ -75,41 +75,35 @@ PLANS = [
 
 async def seed_plans():
     """
-    Popula o banco de dados com os planos de assinatura.
-    Executa apenas se a tabela estiver vazia.
+    Popula/atualiza os planos de assinatura no banco (upsert por slug).
+    Insere se não existir, atualiza se já existir.
     """
     async with AsyncSessionLocal() as db:
-        # Verificar se já existem planos
-        result = await db.execute(select(SubscriptionPlan))
-        existing_count = len(result.scalars().all())
-
-        if existing_count > 0:
-            print(f"✓ Planos já existem no banco ({existing_count} registros).")
-            print("\nPlanos existentes:")
-            result = await db.execute(select(SubscriptionPlan))
-            for plan in result.scalars().all():
-                price_str = f"R$ {plan.price:.2f}" if plan.price > 0 else "Grátis"
-                services = f"{plan.max_services} serviços" if plan.max_services else "Ilimitado"
-                trial = f" ({plan.trial_days} dias trial)" if plan.trial_days else ""
-                print(f"  - {plan.name}: {price_str} - {services}{trial}")
-            return
-
-        print("Iniciando seed de planos de assinatura...")
+        print("Iniciando upsert de planos de assinatura...")
         print()
 
         for plan_data in PLANS:
-            plan = SubscriptionPlan(**plan_data)
-            db.add(plan)
+            result = await db.execute(
+                select(SubscriptionPlan).where(SubscriptionPlan.slug == plan_data["slug"])
+            )
+            existing = result.scalar_one_or_none()
+
+            if existing:
+                for k, v in plan_data.items():
+                    setattr(existing, k, v)
+                action = "atualizado"
+            else:
+                db.add(SubscriptionPlan(**plan_data))
+                action = "inserido"
 
             price_str = f"R$ {plan_data['price']:.2f}" if plan_data['price'] > 0 else "Grátis"
             services = f"{plan_data['max_services']} serviços" if plan_data['max_services'] else "Ilimitado"
             trial = f" ({plan_data['trial_days']} dias trial)" if plan_data['trial_days'] else ""
-
-            print(f"  ✓ {plan_data['name']}: {price_str} - {services}{trial}")
+            print(f"  ✓ [{action}] {plan_data['name']}: {price_str} - {services}{trial}")
 
         await db.commit()
         print()
-        print(f"✓ {len(PLANS)} planos inseridos com sucesso!")
+        print(f"✓ {len(PLANS)} planos processados com sucesso!")
 
 
 async def run():

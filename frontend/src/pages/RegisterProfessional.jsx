@@ -397,10 +397,10 @@ export default function RegisterProfessional() {
             const res = await fetch(`${API_URL}/plans/`);
             if (res.ok) {
                 const data = await res.json();
-                // Ordenar: Trial primeiro, depois Bronze, Prata, Ouro
+                // Ordenar: Trial primeiro, depois Basic, Premium
                 const ordered = data.sort((a, b) => {
-                    const order = { trial: 0, bronze: 1, prata: 2, ouro: 3 };
-                    return (order[a.slug] || 99) - (order[b.slug] || 99);
+                    const order = { trial: 0, basic: 1, premium: 2 };
+                    return (order[a.slug] ?? 99) - (order[b.slug] ?? 99);
                 });
                 setPlans(ordered);
                 // Selecionar Trial por padrão
@@ -1113,7 +1113,7 @@ export default function RegisterProfessional() {
                                                         🎁 TESTE GRÁTIS
                                                     </div>
                                                 )}
-                                                {plan.slug === 'prata' && (
+                                                {plan.slug === 'basic' && (
                                                     <div style={{
                                                         position: 'absolute',
                                                         top: '-10px',
@@ -1139,9 +1139,8 @@ export default function RegisterProfessional() {
                                                 </div>
                                                 <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                                                     {isTrial && 'Experimente todos os recursos sem compromisso'}
-                                                    {plan.slug === 'bronze' && 'Ideal para começar no mercado'}
-                                                    {plan.slug === 'prata' && 'Perfeito para profissionais que querem crescer'}
-                                                    {plan.slug === 'ouro' && 'Máxima visibilidade e destaque'}
+                                                    {plan.slug === 'basic' && 'Ideal para começar e ser encontrado na busca'}
+                                                    {plan.slug === 'premium' && 'Máxima visibilidade e recursos completos'}
                                                 </p>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
                                                     {isTrial && (
