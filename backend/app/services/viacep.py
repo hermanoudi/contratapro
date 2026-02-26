@@ -1,21 +1,20 @@
 """
-Serviço de integração com API ViaCEP
-Validação e busca de endereços por CEP
+Serviço de integração com BrasilAPI para busca de endereços por CEP
 """
 import httpx
 from typing import Optional, Dict
 
 
 class ViaCEPService:
-    """Serviço para consultar CEPs usando a API ViaCEP"""
+    """Serviço para consultar CEPs usando a BrasilAPI v2"""
 
-    BASE_URL = "https://viacep.com.br/ws"
+    BASE_URL = "https://brasilapi.com.br/api/cep/v2"
     TIMEOUT = 10.0  # segundos
 
     @staticmethod
     async def buscar_cep(cep: str) -> Optional[Dict[str, str]]:
         """
-        Busca informações de endereço por CEP usando a API ViaCEP.
+        Busca informações de endereço por CEP usando a BrasilAPI v2.
 
         Args:
             cep: CEP a ser consultado (com ou sem formatação)
@@ -23,13 +22,12 @@ class ViaCEPService:
         Returns:
             Dict com dados do endereço ou None se não encontrado/erro
             {
-                "cep": "38411-146",
-                "logradouro": "Rua Example",
-                "complemento": "",
-                "bairro": "Centro",
-                "localidade": "Uberlândia",
-                "uf": "MG",
-                "erro": true/false (presente apenas se CEP inválido)
+                "cep": "38412-298",
+                "street": "Rua Example",
+                "complement": "",
+                "neighborhood": "Tibery",
+                "city": "Uberlândia",
+                "state": "MG",
             }
         """
         # Limpar CEP (remover tudo que não for número)
@@ -39,28 +37,25 @@ class ViaCEPService:
         if len(cep_limpo) != 8:
             return None
 
-        url = f"{ViaCEPService.BASE_URL}/{cep_limpo}/json/"
+        url = f"{ViaCEPService.BASE_URL}/{cep_limpo}"
 
         try:
             async with httpx.AsyncClient(timeout=ViaCEPService.TIMEOUT) as client:
                 response = await client.get(url)
 
+                # BrasilAPI retorna 404 quando CEP não existe
                 if response.status_code != 200:
                     return None
 
                 data = response.json()
 
-                # ViaCEP retorna {"erro": true} quando CEP não existe
-                if data.get("erro"):
-                    return None
-
                 return {
                     "cep": data.get("cep", ""),
-                    "street": data.get("logradouro", ""),
-                    "complement": data.get("complemento", ""),
-                    "neighborhood": data.get("bairro", ""),
-                    "city": data.get("localidade", ""),
-                    "state": data.get("uf", ""),
+                    "street": data.get("street", ""),
+                    "complement": "",  # BrasilAPI v2 não retorna complement
+                    "neighborhood": data.get("neighborhood", ""),
+                    "city": data.get("city", ""),
+                    "state": data.get("state", ""),
                 }
 
         except httpx.TimeoutException:

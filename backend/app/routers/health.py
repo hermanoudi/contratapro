@@ -44,7 +44,7 @@ async def check_database(db: AsyncSession) -> Dict[str, Any]:
 
 async def check_viacep() -> Dict[str, Any]:
     """
-    Verifica disponibilidade da API ViaCEP.
+    Verifica disponibilidade da BrasilAPI CEP.
 
     Returns:
         Dict com status do serviço
@@ -53,7 +53,7 @@ async def check_viacep() -> Dict[str, Any]:
         start_time = datetime.now()
 
         async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get("https://viacep.com.br/ws/01310100/json/")
+            response = await client.get("https://brasilapi.com.br/api/cep/v2/01310100")
 
         response_time = (datetime.now() - start_time).total_seconds()
 
@@ -61,25 +61,25 @@ async def check_viacep() -> Dict[str, Any]:
             return {
                 "status": "healthy",
                 "response_time_ms": round(response_time * 1000, 2),
-                "message": "ViaCEP API is reachable"
+                "message": "BrasilAPI CEP is reachable"
             }
         else:
             return {
                 "status": "degraded",
                 "http_status": response.status_code,
-                "message": "ViaCEP API returned non-200 status"
+                "message": "BrasilAPI CEP returned non-200 status"
             }
     except httpx.TimeoutException:
         return {
             "status": "unhealthy",
             "error": "timeout",
-            "message": "ViaCEP API timeout"
+            "message": "BrasilAPI CEP timeout"
         }
     except Exception as e:
         return {
             "status": "unhealthy",
             "error": str(e),
-            "message": "ViaCEP API unreachable"
+            "message": "BrasilAPI CEP unreachable"
         }
 
 
