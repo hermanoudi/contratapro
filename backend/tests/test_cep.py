@@ -12,6 +12,16 @@ BRASILAPI_RESPONSE = {
     "location": {"type": "Point", "coordinates": {"longitude": "-48.2", "latitude": "-18.9"}},
 }
 
+# CEPs de cidade inteira (ex: 38450-000) têm street e neighborhood null na BrasilAPI
+BRASILAPI_RESPONSE_CITY_LEVEL = {
+    "cep": "38450000",
+    "state": "MG",
+    "city": "Araguari",
+    "neighborhood": None,
+    "street": None,
+    "location": {"type": "Point", "coordinates": {}},
+}
+
 
 def _mock_response(status_code: int, json_data: dict | None = None):
     """Cria um mock de resposta HTTP para o httpx."""
@@ -74,6 +84,24 @@ async def test_buscar_cep_formato_invalido(async_client):
     """CEP com menos de 8 dígitos retorna 404 sem chamar a API externa."""
     response = await async_client.get("/cep/123")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_buscar_cep_cidade_inteira(async_client):
+    """CEP de cidade inteira (final 000) com street/neighborhood null retorna 200."""
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value.__aenter__.return_value = mock_client
+        mock_client.get.return_value = _mock_response(200, BRASILAPI_RESPONSE_CITY_LEVEL)
+
+        response = await async_client.get("/cep/38450000")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["city"] == "Araguari"
+    assert data["state"] == "MG"
+    assert data["street"] == ""       # null → string vazia
+    assert data["neighborhood"] == "" # null → string vazia
 
 
 @pytest.mark.asyncio

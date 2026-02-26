@@ -49,13 +49,15 @@ class ViaCEPService:
 
                 data = response.json()
 
+                # Usar "or ''" para tratar tanto chave ausente quanto valor null
+                # (BrasilAPI retorna null em street/neighborhood para CEPs de cidade inteira)
                 return {
-                    "cep": data.get("cep", ""),
-                    "street": data.get("street", ""),
+                    "cep": data.get("cep") or "",
+                    "street": data.get("street") or "",
                     "complement": "",  # BrasilAPI v2 não retorna complement
-                    "neighborhood": data.get("neighborhood", ""),
-                    "city": data.get("city", ""),
-                    "state": data.get("state", ""),
+                    "neighborhood": data.get("neighborhood") or "",
+                    "city": data.get("city") or "",
+                    "state": data.get("state") or "",
                 }
 
         except httpx.TimeoutException:
