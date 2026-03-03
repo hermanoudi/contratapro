@@ -397,14 +397,14 @@ export default function RegisterProfessional() {
             const res = await fetch(`${API_URL}/plans/`);
             if (res.ok) {
                 const data = await res.json();
-                // Ordenar: Trial primeiro, depois Basic, Premium
+                // Ordenar: Free primeiro, depois Pro, Premium
                 const ordered = data.sort((a, b) => {
-                    const order = { trial: 0, basic: 1, premium: 2 };
+                    const order = { free: 0, pro: 1, premium: 2 };
                     return (order[a.slug] ?? 99) - (order[b.slug] ?? 99);
                 });
                 setPlans(ordered);
-                // Selecionar Trial por padrão
-                setSelectedPlan(ordered.find(p => p.slug === 'trial')?.id || ordered[0]?.id);
+                // Selecionar Free por padrão
+                setSelectedPlan(ordered.find(p => p.slug === 'free')?.id || ordered[0]?.id);
             } else {
                 console.error('Erro ao buscar planos - status:', res.status);
                 toast.error('Erro ao carregar planos');
@@ -607,9 +607,9 @@ export default function RegisterProfessional() {
                     }
 
                     // 5. Redirecionar baseado no plano
-                    const isTrial = selectedPlanData?.slug === 'trial';
-                    if (isTrial) {
-                        toast.success(`Cadastro realizado! Seu período de trial de 30 dias começou.`);
+                    const isFreePlan = selectedPlanData?.slug === 'free';
+                    if (isFreePlan) {
+                        toast.success(`Cadastro realizado! Seu plano Free gratuito foi ativado.`);
                         navigate('/dashboard');
                     } else {
                         toast.success(`Cadastro realizado! Agora vamos configurar o pagamento.`);
@@ -1082,7 +1082,7 @@ export default function RegisterProfessional() {
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                                     {plans.map(plan => {
-                                        const isTrial = plan.slug === 'trial';
+                                        const isTrial = plan.slug === 'free';
                                         const isSelected = selectedPlan === plan.id;
                                         return (
                                             <div
@@ -1110,10 +1110,10 @@ export default function RegisterProfessional() {
                                                         fontSize: '0.75rem',
                                                         fontWeight: 700
                                                     }}>
-                                                        🎁 TESTE GRÁTIS
+                                                        🎁 GRÁTIS PERMANENTE
                                                     </div>
                                                 )}
-                                                {plan.slug === 'basic' && (
+                                                {plan.slug === 'pro' && (
                                                     <div style={{
                                                         position: 'absolute',
                                                         top: '-10px',
@@ -1133,23 +1133,23 @@ export default function RegisterProfessional() {
                                                     <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)' }}>
                                                         {isTrial ? 'GRÁTIS' : `R$ ${plan.price.toFixed(2).replace('.', ',')}`}
                                                         <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-secondary)' }}>
-                                                            {isTrial ? '/30 dias' : '/mês'}
+                                                            {isTrial ? ' permanente' : '/mês'}
                                                         </span>
                                                     </p>
                                                 </div>
                                                 <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                                                    {isTrial && 'Experimente todos os recursos sem compromisso'}
-                                                    {plan.slug === 'basic' && 'Ideal para começar e ser encontrado na busca'}
-                                                    {plan.slug === 'premium' && 'Máxima visibilidade e recursos completos'}
+                                                    {isTrial && 'Comece sem compromisso, gratuito para sempre'}
+                                                    {plan.slug === 'pro' && 'Ideal para quem quer crescer e ser encontrado'}
+                                                    {plan.slug === 'premium' && 'Máxima visibilidade, topo da busca'}
                                                 </p>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
                                                     {isTrial && (
                                                         <>
                                                             <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                <Check size={16} color="#10b981" /> 30 dias de teste grátis
+                                                                <Check size={16} color="#10b981" /> Gratuito permanente
                                                             </p>
                                                             <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                <Check size={16} color="#10b981" /> Todos os recursos liberados
+                                                                <Check size={16} color="#10b981" /> Até 3 agendamentos/mês
                                                             </p>
                                                         </>
                                                     )}

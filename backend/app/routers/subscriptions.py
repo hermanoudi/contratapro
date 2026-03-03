@@ -98,22 +98,6 @@ async def subscribe_to_plan(
     )
     existing_subscription = result.scalar_one_or_none()
 
-    # Verificar se já usou o trial
-    if plan_slug == "trial" and existing_subscription:
-        if existing_subscription.plan_id:
-            # Buscar plano anterior
-            result = await db.execute(
-                select(SubscriptionPlan).where(
-                    SubscriptionPlan.id == existing_subscription.plan_id
-                )
-            )
-            previous_plan = result.scalar_one_or_none()
-            if previous_plan and previous_plan.slug == "trial":
-                raise HTTPException(
-                    status_code=400,
-                    detail="Você já utilizou o período de trial. Escolha um plano pago."
-                )
-
     # Se já tem assinatura ativa (não cancelada/expirada), não pode criar outra
     if existing_subscription and existing_subscription.status in ["active", "pending"]:
         raise HTTPException(
@@ -121,16 +105,13 @@ async def subscribe_to_plan(
             detail="Você já possui uma assinatura ativa"
         )
 
-    # FLUXO TRIAL: Ativar imediatamente sem pagamento
-    if plan.price == 0 or plan.slug == "trial":
-        trial_days = plan.trial_days or 15
-        trial_end_date = date.today() + timedelta(days=trial_days)
-
+    # FLUXO FREE: Ativar imediatamente sem pagamento e sem expiração
+    if plan.price == 0 or plan.slug == "free":
         if existing_subscription:
-            # Reativar assinatura existente como trial
+            # Reativar assinatura existente no plano free
             existing_subscription.plan_id = plan.id
             existing_subscription.status = "active"
-            existing_subscription.trial_ends_at = trial_end_date
+            existing_subscription.trial_ends_at = None
             existing_subscription.plan_amount = 0.0
             existing_subscription.cancelled_at = None
             existing_subscription.cancellation_reason = None
@@ -138,12 +119,12 @@ async def subscribe_to_plan(
             existing_subscription.init_point = None
             subscription = existing_subscription
         else:
-            # Criar nova assinatura trial
+            # Criar nova assinatura free
             subscription = Subscription(
                 professional_id=current_user.id,
                 plan_id=plan.id,
                 status="active",
-                trial_ends_at=trial_end_date,
+                trial_ends_at=None,
                 plan_amount=0.0
             )
             db.add(subscription)
@@ -151,13 +132,13 @@ async def subscribe_to_plan(
         # Atualizar usuário
         current_user.subscription_status = "active"
         current_user.subscription_plan_id = plan.id
-        current_user.trial_ends_at = datetime.combine(trial_end_date, datetime.min.time())
+        current_user.trial_ends_at = None
         current_user.subscription_started_at = datetime.now()
 
         await db.commit()
         await db.refresh(subscription)
 
-        logger.info(f"Trial ativado para usuário {current_user.id}. Expira em: {trial_end_date}")
+        logger.info(f"Plano Free ativado para usuário {current_user.id}")
 
         # Enviar notificação por e-mail
         await notification_service.notify_subscription_activated(
@@ -165,16 +146,16 @@ async def subscribe_to_plan(
             user_name=current_user.name,
             plan_name=plan.name,
             plan_price=0.0,
-            is_trial=True,
-            trial_days=trial_days,
-            trial_end_date=trial_end_date.strftime("%d/%m/%Y")
+            is_trial=False,
+            trial_days=None,
+            trial_end_date=None
         )
 
         return SubscribePlanResponse(
-            message=f"Plano {plan.name} ativado com sucesso! Você tem {trial_days} dias de acesso gratuito.",
+            message=f"Plano {plan.name} ativado com sucesso! Acesso gratuito permanente.",
             plan_name=plan.name,
             status="active",
-            trial_ends_at=trial_end_date.isoformat()
+            trial_ends_at=None
         )
 
     # FLUXO PAGO: Criar assinatura no Mercado Pago
@@ -678,7 +659,7 @@ async def get_my_subscription(
         )
         plan = result.scalar_one_or_none()
         if plan:
-            is_trial = plan.slug == "trial"
+            is_trial = plan.slug == "free"
             plan_info = {
                 "id": plan.id,
                 "name": plan.name,
@@ -1254,12 +1235,12 @@ async def change_subscription_plan(
             detail="Voce ja esta neste plano"
         )
 
-    # REGRA: Nao pode mudar de plano pago para Trial (apenas admin)
-    if new_plan_slug == "trial":
+    # REGRA: Nao pode mudar de plano pago para Free
+    if new_plan_slug == "free":
         if current_plan and current_plan.price > 0:
             raise HTTPException(
                 status_code=403,
-                detail="Nao e possivel voltar para o plano Trial. Apenas administradores podem fazer essa alteracao."
+                detail="Nao e possivel voltar para o plano Free."
             )
 
     # Buscar assinatura atual
@@ -1306,8 +1287,8 @@ async def change_subscription_plan(
 
     old_plan_name = current_plan.name if current_plan else "Sem plano"
 
-    # ==================== CENARIO: PARA TRIAL (ADMIN) ====================
-    if new_plan.price == 0 or new_plan.slug == "trial":
+    # ==================== CENARIO: PARA FREE (ADMIN) ====================
+    if new_plan.price == 0 or new_plan.slug == "free":
         if existing_subscription and existing_subscription.mercadopago_preapproval_id:
             try:
                 async with httpx.AsyncClient() as client:
@@ -1323,13 +1304,10 @@ async def change_subscription_plan(
             except Exception as e:
                 logger.error(f"Erro ao cancelar assinatura MP: {str(e)}")
 
-        trial_days = new_plan.trial_days or 15
-        trial_end_date = date.today() + timedelta(days=trial_days)
-
         if existing_subscription:
             existing_subscription.plan_id = new_plan.id
             existing_subscription.status = "active"
-            existing_subscription.trial_ends_at = trial_end_date
+            existing_subscription.trial_ends_at = None
             existing_subscription.plan_amount = 0.0
             existing_subscription.mercadopago_preapproval_id = None
             existing_subscription.init_point = None
@@ -1340,14 +1318,14 @@ async def change_subscription_plan(
                 professional_id=current_user.id,
                 plan_id=new_plan.id,
                 status="active",
-                trial_ends_at=trial_end_date,
+                trial_ends_at=None,
                 plan_amount=0.0
             )
             db.add(new_subscription)
 
         current_user.subscription_plan_id = new_plan.id
         current_user.subscription_status = "active"
-        current_user.trial_ends_at = datetime.combine(trial_end_date, datetime.min.time())
+        current_user.trial_ends_at = None
 
         await db.commit()
 
@@ -1356,16 +1334,16 @@ async def change_subscription_plan(
             user_name=current_user.name,
             plan_name=new_plan.name,
             plan_price=0.0,
-            is_trial=True,
-            trial_days=trial_days,
-            trial_end_date=trial_end_date.strftime("%d/%m/%Y")
+            is_trial=False,
+            trial_days=None,
+            trial_end_date=None
         )
 
         return {
             "success": True,
             "message": f"Plano alterado para {new_plan.name} com sucesso!",
             "plan": {"name": new_plan.name, "slug": new_plan.slug, "price": new_plan.price},
-            "trial_ends_at": trial_end_date.isoformat()
+            "trial_ends_at": None
         }
 
     # ==================== CENARIO: DOWNGRADE (AGENDADO) ====================
@@ -1604,7 +1582,7 @@ async def admin_force_trial(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    ADMIN ONLY: Força um usuário a voltar para o plano Trial.
+    ADMIN ONLY: Força um usuário para o plano Free.
     Útil para casos excepcionais onde o usuário precisa de suporte.
     """
     if not current_user.is_admin:
@@ -1631,19 +1609,19 @@ async def admin_force_trial(
             detail="Usuário não é um profissional"
         )
 
-    # Buscar plano Trial
+    # Buscar plano Free
     result = await db.execute(
         select(SubscriptionPlan).where(
-            SubscriptionPlan.slug == "trial",
+            SubscriptionPlan.slug == "free",
             SubscriptionPlan.is_active == True
         )
     )
-    trial_plan = result.scalar_one_or_none()
+    free_plan = result.scalar_one_or_none()
 
-    if not trial_plan:
+    if not free_plan:
         raise HTTPException(
             status_code=404,
-            detail="Plano Trial não encontrado no sistema"
+            detail="Plano Free não encontrado no sistema"
         )
 
     # Buscar assinatura atual
@@ -1670,15 +1648,12 @@ async def admin_force_trial(
         except Exception as e:
             logger.error(f"[ADMIN] Erro ao cancelar assinatura MP: {str(e)}")
 
-    # Configurar trial
-    trial_days = trial_plan.trial_days or 15
-    trial_end_date = date.today() + timedelta(days=trial_days)
-    reason = request_data.reason if request_data and request_data.reason else "Forçado por administrador"
+    reason = request_data.reason if request_data and request_data.reason else "Alterado por administrador"
 
     if subscription:
-        subscription.plan_id = trial_plan.id
+        subscription.plan_id = free_plan.id
         subscription.status = "active"
-        subscription.trial_ends_at = trial_end_date
+        subscription.trial_ends_at = None
         subscription.plan_amount = 0.0
         subscription.mercadopago_preapproval_id = None
         subscription.init_point = None
@@ -1686,37 +1661,37 @@ async def admin_force_trial(
     else:
         subscription = Subscription(
             professional_id=user_id,
-            plan_id=trial_plan.id,
+            plan_id=free_plan.id,
             status="active",
-            trial_ends_at=trial_end_date,
+            trial_ends_at=None,
             plan_amount=0.0
         )
         db.add(subscription)
 
-    target_user.subscription_plan_id = trial_plan.id
+    target_user.subscription_plan_id = free_plan.id
     target_user.subscription_status = "active"
-    target_user.trial_ends_at = datetime.combine(trial_end_date, datetime.min.time())
+    target_user.trial_ends_at = None
 
     await db.commit()
 
-    logger.info(f"[ADMIN] Usuário {user_id} forçado para Trial por admin {current_user.id}. Motivo: {reason}")
+    logger.info(f"[ADMIN] Usuário {user_id} forçado para Free por admin {current_user.id}. Motivo: {reason}")
 
     # Enviar notificação por e-mail para o usuário
     await notification_service.notify_subscription_activated(
         user_email=target_user.email,
         user_name=target_user.name,
-        plan_name=trial_plan.name,
+        plan_name=free_plan.name,
         plan_price=0.0,
-        is_trial=True,
-        trial_days=trial_days,
-        trial_end_date=trial_end_date.strftime("%d/%m/%Y")
+        is_trial=False,
+        trial_days=None,
+        trial_end_date=None
     )
 
     return {
         "success": True,
-        "message": f"Usuário {target_user.name} alterado para plano Trial com sucesso",
+        "message": f"Usuário {target_user.name} alterado para plano Free com sucesso",
         "user_id": user_id,
-        "trial_ends_at": trial_end_date.isoformat(),
+        "trial_ends_at": None,
         "admin_action_by": current_user.id
     }
 

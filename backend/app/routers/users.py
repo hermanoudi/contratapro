@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from datetime import datetime, timedelta
+from datetime import datetime
 from ..database import get_db
 from ..models import User, SubscriptionPlan
 from ..schemas import UserCreate, UserResponse, ProfessionalPublic, ProfessionalSearchResult, UserUpdate
@@ -129,19 +129,15 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     # Gerar slug unico para o usuario
     user_slug = await generate_unique_slug(db, user.name)
 
-    # Se for profissional, buscar plano Trial
-    trial_plan_id = None
-    trial_ends_at = None
+    # Se for profissional, buscar plano Free (permanente, sem expiração)
+    free_plan_id = None
     if user.is_professional:
-        trial_query = select(SubscriptionPlan).filter(SubscriptionPlan.slug == 'trial')
-        trial_result = await db.execute(trial_query)
-        trial_plan = trial_result.scalars().first()
+        free_query = select(SubscriptionPlan).filter(SubscriptionPlan.slug == 'free')
+        free_result = await db.execute(free_query)
+        free_plan = free_result.scalars().first()
 
-        if trial_plan:
-            trial_plan_id = trial_plan.id
-            # Usar trial_days do plano ou padrão de 30 dias
-            trial_duration = trial_plan.trial_days if trial_plan.trial_days else 30
-            trial_ends_at = datetime.now() + timedelta(days=trial_duration)
+        if free_plan:
+            free_plan_id = free_plan.id
 
     # Create new user
     new_user = User(
@@ -161,9 +157,9 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
         whatsapp=user.whatsapp,
         category=user.category,
         description=user.description,
-        subscription_plan_id=trial_plan_id,
-        trial_ends_at=trial_ends_at,
-        subscription_status='active' if trial_plan_id else None
+        subscription_plan_id=free_plan_id,
+        trial_ends_at=None,
+        subscription_status='active' if free_plan_id else None
     )
 
     db.add(new_user)

@@ -9,10 +9,12 @@ class SubscriptionPlanBase(BaseModel):
     slug: str
     price: float
     max_services: Optional[int] = None
+    max_appointments_per_month: Optional[int] = None
     can_manage_schedule: bool = False
     can_receive_bookings: bool = False
     priority_in_search: int = 0
     trial_days: Optional[int] = None
+    badge_label: Optional[str] = None
 
 class SubscriptionPlanResponse(SubscriptionPlanBase):
     id: int

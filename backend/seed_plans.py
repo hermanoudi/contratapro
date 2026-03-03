@@ -38,36 +38,42 @@ from sqlalchemy import select  # noqa: E402
 # Definição dos planos
 PLANS = [
     {
-        "name": "Trial",
-        "slug": "trial",
+        "name": "Free",
+        "slug": "free",
         "price": 0.0,
-        "max_services": 3,
-        "can_manage_schedule": True,
-        "can_receive_bookings": True,
-        "priority_in_search": 0,
-        "trial_days": 30,
-        "is_active": True
-    },
-    {
-        "name": "Basic",
-        "slug": "basic",
-        "price": 29.90,
-        "max_services": 5,
+        "max_services": 1,
+        "max_appointments_per_month": 3,
         "can_manage_schedule": True,
         "can_receive_bookings": True,
         "priority_in_search": 0,
         "trial_days": None,
+        "badge_label": None,
+        "is_active": True
+    },
+    {
+        "name": "Pro",
+        "slug": "pro",
+        "price": 19.90,
+        "max_services": None,  # Ilimitado
+        "max_appointments_per_month": None,  # Ilimitado
+        "can_manage_schedule": True,
+        "can_receive_bookings": True,
+        "priority_in_search": 1,
+        "trial_days": None,
+        "badge_label": "Profissional Ativo",
         "is_active": True
     },
     {
         "name": "Premium",
         "slug": "premium",
-        "price": 49.90,
+        "price": 39.90,
         "max_services": None,  # Ilimitado
+        "max_appointments_per_month": None,  # Ilimitado
         "can_manage_schedule": True,
         "can_receive_bookings": True,
-        "priority_in_search": 1,
+        "priority_in_search": 2,
         "trial_days": None,
+        "badge_label": "Destaque",
         "is_active": True
     }
 ]
@@ -97,9 +103,9 @@ async def seed_plans():
                 action = "inserido"
 
             price_str = f"R$ {plan_data['price']:.2f}" if plan_data['price'] > 0 else "Grátis"
-            services = f"{plan_data['max_services']} serviços" if plan_data['max_services'] else "Ilimitado"
-            trial = f" ({plan_data['trial_days']} dias trial)" if plan_data['trial_days'] else ""
-            print(f"  ✓ [{action}] {plan_data['name']}: {price_str} - {services}{trial}")
+            services = f"{plan_data['max_services']} serviço(s)" if plan_data['max_services'] else "Ilimitado"
+            appts = f", {plan_data['max_appointments_per_month']} agendamentos/mês" if plan_data['max_appointments_per_month'] else ""
+            print(f"  ✓ [{action}] {plan_data['name']}: {price_str} - {services}{appts}")
 
         await db.commit()
         print()
@@ -128,13 +134,13 @@ async def run():
         print()
         print("📊 Resumo dos Planos:")
         print()
-        print("┌──────────┬──────────┬──────────────┬─────────┬──────────┐")
-        print("│   Plano  │   Preço  │  Serviços    │  Busca  │  Trial   │")
-        print("├──────────┼──────────┼──────────────┼─────────┼──────────┤")
-        print("│  Trial   │  Grátis  │  3 serviços  │  Normal │ 30 dias  │")
-        print("│  Basic   │ R$ 29.90 │  5 serviços  │  Normal │    -     │")
-        print("│  Premium │ R$ 49.90 │  Ilimitado   │ Destaque│    -     │")
-        print("└──────────┴──────────┴──────────────┴─────────┴──────────┘")
+        print("┌──────────┬───────────┬──────────────┬──────────────┬──────────┐")
+        print("│   Plano  │   Preço   │  Serviços    │  Agendamentos│   Busca  │")
+        print("├──────────┼───────────┼──────────────┼──────────────┼──────────┤")
+        print("│  Free    │  Grátis   │  1 serviço   │  3/mês       │  Normal  │")
+        print("│  Pro     │ R$ 19.90  │  Ilimitado   │  Ilimitado   │  Destaque│")
+        print("│  Premium │ R$ 39.90  │  Ilimitado   │  Ilimitado   │  Topo    │")
+        print("└──────────┴───────────┴──────────────┴──────────────┴──────────┘")
         print()
 
     except Exception as e:

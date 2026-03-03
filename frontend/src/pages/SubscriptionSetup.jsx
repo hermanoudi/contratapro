@@ -296,54 +296,54 @@ const SecurityBadge = styled.div`
 // Definicao dos planos
 const PLANS = [
   {
-    id: 'trial',
-    name: 'Trial',
+    id: 'free',
+    name: 'Free',
     price: 0,
-    period: '30 dias gratis',
+    period: 'gratis permanente',
     icon: Star,
     iconColor: '#10b981',
     iconBg: 'rgba(16, 185, 129, 0.1)',
     features: [
-      'Cadastre ate 3 servicos',
-      'Perfil visivel na plataforma',
-      'Receba solicitacoes de agendamento',
-      'Gerencie sua agenda',
+      '1 servico cadastrado',
+      'Ate 3 agendamentos por mes',
+      'Perfil publico',
+      'Agenda basica',
       'Sem compromisso'
     ],
     buttonText: 'Comecar Gratis',
     featured: false
   },
   {
-    id: 'basic',
-    name: 'Basic',
-    price: 29.90,
+    id: 'pro',
+    name: 'Pro',
+    price: 19.90,
     period: 'por mes',
     icon: Zap,
     iconColor: 'var(--primary)',
     iconBg: 'rgba(99, 102, 241, 0.1)',
     features: [
-      'Cadastre ate 5 servicos',
-      'Perfil destacado na busca',
-      'Solicitacoes ilimitadas',
-      'Estatisticas basicas',
+      'Servicos ilimitados',
+      'Agendamentos ilimitados',
+      'Badge Profissional Ativo',
+      'Destaque intermediario na busca',
       'Suporte por email'
     ],
-    buttonText: 'Assinar Basic',
+    buttonText: 'Assinar Pro',
     featured: true
   },
   {
     id: 'premium',
     name: 'Premium',
-    price: 49.90,
+    price: 39.90,
     period: 'por mes',
     icon: Crown,
     iconColor: '#f59e0b',
     iconBg: 'rgba(245, 158, 11, 0.1)',
     features: [
-      'Servicos ilimitados',
-      'Perfil em destaque maximo',
-      'Badge de profissional Premium',
-      'Estatisticas avancadas',
+      'Tudo do Pro',
+      'Topo da busca',
+      'Selo Destaque',
+      'Relatorio de desempenho',
       'Suporte prioritario'
     ],
     buttonText: 'Assinar Premium',
@@ -411,9 +411,9 @@ export default function SubscriptionSetup() {
       if (res.ok) {
         const data = await res.json();
 
-        if (plan.id === 'trial') {
-          // Trial ativado - redirecionar para dashboard
-          toast.success(data.message || 'Trial ativado com sucesso!');
+        if (plan.id === 'free') {
+          // Plano Free ativado - redirecionar para dashboard
+          toast.success(data.message || 'Plano Free ativado com sucesso!');
           navigate('/dashboard');
         } else {
           // Planos pagos - redirecionar para checkout do Mercado Pago
@@ -503,7 +503,7 @@ export default function SubscriptionSetup() {
                   )}
                 </div>
                 <div className="period">{plan.period}</div>
-                {plan.id === 'trial' && (
+                {plan.id === 'free' && (
                   <div className="trial-info">Sem cartao de credito</div>
                 )}
               </PlanPrice>
@@ -526,7 +526,7 @@ export default function SubscriptionSetup() {
                   'Processando...'
                 ) : (
                   <>
-                    {plan.id !== 'trial' && <CreditCard size={18} />}
+                    {plan.id !== 'free' && <CreditCard size={18} />}
                     {plan.buttonText}
                   </>
                 )}

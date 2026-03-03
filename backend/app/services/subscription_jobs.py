@@ -72,8 +72,8 @@ class SubscriptionJobsService:
             # 3. Processar mudancas de plano agendadas (downgrades)
             await self.process_scheduled_plan_changes()
 
-            # 4. Verificar trials expirando
-            await self.check_expiring_trials()
+            # 4. Verificar trials expirando — desativado: plano Free é permanente
+            # await self.check_expiring_trials()
 
             # 5. Verificar periodo de tolerancia vencido
             await self.check_grace_period_expired()

@@ -1499,25 +1499,25 @@ export default function Home() {
             <Section>
                 <SectionTitle>Escolha seu plano</SectionTitle>
                 <SectionSubtitle>
-                    Comece gratis com o Trial ou escolha o plano ideal para o seu negocio
+                    Comece gratis para sempre com o Free ou escale com Pro e Premium
                 </SectionSubtitle>
                 <PricingSection>
                     <PlansGrid>
-                        {/* Trial - Teste do Premium */}
+                        {/* Free - Gratuito permanente */}
                         <PriceBox
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.4, delay: 0 }}
                             viewport={{ once: true }}
                         >
-                            <PlanBadge $color="#10b981">TESTE GRATIS</PlanBadge>
-                            <PlanName $hasBadge>Trial</PlanName>
+                            <PlanBadge $color="#10b981">GRATIS PARA SEMPRE</PlanBadge>
+                            <PlanName $hasBadge>Free</PlanName>
                             <Price className="free">
                                 GRATIS
-                                <span>/30 dias</span>
+                                <span>/permanente</span>
                             </Price>
                             <PlanDescription>
-                                Teste o plano Premium completo sem compromisso
+                                Comece sem pagar nada, sem prazo de validade
                             </PlanDescription>
                             <FeatureList>
                                 <FeatureItem>
@@ -1526,19 +1526,15 @@ export default function Home() {
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
-                                    Até 3 serviços cadastrados
+                                    1 servico cadastrado
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Ate 3 agendamentos por mes
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
                                     Agenda online
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Receba agendamentos
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Contato via WhatsApp
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
@@ -1551,7 +1547,7 @@ export default function Home() {
                             </PlanButton>
                         </PriceBox>
 
-                        {/* Basic - Mais Popular */}
+                        {/* Pro - Mais Popular */}
                         <PriceBox
                             $featured
                             initial={{ opacity: 0, y: 20 }}
@@ -1560,13 +1556,13 @@ export default function Home() {
                             viewport={{ once: true }}
                         >
                             <PlanBadge>MAIS POPULAR</PlanBadge>
-                            <PlanName $hasBadge>Basic</PlanName>
+                            <PlanName $hasBadge>Pro</PlanName>
                             <Price>
-                                R$ 29,90
+                                R$ 19,90
                                 <span>/mes</span>
                             </Price>
                             <PlanDescription>
-                                Deixe seu cliente te encontrar
+                                Servicos ilimitados e destaque na busca
                             </PlanDescription>
                             <FeatureList>
                                 <FeatureItem>
@@ -1575,19 +1571,23 @@ export default function Home() {
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
-                                    Até 5 serviços cadastrados
+                                    Servicos ilimitados
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
-                                    Cliente faz contato via WhatsApp
+                                    Agendamentos ilimitados
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
-                                    Perfil listado na busca
+                                    Badge Profissional Ativo
+                                </FeatureItem>
+                                <FeatureItem>
+                                    <Check size={16} />
+                                    Destaque intermediario na busca
                                 </FeatureItem>
                             </FeatureList>
                             <PlanButton to="/register-pro" $primary>
-                                Assinar Basic
+                                Assinar Pro
                                 <ChevronRight size={18} />
                             </PlanButton>
                         </PriceBox>
@@ -1599,35 +1599,31 @@ export default function Home() {
                             transition={{ duration: 0.4, delay: 0.2 }}
                             viewport={{ once: true }}
                         >
-                            <PlanBadge $color="#f59e0b">COMPLETO</PlanBadge>
+                            <PlanBadge $color="#f59e0b">DESTAQUE</PlanBadge>
                             <PlanName $hasBadge>Premium</PlanName>
                             <Price>
-                                R$ 49,90
+                                R$ 39,90
                                 <span>/mes</span>
                             </Price>
                             <PlanDescription>
-                                Máxima visibilidade nas buscas
+                                Maxima visibilidade e topo da busca
                             </PlanDescription>
                             <FeatureList>
                                 <FeatureItem>
                                     <Check size={16} />
-                                    Perfil profissional completo
+                                    Tudo do plano Pro
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
-                                    Serviços ilimitados
+                                    Topo da busca
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
-                                    Agenda online completa
+                                    Selo Destaque no perfil
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />
-                                    Agendamentos ilimitados
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Destaque máximo na busca
+                                    Relatorio de desempenho
                                 </FeatureItem>
                                 <FeatureItem>
                                     <Check size={16} />

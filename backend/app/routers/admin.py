@@ -392,19 +392,19 @@ async def get_trial_users(
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Apenas administradores podem acessar")
 
-    # Buscar plano trial
-    trial_plan_query = select(SubscriptionPlan).filter(SubscriptionPlan.slug == 'trial')
+    # Buscar plano free
+    trial_plan_query = select(SubscriptionPlan).filter(SubscriptionPlan.slug == 'free')
     trial_plan_result = await db.execute(trial_plan_query)
     trial_plan = trial_plan_result.scalars().first()
 
     if not trial_plan:
         return {"users": [], "total": 0}
 
-    # Buscar usuários com plano trial
+    # Buscar usuários com plano free
     query = select(User).filter(
         User.subscription_plan_id == trial_plan.id,
         User.is_professional.is_(True)
-    ).order_by(User.trial_ends_at.desc())
+    ).order_by(User.created_at.desc())
 
     result = await db.execute(query)
     trial_users = result.scalars().all()
@@ -503,12 +503,12 @@ async def setup_update_trial_days(
         raise HTTPException(status_code=403, detail="Chave secreta inválida")
 
     result = await db.execute(
-        select(SubscriptionPlan).where(SubscriptionPlan.slug == "trial")
+        select(SubscriptionPlan).where(SubscriptionPlan.slug == "free")
     )
     trial_plan = result.scalar_one_or_none()
 
     if not trial_plan:
-        raise HTTPException(status_code=404, detail="Plano Trial não encontrado")
+        raise HTTPException(status_code=404, detail="Plano Free não encontrado")
 
     old_value = trial_plan.trial_days
     trial_plan.trial_days = 30

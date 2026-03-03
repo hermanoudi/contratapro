@@ -5,8 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from datetime import datetime
+from sqlalchemy import func, extract
 from .database import get_db
-from .models import User, SubscriptionPlan, Service
+from .models import User, SubscriptionPlan, Service, Appointment
 from .auth_utils import SECRET_KEY, ALGORITHM
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -59,17 +60,8 @@ async def check_can_manage_schedule(
     if not current_user.subscription_plan.can_manage_schedule:
         raise HTTPException(
             status_code=403,
-            detail="Seu plano não permite gerenciar agenda. Faça upgrade para Prata ou Ouro!"
+            detail="Seu plano não permite gerenciar agenda. Faça upgrade!"
         )
-
-    # Verificar se trial expirou
-    if current_user.trial_ends_at:
-        now = datetime.now(current_user.trial_ends_at.tzinfo)
-        if now > current_user.trial_ends_at:
-            raise HTTPException(
-                status_code=403,
-                detail="Seu período de trial expirou. Escolha um plano!"
-            )
 
     return current_user
 
@@ -105,13 +97,43 @@ async def check_can_create_service(
                 detail=f"Limite de {current_user.subscription_plan.max_services} serviço(s) atingido. Faça upgrade!"
             )
 
-    # Verificar se trial expirou
-    if current_user.trial_ends_at:
-        now = datetime.now(current_user.trial_ends_at.tzinfo)
-        if now > current_user.trial_ends_at:
-            raise HTTPException(
-                status_code=403,
-                detail="Seu período de trial expirou. Escolha um plano!"
-            )
-
     return current_user
+
+
+async def check_appointment_limit(
+    professional_id: int,
+    db: AsyncSession
+):
+    """Verifica se o profissional atingiu o limite de agendamentos do mês (plano Free)"""
+    # Buscar profissional com plano carregado
+    result = await db.execute(
+        select(User)
+        .filter(User.id == professional_id)
+        .options(selectinload(User.subscription_plan))
+    )
+    professional = result.scalars().first()
+
+    if not professional or not professional.subscription_plan:
+        return
+
+    limit = professional.subscription_plan.max_appointments_per_month
+    if limit is None:
+        return  # Sem limite
+
+    # Contar agendamentos do mês corrente para este profissional
+    now = datetime.now()
+    count_result = await db.execute(
+        select(func.count()).select_from(Appointment).filter(
+            Appointment.professional_id == professional_id,
+            Appointment.status != "cancelled",
+            extract('year', Appointment.created_at) == now.year,
+            extract('month', Appointment.created_at) == now.month,
+        )
+    )
+    count = count_result.scalar() or 0
+
+    if count >= limit:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Este profissional atingiu o limite de {limit} agendamentos/mês no plano Free."
+        )

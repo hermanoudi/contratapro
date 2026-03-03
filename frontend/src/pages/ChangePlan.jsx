@@ -400,57 +400,56 @@ const LoadingSpinner = styled.div`
 // Definição dos planos
 const PLANS = [
   {
-    id: 'trial',
-    name: 'Trial',
-    slug: 'trial',
+    id: 'free',
+    name: 'Free',
+    slug: 'free',
     price: 0,
-    max_services: 3,
+    max_services: 1,
     icon: Zap,
+    iconColor: '#10b981',
+    bgColor: 'rgba(16, 185, 129, 0.1)',
+    features: [
+      'Gratuito permanente',
+      '1 serviço cadastrado',
+      'Até 3 agendamentos por mês',
+      'Perfil público',
+    ],
+    isFreePlan: true
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    slug: 'pro',
+    price: 19.90,
+    max_services: null,
+    icon: Star,
     iconColor: '#6366f1',
     bgColor: 'rgba(99, 102, 241, 0.1)',
     features: [
-      '30 dias grátis',
-      'Até 3 serviços',
-      'Perfil visível para clientes',
-      'Receba solicitações',
-    ],
-    isTrialPlan: true
-  },
-  {
-    id: 'basic',
-    name: 'Basic',
-    slug: 'basic',
-    price: 29.90,
-    max_services: 5,
-    icon: Star,
-    iconColor: '#f59e0b',
-    bgColor: 'rgba(245, 158, 11, 0.1)',
-    features: [
-      'Até 5 serviços',
-      'Perfil visível para clientes',
-      'Receba solicitações ilimitadas',
-      'Gerencie sua agenda',
+      'Serviços ilimitados',
+      'Agendamentos ilimitados',
+      'Badge Profissional Ativo',
+      'Destaque intermediário na busca',
       'Sem comissões',
     ],
+    featured: true
   },
   {
     id: 'premium',
     name: 'Premium',
     slug: 'premium',
-    price: 49.90,
+    price: 39.90,
     max_services: null,
     icon: Crown,
     iconColor: '#8b5cf6',
     bgColor: 'rgba(139, 92, 246, 0.1)',
     features: [
-      'Serviços ilimitados',
-      'Perfil visível para clientes',
-      'Receba solicitações ilimitadas',
-      'Gerencie sua agenda',
-      'Prioridade nas buscas',
+      'Tudo do Pro',
+      'Topo da busca',
+      'Selo Destaque',
+      'Relatório de desempenho',
       'Sem comissões',
     ],
-    featured: true
   }
 ];
 
@@ -519,7 +518,7 @@ export default function ChangePlan() {
           toast.success('Redirecionando para pagamento...');
           window.location.href = data.init_point;
         } else if (data.success) {
-          // Mudança bem sucedida (trial ou plano grátis)
+          // Mudança bem sucedida (plano free ou grátis)
           toast.success(data.message);
           navigate('/minha-assinatura');
         }
@@ -588,14 +587,13 @@ export default function ChangePlan() {
     const currentPlanData = PLANS.find(p => p.slug === currentPlan);
     const isUpgrade = currentPlanData && plan.price > currentPlanData.price;
     const isDowngrade = currentPlanData && plan.price < currentPlanData.price;
-    const isTrialToTrial = plan.slug === 'trial' && currentPlan === 'trial';
-    const isPaidToTrial = plan.slug === 'trial' && currentPlanData && currentPlanData.price > 0;
+    const isPaidToFree = plan.slug === 'free' && currentPlanData && currentPlanData.price > 0;
 
     if (isCurrentPlan) {
       return { variant: 'current', text: 'Plano Atual', disabled: true };
     }
 
-    if (isPaidToTrial) {
+    if (isPaidToFree) {
       return { variant: 'disabled', text: 'Indisponível', disabled: true };
     }
 
@@ -712,14 +710,14 @@ export default function ChangePlan() {
                 {changingPlan ? 'Processando...' : buttonConfig.text}
               </ActionButton>
 
-              {plan.slug === 'trial' && currentPlanData && currentPlanData.price > 0 && (
+              {plan.slug === 'free' && currentPlanData && currentPlanData.price > 0 && (
                 <div style={{
                   marginTop: '0.75rem',
                   fontSize: '0.8rem',
                   color: 'var(--text-secondary)',
                   textAlign: 'center'
                 }}>
-                  Apenas administradores podem reverter para Trial
+                  Downgrade para Free não disponível
                 </div>
               )}
             </PlanCard>

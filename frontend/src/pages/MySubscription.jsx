@@ -552,10 +552,10 @@ export default function MySubscription() {
         );
     }
 
-    // Se for Trial, mostrar como ativo sem exigir pagamento
-    const isTrial = userPlan?.plan_slug === 'trial';
+    // Se for Free, mostrar como ativo sem exigir pagamento
+    const isFreePlan = userPlan?.plan_slug === 'free';
 
-    if (!subscription && !isTrial) {
+    if (!subscription && !isFreePlan) {
         return (
             <PageContainer>
                 <Header>
@@ -595,64 +595,58 @@ export default function MySubscription() {
                         <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '0.5rem' }}>
                             {userPlan?.plan_name || 'Plano Profissional Mensal'}
                         </h2>
-                        <StatusBadge $status={isTrial ? 'active' : subscription.status}>
+                        <StatusBadge $status={isFreePlan ? 'active' : subscription.status}>
                             <CheckCircle size={20} />
-                            {isTrial ? 'Ativa (Trial)' : getStatusText(subscription.status)}
+                            {isFreePlan ? 'Ativa (Free)' : getStatusText(subscription.status)}
                         </StatusBadge>
+                        {userPlan?.features?.badge_label && (
+                            <div style={{
+                                marginTop: '0.5rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                background: 'rgba(99, 102, 241, 0.1)',
+                                color: 'var(--primary)',
+                                padding: '0.25rem 0.75rem',
+                                borderRadius: '20px',
+                                fontSize: '0.8rem',
+                                fontWeight: 700
+                            }}>
+                                ✨ {userPlan.features.badge_label}
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Para Trial: Mostrar info de trial */}
-                {isTrial && (
-                    <>
-                        <InfoGrid>
-                            <InfoCard>
-                                <DollarSign size={24} />
-                                <InfoLabel>Valor Mensal</InfoLabel>
-                                <InfoValue>GRÁTIS</InfoValue>
-                            </InfoCard>
+                {/* Para Plano Free: Mostrar info do plano gratuito permanente */}
+                {isFreePlan && (
+                    <InfoGrid>
+                        <InfoCard>
+                            <DollarSign size={24} />
+                            <InfoLabel>Valor Mensal</InfoLabel>
+                            <InfoValue>GRÁTIS</InfoValue>
+                        </InfoCard>
 
-                            <InfoCard>
-                                <Calendar size={24} />
-                                <InfoLabel>Dias Restantes</InfoLabel>
-                                <InfoValue style={{ fontSize: '1.5rem', fontWeight: 'bold', color: userPlan?.trial_days_left < 7 ? '#ef4444' : '#10b981' }}>
-                                    {userPlan?.trial_days_left !== null ? `${userPlan.trial_days_left} dias` : '30 dias'}
-                                </InfoValue>
-                            </InfoCard>
+                        <InfoCard>
+                            <Calendar size={24} />
+                            <InfoLabel>Validade</InfoLabel>
+                            <InfoValue style={{ fontSize: '1rem', color: '#10b981' }}>
+                                Permanente
+                            </InfoValue>
+                        </InfoCard>
 
-                            <InfoCard>
-                                <Calendar size={24} />
-                                <InfoLabel>Vencimento</InfoLabel>
-                                <InfoValue style={{ fontSize: '1.125rem' }}>
-                                    {userPlan?.trial_ends_at ? formatDate(userPlan.trial_ends_at) : 'Não definido'}
-                                </InfoValue>
-                            </InfoCard>
-                        </InfoGrid>
-
-                        {userPlan?.trial_days_left < 7 && !userPlan?.trial_expired && (
-                            <Alert style={{ background: '#fef3c7', border: '1px solid #f59e0b', marginTop: '1.5rem' }}>
-                                <AlertCircle size={24} color="#f59e0b" />
-                                <AlertText style={{ color: '#92400e' }}>
-                                    <strong>Seu trial está acabando!</strong> Restam apenas {userPlan.trial_days_left} dias.
-                                    Considere fazer upgrade para continuar aproveitando todos os benefícios.
-                                </AlertText>
-                            </Alert>
-                        )}
-
-                        {userPlan?.trial_expired && (
-                            <Alert style={{ background: '#fee2e2', border: '1px solid #ef4444', marginTop: '1.5rem' }}>
-                                <AlertCircle size={24} color="#ef4444" />
-                                <AlertText style={{ color: '#991b1b' }}>
-                                    <strong>Seu trial expirou!</strong> Faça upgrade para um plano pago para continuar
-                                    recebendo solicitações de clientes.
-                                </AlertText>
-                            </Alert>
-                        )}
-                    </>
+                        <InfoCard>
+                            <Calendar size={24} />
+                            <InfoLabel>Agendamentos/mês</InfoLabel>
+                            <InfoValue style={{ fontSize: '1.25rem' }}>
+                                {userPlan?.features?.max_appointments_per_month ?? '3'}
+                            </InfoValue>
+                        </InfoCard>
+                    </InfoGrid>
                 )}
 
                 {/* Para planos pagos: Mostrar info de pagamento */}
-                {!isTrial && subscription && (
+                {!isFreePlan && subscription && (
                     <InfoGrid>
                         <InfoCard>
                             <DollarSign size={24} />
@@ -688,16 +682,27 @@ export default function MySubscription() {
                                 <li style={{ marginBottom: '0.5rem' }}>
                                     ✓ {userPlan.features.max_services
                                         ? `Máximo ${userPlan.features.max_services} serviço cadastrado`
-                                        : 'Receba solicitações ilimitadas de serviços'}
+                                        : 'Serviços ilimitados'}
                                 </li>
+                                {userPlan.features.max_appointments_per_month && (
+                                    <li style={{ marginBottom: '0.5rem' }}>
+                                        ✓ Até {userPlan.features.max_appointments_per_month} agendamentos por mês
+                                    </li>
+                                )}
+                                {!userPlan.features.max_appointments_per_month && (
+                                    <li style={{ marginBottom: '0.5rem' }}>✓ Agendamentos ilimitados</li>
+                                )}
                                 {userPlan.features.can_manage_schedule && (
                                     <li style={{ marginBottom: '0.5rem' }}>✓ Gerencie sua agenda e disponibilidade</li>
                                 )}
                                 {userPlan.features.can_receive_bookings && (
                                     <li style={{ marginBottom: '0.5rem' }}>✓ Receba agendamentos automáticos</li>
                                 )}
-                                {userPlan.features.priority_in_search > 0 && (
-                                    <li style={{ marginBottom: '0.5rem' }}>✓ ⭐ Prioridade na busca</li>
+                                {userPlan.features.priority_in_search === 1 && (
+                                    <li style={{ marginBottom: '0.5rem' }}>✓ ⭐ Destaque intermediário na busca</li>
+                                )}
+                                {userPlan.features.priority_in_search >= 2 && (
+                                    <li style={{ marginBottom: '0.5rem' }}>✓ 🏆 Topo da busca</li>
                                 )}
                                 <li>✓ Sem comissões por serviço realizado</li>
                             </ul>
@@ -741,7 +746,7 @@ export default function MySubscription() {
                 )}
 
                 {/* Gerenciar Assinatura - Para planos pagos ativos ou pendentes */}
-                {!isTrial && subscription && ['active', 'pending'].includes(subscription.status) && (
+                {!isFreePlan && subscription && ['active', 'pending'].includes(subscription.status) && (
                     <Section>
                         <SectionTitle>Gerenciar Assinatura</SectionTitle>
                         {subscription.status === 'pending' ? (
@@ -798,24 +803,24 @@ export default function MySubscription() {
                     </Section>
                 )}
 
-                {/* Botão de upgrade para Trial */}
-                {isTrial && (
+                {/* Botão de upgrade para Free */}
+                {isFreePlan && (
                     <Section>
-                        <SectionTitle>Alterar Plano</SectionTitle>
+                        <SectionTitle>Quer mais clientes?</SectionTitle>
                         <Alert style={{ background: '#dbeafe', border: '1px solid #3b82f6' }}>
                             <AlertCircle size={24} color="#3b82f6" />
                             <AlertText style={{ color: '#1e40af' }}>
-                                Faça upgrade para um plano pago e desbloqueie todos os recursos sem limite de tempo!
+                                Faça upgrade para o plano Pro e tenha serviços ilimitados, agendamentos ilimitados e destaque na busca!
                             </AlertText>
                         </Alert>
-                        <Button onClick={() => navigate('/alterar-plano')} style={{ background: '#10b981' }}>
+                        <Button onClick={() => navigate('/alterar-plano')} style={{ background: '#6366f1' }}>
                             <RefreshCw size={20} />
-                            Ver Planos e Fazer Upgrade
+                            Ver Planos Pro e Premium
                         </Button>
                     </Section>
                 )}
 
-                {!isTrial && subscription?.status === 'cancelled' && subscription.cancelled_at && (
+                {!isFreePlan && subscription?.status === 'cancelled' && subscription.cancelled_at && (
                     <Section>
                         <Alert>
                             <AlertCircle size={24} />

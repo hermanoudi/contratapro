@@ -11,7 +11,7 @@ from sqlalchemy import func, or_, and_
 from ..database import get_db
 from ..models import Appointment, User, Service, ReviewToken
 from ..schemas import AppointmentCreate, AppointmentResponse, AppointmentBase, AppointmentStatusUpdate, AppointmentPagination, ManualBlockCreate
-from ..dependencies import get_current_user
+from ..dependencies import get_current_user, check_appointment_limit
 from ..services.notifications import notification_service
 from ..services.notifications.templates import email_templates
 from ..config import settings
@@ -316,6 +316,9 @@ async def create_appointment(
     professional = pro_result.scalars().first()
     if not professional or professional.is_suspended:
         raise HTTPException(status_code=400, detail="Professional is currently not accepting appointments")
+
+    # 1.2. Verificar limite de agendamentos mensais do profissional (plano Free)
+    await check_appointment_limit(appt.professional_id, db)
 
     # 1.5. Get service to check duration_type
     service_result = await db.execute(select(Service).filter(Service.id == appt.service_id))

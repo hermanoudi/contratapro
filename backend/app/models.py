@@ -12,10 +12,12 @@ class SubscriptionPlan(Base):
     slug = Column(String(50), unique=True, nullable=False, index=True)
     price = Column(Float, nullable=False)
     max_services = Column(Integer, nullable=True)  # NULL = ilimitado
+    max_appointments_per_month = Column(Integer, nullable=True)  # NULL = ilimitado
     can_manage_schedule = Column(Boolean, default=False)
     can_receive_bookings = Column(Boolean, default=False)
-    priority_in_search = Column(Integer, default=0)  # 0=normal, 1=alta
-    trial_days = Column(Integer, nullable=True)  # Apenas para trial
+    priority_in_search = Column(Integer, default=0)  # 0=normal, 1=intermediário, 2=topo
+    trial_days = Column(Integer, nullable=True)  # Legado — não usado nos planos atuais
+    badge_label = Column(String(50), nullable=True)  # Ex: "Profissional Ativo", "Destaque"
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
