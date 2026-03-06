@@ -797,20 +797,36 @@ async def cancel_subscription(
         subscription.plan_amount == 0
     )
 
-    # Cancelar no Mercado Pago (para parar a recorrencia)
-    try:
-        if subscription.mercadopago_preapproval_id:
-            cancel_response = sdk.preapproval().update(
-                subscription.mercadopago_preapproval_id,
-                {"status": "cancelled"}
+    # Cancelar no Mercado Pago (obrigatório para parar a recorrência)
+    if subscription.mercadopago_preapproval_id:
+        try:
+            async with httpx.AsyncClient() as client:
+                cancel_response = await client.put(
+                    f"https://api.mercadopago.com/preapproval/{subscription.mercadopago_preapproval_id}",
+                    json={"status": "cancelled"},
+                    headers={
+                        "Authorization": f"Bearer {settings.MERCADOPAGO_ACCESS_TOKEN}",
+                        "Content-Type": "application/json"
+                    }
+                )
+            if cancel_response.status_code not in [200, 201]:
+                logger.error(
+                    f"Erro ao cancelar preapproval no MP: "
+                    f"{cancel_response.status_code} - {cancel_response.text}"
+                )
+                raise HTTPException(
+                    status_code=500,
+                    detail="Não foi possível cancelar a assinatura no Mercado Pago. Tente novamente."
+                )
+            logger.info(f"Assinatura cancelada no MP: {subscription.mercadopago_preapproval_id}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Erro ao comunicar com Mercado Pago: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Erro de comunicação com o Mercado Pago. Tente novamente."
             )
-
-            if cancel_response["status"] not in [200, 201]:
-                logger.error(f"Erro ao cancelar no MP: {cancel_response}")
-            else:
-                logger.info(f"Assinatura cancelada no MP: {subscription.mercadopago_preapproval_id}")
-    except Exception as e:
-        logger.error(f"Erro ao cancelar assinatura no MP: {str(e)}")
 
     # Guardar motivo do cancelamento
     subscription.cancellation_reason = cancel_data.reason
@@ -1730,7 +1746,11 @@ async def mercadopago_webhook(
                 )
                 return {"status": "error"}
 
-            # Buscar assinatura no banco
+            # Atualizar status baseado no status do MP
+            mp_status = preapproval_data.get("status")
+            external_reference = preapproval_data.get("external_reference")
+
+            # Buscar assinatura no banco pelo preapproval_id
             result = await db.execute(
                 select(Subscription).where(
                     Subscription.mercadopago_preapproval_id == preapproval_id
@@ -1738,15 +1758,31 @@ async def mercadopago_webhook(
             )
             subscription = result.scalar_one_or_none()
 
+            # Fallback: fluxo init_point salva preapproval_plan_id no campo,
+            # não o preapproval_id real. Buscar pelo professional_id via external_reference.
+            if not subscription and external_reference:
+                try:
+                    result = await db.execute(
+                        select(Subscription).where(
+                            Subscription.professional_id == int(external_reference)
+                        )
+                    )
+                    subscription = result.scalar_one_or_none()
+                    if subscription:
+                        # Corrigir o campo com o preapproval_id real
+                        subscription.mercadopago_preapproval_id = preapproval_id
+                        logger.info(
+                            f"Preapproval ID corrigido via external_reference: "
+                            f"{preapproval_id} para assinatura {subscription.id}"
+                        )
+                except (ValueError, TypeError):
+                    pass
+
             if not subscription:
                 logger.error(
                     f"Assinatura não encontrada: {preapproval_id}"
                 )
                 return {"status": "error", "message": "Subscription not found"}
-
-            # Atualizar status baseado no status do MP
-            mp_status = preapproval_data.get("status")
-            external_reference = preapproval_data.get("external_reference")
 
             # Buscar usuário
             result = await db.execute(
@@ -1810,7 +1846,15 @@ async def mercadopago_webhook(
                 payment_data = payment_response["response"]
 
                 if payment_response["status"] == 200:
-                    preapproval_id = payment_data.get("preapproval_id")
+                    # O MP envia preapproval_id em metadata para pagamentos recorrentes
+                    preapproval_id = (
+                        payment_data.get("preapproval_id")
+                        or payment_data.get("metadata", {}).get("preapproval_id")
+                        or payment_data.get("point_of_interaction", {})
+                            .get("transaction_data", {})
+                            .get("subscription_id")
+                    )
+                    payment_external_ref = payment_data.get("external_reference")
 
                     if preapproval_id:
                         result = await db.execute(
@@ -1820,6 +1864,24 @@ async def mercadopago_webhook(
                             )
                         )
                         subscription = result.scalar_one_or_none()
+
+                        # Fallback: buscar pelo external_reference e corrigir o ID
+                        if not subscription and payment_external_ref:
+                            try:
+                                result = await db.execute(
+                                    select(Subscription).where(
+                                        Subscription.professional_id == int(payment_external_ref)
+                                    )
+                                )
+                                subscription = result.scalar_one_or_none()
+                                if subscription:
+                                    subscription.mercadopago_preapproval_id = preapproval_id
+                                    logger.info(
+                                        f"Preapproval ID corrigido via payment webhook: "
+                                        f"{preapproval_id} para assinatura {subscription.id}"
+                                    )
+                            except (ValueError, TypeError):
+                                pass
 
                         if subscription:
                             subscription.last_payment_date = date.today()
