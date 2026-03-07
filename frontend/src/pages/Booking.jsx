@@ -1158,6 +1158,29 @@ export default function Booking() {
                             <div style={{ flex: '1 1 auto', minWidth: 0 }}>
                                 <h1>{pro.name}</h1>
                                 <p className="pro-category">{pro.category}</p>
+                                {pro.subscription_plan?.badge_label && (
+                                    <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem',
+                                        marginTop: '0.375rem',
+                                        background: pro.subscription_plan.priority_in_search >= 2
+                                            ? 'rgba(245, 158, 11, 0.12)'
+                                            : 'rgba(99, 102, 241, 0.1)',
+                                        color: pro.subscription_plan.priority_in_search >= 2
+                                            ? '#d97706'
+                                            : 'var(--primary)',
+                                        padding: '0.25rem 0.625rem',
+                                        borderRadius: '20px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 700,
+                                        border: `1px solid ${pro.subscription_plan.priority_in_search >= 2
+                                            ? 'rgba(245, 158, 11, 0.25)'
+                                            : 'rgba(99, 102, 241, 0.2)'}`,
+                                    }}>
+                                        {pro.subscription_plan.priority_in_search >= 2 ? '✨' : '⭐'} {pro.subscription_plan.badge_label}
+                                    </span>
+                                )}
                             </div>
                             {pro.total_reviews > 0 && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-primary)', padding: '0.5rem 0.75rem', borderRadius: '12px', border: '1px solid var(--border)', flexShrink: 0 }}>

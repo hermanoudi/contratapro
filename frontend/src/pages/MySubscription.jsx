@@ -710,6 +710,63 @@ export default function MySubscription() {
                     </Section>
                 )}
 
+                {/* Suporte Prioritário — exclusivo para Premium */}
+                {userPlan?.features?.priority_in_search >= 2 && (
+                    <Section>
+                        <SectionTitle>Suporte Prioritário</SectionTitle>
+                        <div style={{
+                            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(251, 191, 36, 0.04))',
+                            border: '1px solid rgba(245, 158, 11, 0.25)',
+                            borderRadius: '12px',
+                            padding: '1.5rem',
+                        }}>
+                            <p style={{ marginBottom: '1.25rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                                Como assinante Premium você tem acesso ao canal exclusivo de suporte prioritário.
+                                Nossa equipe responde em até 24 horas úteis.
+                            </p>
+                            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                <a
+                                    href="https://wa.me/5534999715592?text=Olá, sou assinante Premium do ContrataPro e preciso de suporte."
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        background: '#25d366',
+                                        color: 'white',
+                                        padding: '0.75rem 1.25rem',
+                                        borderRadius: '10px',
+                                        fontWeight: 700,
+                                        fontSize: '0.9rem',
+                                        textDecoration: 'none',
+                                    }}
+                                >
+                                    💬 WhatsApp Suporte
+                                </a>
+                                <a
+                                    href="mailto:contato@contratapro.com.br?subject=Suporte Premium"
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        background: 'var(--bg-secondary)',
+                                        border: '1px solid var(--border)',
+                                        color: 'var(--text-primary)',
+                                        padding: '0.75rem 1.25rem',
+                                        borderRadius: '10px',
+                                        fontWeight: 700,
+                                        fontSize: '0.9rem',
+                                        textDecoration: 'none',
+                                    }}
+                                >
+                                    ✉️ Email Suporte
+                                </a>
+                            </div>
+                        </div>
+                    </Section>
+                )}
+
                 {/* Mudancas Agendadas */}
                 {subscription && (subscription.scheduled_cancellation_date || subscription.scheduled_plan) && (
                     <Section>

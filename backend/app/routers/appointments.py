@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
-from datetime import date, timedelta
-from sqlalchemy import func, or_, and_
+from datetime import date, timedelta, datetime
+from sqlalchemy import func, or_, and_, extract
 from ..database import get_db
 from ..models import Appointment, User, Service, ReviewToken
 from ..schemas import AppointmentCreate, AppointmentResponse, AppointmentBase, AppointmentStatusUpdate, AppointmentPagination, ManualBlockCreate
@@ -574,6 +574,72 @@ async def delete_manual_block(
 
     await db.delete(block)
     await db.commit()
+
+
+@router.get("/stats/me")
+async def get_professional_stats(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Retorna métricas de desempenho do profissional no mês corrente (plano Premium)."""
+    if not current_user.is_professional:
+        raise HTTPException(status_code=403, detail="Apenas profissionais podem acessar estatísticas")
+
+    now = datetime.now()
+
+    # Total de agendamentos do mês (excluindo bloqueios manuais e cancelados)
+    total_result = await db.execute(
+        select(func.count()).select_from(Appointment).filter(
+            Appointment.professional_id == current_user.id,
+            Appointment.status != "cancelled",
+            Appointment.status != "manual_block",
+            extract('year', Appointment.created_at) == now.year,
+            extract('month', Appointment.created_at) == now.month,
+        )
+    )
+    total_month = total_result.scalar() or 0
+
+    # Agendamentos concluídos no mês
+    completed_result = await db.execute(
+        select(func.count()).select_from(Appointment).filter(
+            Appointment.professional_id == current_user.id,
+            Appointment.status == "completed",
+            extract('year', Appointment.created_at) == now.year,
+            extract('month', Appointment.created_at) == now.month,
+        )
+    )
+    completed_month = completed_result.scalar() or 0
+
+    # Taxa de conclusão
+    completion_rate = round((completed_month / total_month * 100) if total_month > 0 else 0, 1)
+
+    # Serviço mais agendado no mês
+    top_service_result = await db.execute(
+        select(Service.title, func.count(Appointment.id).label("count"))
+        .join(Service, Appointment.service_id == Service.id)
+        .filter(
+            Appointment.professional_id == current_user.id,
+            Appointment.status != "cancelled",
+            Appointment.status != "manual_block",
+            extract('year', Appointment.created_at) == now.year,
+            extract('month', Appointment.created_at) == now.month,
+        )
+        .group_by(Service.title)
+        .order_by(func.count(Appointment.id).desc())
+        .limit(1)
+    )
+    top_service_row = top_service_result.first()
+
+    return {
+        "month": now.month,
+        "year": now.year,
+        "total_appointments_month": total_month,
+        "completed_appointments_month": completed_month,
+        "completion_rate": completion_rate,
+        "average_rating": round(current_user.average_rating or 0, 1),
+        "total_reviews": current_user.total_reviews or 0,
+        "top_service": top_service_row[0] if top_service_row else None,
+    }
 
 
 async def _send_review_email(

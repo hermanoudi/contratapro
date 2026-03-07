@@ -430,10 +430,6 @@ export default function ServiceCategory() {
                   <Star size={16} fill="#f59e0b" color="#f59e0b" />
                   <RatingScore>4.9</RatingScore>
                   <RatingCount>(128 avaliacoes)</RatingCount>
-                  <VerifiedBadge>
-                    <Shield size={12} />
-                    Verificado
-                  </VerifiedBadge>
                 </RatingContainer>
 
                 <ButtonsContainer>

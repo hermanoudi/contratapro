@@ -579,6 +579,7 @@ export default function Dashboard() {
     const [services, setServices] = useState([]);
     const [workingHours, setWorkingHours] = useState([]);
     const [appointments, setAppointments] = useState([]);
+    const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showBlockModal, setShowBlockModal] = useState(false);
     const [blockForm, setBlockForm] = useState({ date: '', start_time: '08:00', end_time: '09:00', reason: '' });
@@ -636,6 +637,10 @@ export default function Dashboard() {
 
             // Buscar agendamentos da semana atual
             await fetchAppointments(0);
+
+            // Buscar estatísticas de desempenho (UI exibe apenas para Premium)
+            const statsRes = await fetch('/api/appointments/stats/me', { headers });
+            if (statsRes.ok) setStats(await statsRes.json());
         } catch (error) {
             console.error("Failed to fetch dashboard data", error);
         } finally {
@@ -1155,6 +1160,41 @@ export default function Dashboard() {
                         );
                     })}
                 </MobileCalendar>
+
+                {/* Relatório de Desempenho — visível apenas para plano Premium */}
+                {user?.subscription_plan?.slug === 'premium' && stats && (
+                    <div style={{ marginTop: '2.5rem' }}>
+                        <SectionTitle style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>
+                            📊 Relatório de Desempenho — {new Date(stats.year, stats.month - 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
+                        </SectionTitle>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                            gap: '1rem',
+                        }}>
+                            {[
+                                { label: 'Agendamentos no mês', value: stats.total_appointments_month, icon: '📅' },
+                                { label: 'Concluídos', value: stats.completed_appointments_month, icon: '✅' },
+                                { label: 'Taxa de conclusão', value: `${stats.completion_rate}%`, icon: '📈' },
+                                { label: 'Avaliação média', value: stats.total_reviews > 0 ? `${stats.average_rating} ⭐` : '—', icon: '⭐' },
+                                { label: 'Total de avaliações', value: stats.total_reviews, icon: '💬' },
+                                { label: 'Serviço mais agendado', value: stats.top_service || '—', icon: '🏆', wide: true },
+                            ].map(({ label, value, icon, wide }) => (
+                                <div key={label} style={{
+                                    background: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '12px',
+                                    padding: '1rem 1.25rem',
+                                    gridColumn: wide ? 'span 2' : undefined,
+                                }}>
+                                    <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>{icon}</div>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>{value}</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>{label}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         );
     };

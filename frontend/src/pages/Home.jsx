@@ -1330,10 +1330,6 @@ export default function Home() {
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
                                                 <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, wordBreak: 'break-word' }}>{pro.name}</h3>
-                                                <VerifiedBadge>
-                                                    <Shield size={12} />
-                                                    Verificado
-                                                </VerifiedBadge>
                                             </div>
                                             <p style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.9rem', margin: 0 }}>{pro.category}</p>
                                         </div>
@@ -1514,10 +1510,9 @@ export default function Home() {
                             <PlanName $hasBadge>Free</PlanName>
                             <Price className="free">
                                 GRATIS
-                                <span>/permanente</span>
                             </Price>
                             <PlanDescription>
-                                Comece sem pagar nada, sem prazo de validade
+                                Totalmente Grátis, sem inserir cartão de crédito
                             </PlanDescription>
                             <FeatureList>
                                 <FeatureItem>

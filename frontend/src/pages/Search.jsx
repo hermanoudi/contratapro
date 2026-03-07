@@ -317,6 +317,23 @@ const VerifiedBadge = styled.div`
   border: 1px solid rgba(34, 197, 94, 0.2);
 `;
 
+const PlanBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: ${props => props.$premium
+    ? 'rgba(245, 158, 11, 0.12)'
+    : 'rgba(99, 102, 241, 0.1)'};
+  color: ${props => props.$premium ? '#d97706' : 'var(--primary)'};
+  padding: 0.25rem 0.625rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid ${props => props.$premium
+    ? 'rgba(245, 158, 11, 0.25)'
+    : 'rgba(99, 102, 241, 0.2)'};
+`;
+
 const ProHeader = styled.div`
   display: flex;
   gap: 1rem;
@@ -755,10 +772,11 @@ export default function Search() {
                     <ProInfo>
                       <ProNameContainer>
                         <ProName>{pro.name}</ProName>
-                        <VerifiedBadge>
-                          <Shield size={12} />
-                          Verificado
-                        </VerifiedBadge>
+                        {pro.subscription_plan?.badge_label && (
+                          <PlanBadge $premium={pro.subscription_plan.priority_in_search >= 2}>
+                            {pro.subscription_plan.priority_in_search >= 2 ? '✨' : '⭐'} {pro.subscription_plan.badge_label}
+                          </PlanBadge>
+                        )}
                       </ProNameContainer>
                       <ProCategory>
                         {pro.category}
