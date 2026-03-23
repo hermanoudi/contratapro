@@ -1,5 +1,5 @@
 # backend/app/schemas.py
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from typing import Optional, List
 from datetime import time, date, datetime
 
@@ -141,8 +141,15 @@ class Token(BaseModel):
 class ServiceBase(BaseModel):
     title: str
     description: Optional[str] = None
-    price: Optional[float] = None
+    price: Optional[float] = Field(None, ge=0)
     duration_type: str = 'hourly'  # 'hourly' ou 'daily'
+
+    @field_validator('duration_type')
+    @classmethod
+    def validate_duration_type(cls, v: str) -> str:
+        if v not in ('hourly', 'daily'):
+            raise ValueError("duration_type deve ser 'hourly' ou 'daily'")
+        return v
 
 class ServiceCreate(ServiceBase):
     pass
@@ -158,9 +165,15 @@ class ServiceResponse(ServiceBase):
 
 # Working Hour Schemas
 class WorkingHourBase(BaseModel):
-    day_of_week: int
+    day_of_week: int = Field(..., ge=0, le=6)
     start_time: time
     end_time: time
+
+    @model_validator(mode='after')
+    def validate_time_order(self) -> 'WorkingHourBase':
+        if self.end_time <= self.start_time:
+            raise ValueError("end_time deve ser posterior a start_time")
+        return self
 
 class WorkingHourCreate(WorkingHourBase):
     pass

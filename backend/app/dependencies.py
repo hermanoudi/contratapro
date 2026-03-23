@@ -23,6 +23,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
+        token_iat: int | None = payload.get("iat")
     except JWTError:
         raise credentials_exception
 
@@ -35,6 +36,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     user = result.scalars().first()
     if user is None:
         raise credentials_exception
+
+    # Rejeitar tokens emitidos antes ou no mesmo instante da ultima troca de senha
+    if user.password_changed_at and token_iat is not None:
+        changed_ts = int(user.password_changed_at.timestamp())
+        if token_iat <= changed_ts:
+            raise credentials_exception
+
     return user
 
 

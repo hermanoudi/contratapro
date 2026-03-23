@@ -13,8 +13,21 @@ router = APIRouter()
 async def create_working_hour(wh: WorkingHourCreate, current_user: User = Depends(check_can_manage_schedule), db: AsyncSession = Depends(get_db)):
     if not current_user.is_professional:
         raise HTTPException(status_code=403, detail="Only professionals can set working hours")
-    
-    # Check overlap logic could go here, but keeping it simple for MVP
+
+    # Verificar sobreposição de horários no mesmo dia
+    overlap_query = select(WorkingHour).filter(
+        WorkingHour.professional_id == current_user.id,
+        WorkingHour.day_of_week == wh.day_of_week,
+        WorkingHour.start_time < wh.end_time,
+        WorkingHour.end_time > wh.start_time,
+    )
+    overlap_result = await db.execute(overlap_query)
+    if overlap_result.scalars().first():
+        raise HTTPException(
+            status_code=400,
+            detail="Horário conflita com um horário já cadastrado nesse dia"
+        )
+
     new_wh = WorkingHour(
         day_of_week=wh.day_of_week,
         start_time=wh.start_time,

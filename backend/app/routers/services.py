@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Optional
 from ..database import get_db
-from ..models import Service, User
+from ..models import Service, User, Appointment
 from ..schemas import ServiceCreate, ServiceResponse
 from ..auth_utils import verify_password # We need a get_current_user dependency really
 from ..dependencies import get_current_user, check_can_create_service
@@ -40,6 +40,19 @@ async def delete_service(service_id: int, current_user: User = Depends(get_curre
     service = result.scalars().first()
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
+
+    # Bloquear exclusão se houver agendamentos ativos vinculados
+    active_appts = await db.execute(
+        select(Appointment).filter(
+            Appointment.service_id == service_id,
+            Appointment.status.in_(["scheduled", "blocked"])
+        )
+    )
+    if active_appts.scalars().first():
+        raise HTTPException(
+            status_code=400,
+            detail="Não é possível excluir um serviço com agendamentos ativos"
+        )
 
     # Deletar imagem se existir
     if service.image_url:

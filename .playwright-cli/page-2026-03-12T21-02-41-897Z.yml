@@ -1,0 +1,49 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e184]:
+    - link "Voltar" [ref=e186] [cursor=pointer]:
+      - /url: /
+      - img [ref=e187]
+      - text: Voltar
+    - generic [ref=e189]:
+      - heading "2 Profissionais encontrados" [level=2] [ref=e191]
+      - generic [ref=e192]:
+        - generic [ref=e193]:
+          - generic [ref=e194]:
+            - img "Hermano Flávio de Moura" [ref=e196]
+            - generic [ref=e197]:
+              - heading "Hermano Flávio de Moura" [level=3] [ref=e199]
+              - paragraph [ref=e200]: programador
+          - generic [ref=e201]:
+            - img [ref=e202]
+            - generic [ref=e204]: "5.0"
+            - generic [ref=e205]: (1 avaliação)
+          - paragraph [ref=e206]: "Sou engenheiro de software com mais de 20 anos de experiência em tecnologia. Já trabalhei em vários projetos de empresas como Magalu, Algar Telecom, Ministério dos Transportes etc.. Mais detalhes: https://www.linkedin.com/in/hermano-fl%C3%A1vio-06164837/"
+          - generic [ref=e207]:
+            - img [ref=e208]
+            - text: Uberlândia, MG
+          - generic [ref=e211]:
+            - paragraph [ref=e212]: "Serviços:"
+            - generic [ref=e214]: Criação de Vitrines Virtuais para Lojas de Roupas
+          - generic [ref=e215]:
+            - button "Ver Agenda e Reservar" [ref=e216] [cursor=pointer]
+            - link "WhatsApp" [ref=e217] [cursor=pointer]:
+              - /url: https://wa.me/5534999715592?text=Ol%C3%A1%20Hermano%20Fl%C3%A1vio%20de%20Moura!%20%F0%9F%91%8B%0A%0AEncontrei%20seu%20perfil%20na%20plataforma%20*ContrataPro*%20e%20tenho%20interesse%20no%20servi%C3%A7o%3A%20*Cria%C3%A7%C3%A3o%20de%20Vitrines%20Virtuais%20para%20Lojas%20de%20Roupas*%0A%0APodemos%20conversar%3F%0A%0AObrigado!
+              - img [ref=e218]
+              - text: WhatsApp
+        - generic [ref=e220]:
+          - generic [ref=e221]:
+            - img "Hugo Moura" [ref=e223]
+            - generic [ref=e224]:
+              - heading "Hugo Moura" [level=3] [ref=e226]
+              - paragraph [ref=e227]: engenheiro-civil
+          - paragraph [ref=e228]: Especialista em projetos estrutural e complementares
+          - generic [ref=e229]:
+            - img [ref=e230]
+            - text: Uberlândia, MG
+          - generic [ref=e233]:
+            - button "Ver Agenda e Reservar" [ref=e234] [cursor=pointer]
+            - link "WhatsApp" [ref=e235] [cursor=pointer]:
+              - /url: https://wa.me/5534992910401?text=Ol%C3%A1%20Hugo%20Moura!%20%F0%9F%91%8B%0A%0AEncontrei%20seu%20perfil%20na%20plataforma%20*ContrataPro*%20e%20gostaria%20de%20saber%20mais%20sobre%20seus%20servi%C3%A7os.%0A%0APodemos%20conversar%3F%0A%0AObrigado!
+              - img [ref=e236]
+              - text: WhatsApp

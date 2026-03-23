@@ -73,6 +73,9 @@ class User(Base):
     trial_ends_at = Column(DateTime(timezone=True), nullable=True)
     subscription_started_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Segurança: invalida tokens emitidos antes desta data
+    password_changed_at = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relacionamentos

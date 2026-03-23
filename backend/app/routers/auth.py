@@ -230,10 +230,10 @@ async def validate_reset_token(token: str):
     """
     Valida um token de reset de senha.
     """
-    email = verify_password_reset_token(token)
+    token_data = verify_password_reset_token(token)
 
-    if email:
-        return {"valid": True, "email": email}
+    if token_data:
+        return {"valid": True, "email": token_data["email"]}
 
     return {"valid": False, "email": None}
 
@@ -246,14 +246,19 @@ async def reset_password(
     """
     Redefine a senha usando um token de reset valido.
     """
-    # Validar token
-    email = verify_password_reset_token(request.token)
+    from datetime import datetime as dt
 
-    if not email:
+    # Validar token
+    token_data = verify_password_reset_token(request.token)
+
+    if not token_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Token invalido ou expirado"
         )
+
+    email = token_data["email"]
+    token_iat = token_data.get("iat")
 
     # Validar forca da senha
     criteria = validate_password_strength(request.new_password)
@@ -273,8 +278,18 @@ async def reset_password(
             detail="Usuario nao encontrado"
         )
 
-    # Atualizar senha
+    # Rejeitar token emitido antes ou no mesmo instante da ultima troca de senha (previne reuso)
+    if user.password_changed_at and token_iat is not None:
+        changed_ts = int(user.password_changed_at.timestamp())
+        if token_iat <= changed_ts:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token invalido ou expirado"
+            )
+
+    # Atualizar senha e registrar momento da troca (invalida todos os tokens anteriores)
     user.hashed_password = get_password_hash(request.new_password)
+    user.password_changed_at = dt.utcnow()
     await db.commit()
 
     logger.info(f"Password reset successful for: {email}")

@@ -131,6 +131,14 @@ async def update_appointment_status(
     if not is_professional and not is_client:
         raise HTTPException(status_code=403, detail="Not authorized")
 
+    # Máquina de estados: status finais são imutáveis
+    FINAL_STATUSES = {"completed", "cancelled"}
+    if appt.status in FINAL_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Agendamento com status '{appt.status}' não pode ser alterado"
+        )
+
     new_status = status_update.status.lower()
 
     if new_status == "completed":
@@ -310,6 +318,10 @@ async def create_appointment(
     from ..models import WorkingHour
     from ..services.whatsapp import whatsapp_service
     from datetime import datetime
+
+    # 0. Rejeitar agendamentos em datas passadas
+    if appt.date < date.today():
+        raise HTTPException(status_code=400, detail="Não é possível agendar para uma data passada")
 
     # 1. Check if professional is suspended
     pro_result = await db.execute(select(User).filter(User.id == appt.professional_id))

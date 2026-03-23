@@ -38,6 +38,11 @@ class ImageStorageService:
 
         # Validar tamanho
         contents = await file.read()
+        if len(contents) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Arquivo vazio não é permitido"
+            )
         if len(contents) > settings.MAX_UPLOAD_SIZE:
             raise HTTPException(
                 status_code=400,
