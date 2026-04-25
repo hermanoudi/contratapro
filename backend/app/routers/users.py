@@ -334,3 +334,21 @@ async def get_professional_public(user_id: int, db: AsyncSession = Depends(get_d
             detail="Profissional não encontrado ou sem assinatura ativa"
         )
     return pro
+
+
+@router.get("/stats/public")
+async def get_public_stats(db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import func
+    from ..models import Appointment
+
+    pros_result = await db.execute(
+        select(func.count(User.id)).where(User.is_professional == True)
+    )
+    appts_result = await db.execute(
+        select(func.count(Appointment.id))
+    )
+
+    return {
+        "professionals_count": pros_result.scalar() or 0,
+        "appointments_count": appts_result.scalar() or 0,
+    }

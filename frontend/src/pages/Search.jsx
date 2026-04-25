@@ -10,7 +10,9 @@ import {
   Briefcase,
   Shield,
   X,
-  MessageCircle
+  MessageCircle,
+  Filter,
+  Calendar
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SEOHead from '../components/SEO/SEOHead';
@@ -243,327 +245,201 @@ const Grid = styled.div`
   }
 `;
 
+/* Filter chips */
+const FilterBar = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  margin-bottom: 1.5rem;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+`;
+
+const FilterChip = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 20px;
+  border: 2px solid ${props => props.$active ? 'var(--primary)' : 'var(--border)'};
+  background: ${props => props.$active ? 'var(--primary)' : 'white'};
+  color: ${props => props.$active ? 'white' : 'var(--text-secondary)'};
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  flex-shrink: 0;
+
+  &:hover {
+    border-color: var(--primary);
+    color: ${props => props.$active ? 'white' : 'var(--primary)'};
+  }
+`;
+
+/* Redesigned card */
 const ProCard = styled(motion.div)`
   background: white;
   border-radius: 20px;
-  padding: 2rem;
   border: 2px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
-  position: relative;
   overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-  }
 
   &:hover {
     border-color: var(--primary);
     box-shadow: 0 12px 30px rgba(99, 102, 241, 0.15);
     transform: translateY(-4px);
   }
-
-  @media (max-width: 480px) {
-    padding: 1.5rem;
-    gap: 1rem;
-  }
-
-  @media (max-width: 360px) {
-    padding: 1rem;
-    gap: 0.75rem;
-  }
 `;
 
-const ProAvatar = styled.div`
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: ${props => props.$hasImage ? 'transparent' : 'linear-gradient(135deg, var(--primary), var(--accent))'};
+const PhotoWrapper = styled.div`
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+`;
+
+const HeroPhoto = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+`;
+
+const PhotoPlaceholder = styled.div`
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 1.5rem;
-  font-weight: 800;
-  flex-shrink: 0;
-  overflow: hidden;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
+  font-size: 3rem;
+  font-weight: 900;
 `;
 
-const VerifiedBadge = styled.div`
+const PlanBadgeOverlay = styled.div`
+  position: absolute;
+  top: 0.625rem;
+  right: 0.625rem;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
-  padding: 0.25rem 0.625rem;
+  padding: 0.3rem 0.625rem;
   border-radius: 20px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  border: 1px solid rgba(34, 197, 94, 0.2);
-`;
-
-const PlanBadge = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
+  backdrop-filter: blur(4px);
   background: ${props => props.$premium
-    ? 'rgba(245, 158, 11, 0.12)'
-    : 'rgba(99, 102, 241, 0.1)'};
-  color: ${props => props.$premium ? '#d97706' : 'var(--primary)'};
-  padding: 0.25rem 0.625rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  border: 1px solid ${props => props.$premium
-    ? 'rgba(245, 158, 11, 0.25)'
-    : 'rgba(99, 102, 241, 0.2)'};
+    ? 'rgba(245, 158, 11, 0.9)'
+    : 'rgba(99, 102, 241, 0.9)'};
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 `;
 
-const ProHeader = styled.div`
+const CardBody = styled.div`
+  padding: 1.25rem;
   display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-
-  @media (max-width: 480px) {
-    gap: 0.75rem;
-  }
-
-  @media (max-width: 360px) {
-    gap: 0.5rem;
-  }
-`;
-
-const ProInfo = styled.div`
+  flex-direction: column;
+  gap: 0.625rem;
   flex: 1;
 `;
 
-const ProNameContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
-
-  @media (max-width: 480px) {
-    gap: 0.375rem;
-    flex-wrap: wrap;
-  }
-
-  @media (max-width: 360px) {
-    gap: 0.25rem;
-  }
-`;
-
 const ProName = styled.h3`
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 800;
   margin: 0;
-
-  @media (max-width: 480px) {
-    font-size: 1.1rem;
-  }
-
-  @media (max-width: 360px) {
-    font-size: 1rem;
-  }
+  color: var(--text-primary);
 `;
 
 const ProCategory = styled.p`
   color: var(--primary);
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   margin: 0;
-
-  @media (max-width: 360px) {
-    font-size: 0.85rem;
-  }
 `;
 
-const RatingContainer = styled.div`
+const RatingRow = styled.div`
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  background: rgba(245, 158, 11, 0.1);
-  padding: 0.5rem 0.875rem;
-  border-radius: 10px;
-  width: fit-content;
-
-  @media (max-width: 480px) {
-    padding: 0.375rem 0.625rem;
-  }
-
-  @media (max-width: 360px) {
-    padding: 0.25rem 0.5rem;
-  }
 `;
 
 const RatingScore = styled.span`
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: #f59e0b;
-
-  @media (max-width: 360px) {
-    font-size: 0.85rem;
-  }
 `;
 
 const RatingCount = styled.span`
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-secondary);
-  margin-left: 0.25rem;
-
-  @media (max-width: 480px) {
-    display: none;
-  }
 `;
 
-const ProDescription = styled.p`
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-  line-height: 1.6;
-  margin: 0;
-
-  @media (max-width: 360px) {
-    font-size: 0.9rem;
-  }
-`;
-
-const LocationContainer = styled.div`
+const LocationRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.375rem;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
-
-  @media (max-width: 480px) {
-    gap: 0.375rem;
-  }
-
-  @media (max-width: 360px) {
-    font-size: 0.85rem;
-    gap: 0.25rem;
-  }
 `;
 
-const ServicesSection = styled.div`
-  margin-top: 0.5rem;
-
-  @media (max-width: 360px) {
-    margin-top: 0.25rem;
-  }
-`;
-
-const ServicesTitle = styled.p`
-  font-size: 0.8rem;
-  font-weight: 700;
-  margin-bottom: 0.75rem;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-
-  @media (max-width: 480px) {
-    margin-bottom: 0.5rem;
-  }
-
-  @media (max-width: 360px) {
-    font-size: 0.75rem;
-    margin-bottom: 0.375rem;
-  }
-`;
-
-const ServicesContainer = styled.div`
+const ChipsRow = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-
-  @media (max-width: 480px) {
-    gap: 0.375rem;
-  }
-
-  @media (max-width: 360px) {
-    gap: 0.25rem;
-  }
+  gap: 0.375rem;
 `;
 
-const ServiceTag = styled.span`
-  font-size: 0.75rem;
+const ServiceChip = styled.span`
+  font-size: 0.72rem;
   background: var(--bg-secondary);
-  padding: 0.4rem 0.75rem;
-  border-radius: 8px;
+  padding: 0.3rem 0.625rem;
+  border-radius: 6px;
   font-weight: 600;
   border: 1px solid var(--border);
-
-  @media (max-width: 480px) {
-    padding: 0.3rem 0.5rem;
-    font-size: 0.7rem;
-  }
-
-  @media (max-width: 360px) {
-    padding: 0.25rem 0.4rem;
-    font-size: 0.65rem;
-  }
+  color: var(--text-primary);
 `;
 
-const MoreServices = styled.span`
-  font-size: 0.8rem;
+const MoreChip = styled.span`
+  font-size: 0.75rem;
   color: var(--text-secondary);
   font-weight: 500;
-
-  @media (max-width: 360px) {
-    font-size: 0.75rem;
-  }
+  align-self: center;
 `;
 
-const ButtonsContainer = styled.div`
+const CTARow = styled.div`
   display: flex;
   gap: 0.5rem;
-  margin-top: 1rem;
-  width: 100%;
+  margin-top: auto;
+  padding-top: 0.5rem;
 
   @media (max-width: 480px) {
     flex-direction: column;
-    gap: 0.5rem;
   }
 `;
 
 const BookButton = styled.button`
   flex: 1;
-  padding: 1rem;
+  padding: 0.75rem;
+  font-size: 0.9rem;
 
   @media (max-width: 480px) {
     width: 100%;
-    padding: 0.875rem;
-    font-size: 0.95rem;
-  }
-
-  @media (max-width: 360px) {
-    padding: 0.75rem;
-    font-size: 0.9rem;
   }
 `;
 
 const WhatsAppButton = styled.a`
   flex: 1;
-  padding: 1rem;
+  padding: 0.75rem;
   background: #25D366;
   color: white;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
@@ -571,8 +447,8 @@ const WhatsAppButton = styled.a`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  font-size: 1rem;
+  gap: 0.4rem;
+  font-size: 0.9rem;
 
   &:hover {
     background: #20BA5A;
@@ -582,13 +458,6 @@ const WhatsAppButton = styled.a`
 
   @media (max-width: 480px) {
     width: 100%;
-    padding: 0.875rem;
-    font-size: 0.95rem;
-  }
-
-  @media (max-width: 360px) {
-    padding: 0.75rem;
-    font-size: 0.9rem;
   }
 `;
 
@@ -626,6 +495,26 @@ export default function Search() {
   const [professionals, setProfessionals] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [activeFilters, setActiveFilters] = useState([]);
+
+  const FILTERS = [
+    { id: 'rating', label: '⭐ 4+ estrelas' },
+    { id: 'bookable', label: '📅 Aceita agendamentos' },
+    { id: 'badge', label: '✨ Com badge' },
+  ];
+
+  const toggleFilter = (id) => {
+    setActiveFilters(prev =>
+      prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
+    );
+  };
+
+  const filteredProfessionals = professionals.filter(pro => {
+    if (activeFilters.includes('rating') && (pro.average_rating || 0) < 4) return false;
+    if (activeFilters.includes('bookable') && !pro.subscription_plan?.can_receive_bookings) return false;
+    if (activeFilters.includes('badge') && !pro.subscription_plan?.badge_label) return false;
+    return true;
+  });
 
   // Função helper para gerar link WhatsApp
   const generateWhatsAppLink = (whatsapp, profName, serviceName = '') => {
@@ -752,100 +641,111 @@ export default function Search() {
         <ResultsContainer>
           <ResultsHeader>
             <ResultsCount>
-              {professionals.length}{' '}
-              {professionals.length === 1 ? 'Profissional encontrado' : 'Profissionais encontrados'}
+              {filteredProfessionals.length}{' '}
+              {filteredProfessionals.length === 1 ? 'Profissional encontrado' : 'Profissionais encontrados'}
             </ResultsCount>
           </ResultsHeader>
 
-          {professionals.length > 0 ? (
-            <Grid>
-              {professionals.map((pro) => (
-                <ProCard key={pro.id}>
-                  <ProHeader>
-                    <ProAvatar $hasImage={!!pro.profile_picture}>
-                      {pro.profile_picture ? (
-                        <img src={pro.profile_picture} alt={pro.name} />
-                      ) : (
-                        pro.name.charAt(0).toUpperCase()
-                      )}
-                    </ProAvatar>
-                    <ProInfo>
-                      <ProNameContainer>
-                        <ProName>{pro.name}</ProName>
-                        {pro.subscription_plan?.badge_label && (
-                          <PlanBadge $premium={pro.subscription_plan.priority_in_search >= 2}>
-                            {pro.subscription_plan.priority_in_search >= 2 ? '✨' : '⭐'} {pro.subscription_plan.badge_label}
-                          </PlanBadge>
-                        )}
-                      </ProNameContainer>
-                      <ProCategory>
-                        {pro.category}
-                      </ProCategory>
-                    </ProInfo>
-                  </ProHeader>
-
-                  {pro.total_reviews > 0 && (
-                    <RatingContainer>
-                      <Star size={16} fill="#f59e0b" color="#f59e0b" />
-                      <RatingScore>{(pro.average_rating || 0).toFixed(1)}</RatingScore>
-                      <RatingCount>
-                        ({pro.total_reviews} {pro.total_reviews === 1 ? 'avaliação' : 'avaliações'})
-                      </RatingCount>
-                    </RatingContainer>
+          {professionals.length > 0 && (
+            <FilterBar>
+              {FILTERS.map(f => (
+                <FilterChip
+                  key={f.id}
+                  $active={activeFilters.includes(f.id)}
+                  onClick={() => toggleFilter(f.id)}
+                >
+                  {f.label}
+                  {activeFilters.includes(f.id) && (
+                    <X size={12} style={{ marginLeft: '2px' }} />
                   )}
-
-                  <ProDescription>
-                    {pro.description || 'Sem descrição disponível.'}
-                  </ProDescription>
-
-                  <LocationContainer>
-                    <MapPin size={16} color="var(--primary)" />
-                    {pro.city}, {pro.state}
-                  </LocationContainer>
-
-                  {pro.services && pro.services.length > 0 && (
-                    <ServicesSection>
-                      <ServicesTitle>
-                        Serviços:
-                      </ServicesTitle>
-                      <ServicesContainer>
-                        {pro.services.slice(0, 2).map((s) => (
-                          <ServiceTag key={s.id}>
-                            {s.title}
-                          </ServiceTag>
-                        ))}
-                        {pro.services.length > 2 && (
-                          <MoreServices>
-                            +{pro.services.length - 2} mais
-                          </MoreServices>
-                        )}
-                      </ServicesContainer>
-                    </ServicesSection>
-                  )}
-
-                  <ButtonsContainer>
-                    {/* Só mostra botão de agendar se o profissional aceita agendamentos online */}
-                    {pro.subscription_plan?.can_receive_bookings && (
-                      <BookButton
-                        className="btn-primary"
-                        onClick={() => navigate(pro.slug ? `/p/${pro.slug}` : `/book/${pro.id}`, { state: { pro, clientCep: cep } })}
-                      >
-                        Ver Agenda e Reservar
-                      </BookButton>
-                    )}
-                    {pro.whatsapp && (
-                      <WhatsAppButton
-                        href={generateWhatsAppLink(pro.whatsapp, pro.name, pro.services?.[0]?.title)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <MessageCircle size={18} />
-                        WhatsApp
-                      </WhatsAppButton>
-                    )}
-                  </ButtonsContainer>
-                </ProCard>
+                </FilterChip>
               ))}
+            </FilterBar>
+          )}
+
+          {filteredProfessionals.length > 0 ? (
+            <Grid>
+              {filteredProfessionals.map((pro) => {
+                const isPremium = (pro.subscription_plan?.priority_in_search || 0) >= 2;
+                const isPro = (pro.subscription_plan?.priority_in_search || 0) === 1;
+                const hasBadge = !!(pro.subscription_plan?.badge_label);
+
+                return (
+                  <ProCard
+                    key={pro.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <PhotoWrapper>
+                      {pro.profile_picture ? (
+                        <HeroPhoto src={pro.profile_picture} alt={pro.name} />
+                      ) : (
+                        <PhotoPlaceholder>{pro.name.charAt(0).toUpperCase()}</PhotoPlaceholder>
+                      )}
+                      {hasBadge && (
+                        <PlanBadgeOverlay $premium={isPremium}>
+                          {isPremium ? '✨' : '⭐'} {pro.subscription_plan.badge_label}
+                        </PlanBadgeOverlay>
+                      )}
+                    </PhotoWrapper>
+
+                    <CardBody>
+                      <div>
+                        <ProName>{pro.name}</ProName>
+                        <ProCategory>{pro.category}</ProCategory>
+                      </div>
+
+                      {pro.total_reviews > 0 && (
+                        <RatingRow>
+                          <Star size={14} fill="#f59e0b" color="#f59e0b" />
+                          <RatingScore>{(pro.average_rating || 0).toFixed(1)}</RatingScore>
+                          <RatingCount>
+                            ({pro.total_reviews} {pro.total_reviews === 1 ? 'avaliação' : 'avaliações'})
+                          </RatingCount>
+                        </RatingRow>
+                      )}
+
+                      <LocationRow>
+                        <MapPin size={14} color="var(--primary)" />
+                        {pro.city}, {pro.state}
+                      </LocationRow>
+
+                      {pro.services && pro.services.length > 0 && (
+                        <ChipsRow>
+                          {pro.services.slice(0, 3).map((s) => (
+                            <ServiceChip key={s.id}>{s.title}</ServiceChip>
+                          ))}
+                          {pro.services.length > 3 && (
+                            <MoreChip>+{pro.services.length - 3}</MoreChip>
+                          )}
+                        </ChipsRow>
+                      )}
+
+                      <CTARow>
+                        {pro.subscription_plan?.can_receive_bookings && (
+                          <BookButton
+                            className="btn-primary"
+                            onClick={() => navigate(pro.slug ? `/p/${pro.slug}` : `/book/${pro.id}`, { state: { pro, clientCep: cep } })}
+                          >
+                            Agendar
+                          </BookButton>
+                        )}
+                        {pro.whatsapp && (
+                          <WhatsAppButton
+                            href={generateWhatsAppLink(pro.whatsapp, pro.name, pro.services?.[0]?.title)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <MessageCircle size={16} />
+                            WhatsApp
+                          </WhatsAppButton>
+                        )}
+                      </CTARow>
+                    </CardBody>
+                  </ProCard>
+                );
+              })}
             </Grid>
           ) : (
             <EmptyState>

@@ -41,7 +41,7 @@ PLANS = [
         "name": "Free",
         "slug": "free",
         "price": 0.0,
-        "max_services": 1,
+        "max_services": None,  # Ilimitado
         "max_appointments_per_month": 3,
         "can_manage_schedule": True,
         "can_receive_bookings": True,

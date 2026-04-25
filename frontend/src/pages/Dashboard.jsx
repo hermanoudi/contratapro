@@ -9,6 +9,8 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import ImageUpload from '../components/ImageUpload';
+import ProfileCompletionBar from '../components/ProfileCompletionBar';
+import OnboardingSteps from '../components/OnboardingSteps';
 import { API_URL } from '../config';
 
 // --- Styled Components ---
@@ -585,6 +587,7 @@ export default function Dashboard() {
     const [blockForm, setBlockForm] = useState({ date: '', start_time: '08:00', end_time: '09:00', reason: '' });
     const [blockDateDisplay, setBlockDateDisplay] = useState(''); // Data formatada para exibição (dd/mm/yyyy)
     const [weekOffset, setWeekOffset] = useState(0); // 0 = semana atual, 1 = próxima semana, etc
+    const [showOnboarding, setShowOnboarding] = useState(false);
     const navigate = useNavigate();
 
     const getWeekStartDate = (offset = 0) => {
@@ -656,6 +659,17 @@ export default function Dashboard() {
     useEffect(() => {
         fetchData();
     }, [navigate]);
+
+    useEffect(() => {
+        if (!loading && user) {
+            const key = `onboarding_dismissed_${user.id}`;
+            const dismissed = localStorage.getItem(key);
+            const isComplete = user.profile_picture && user.description && user.city && services.length > 0;
+            if (!dismissed && !isComplete) {
+                setShowOnboarding(true);
+            }
+        }
+    }, [loading, user, services]);
 
     useEffect(() => {
         if (!loading) {
@@ -1652,6 +1666,11 @@ export default function Dashboard() {
         );
     };
 
+    const handleDismissOnboarding = () => {
+        if (user) localStorage.setItem(`onboarding_dismissed_${user.id}`, 'true');
+        setShowOnboarding(false);
+    };
+
     if (loading) return <div style={{ color: 'white', padding: '2rem' }}>Carregando dashboard...</div>;
 
     return (
@@ -1666,8 +1685,21 @@ export default function Dashboard() {
                 </SubscriptionAlert>
             )}
 
+            {showOnboarding && (
+                <OnboardingSteps
+                    user={user}
+                    services={services}
+                    workingHours={workingHours}
+                    onDismiss={handleDismissOnboarding}
+                />
+            )}
 
-            {activeTab === 'dashboard' && <DashboardView />}
+            {activeTab === 'dashboard' && (
+                <>
+                    <ProfileCompletionBar user={user} services={services} />
+                    <DashboardView />
+                </>
+            )}
             {activeTab === 'services' && <ServicesView />}
             {activeTab === 'schedule' && <ScheduleView />}
 

@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { Search, MapPin, Star, Menu, LogOut, User, LayoutDashboard, Check, Calendar, DollarSign, Briefcase, X, ChevronRight, Shield, Edit2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CategoryMenu from '../components/CategoryMenu';
+import HeroSection from '../components/HeroSection';
 import { API_URL } from '../config';
 import StructuredData from '../components/SEO/StructuredData';
 import SEOHead, { SEO_CONFIGS } from '../components/SEO/SEOHead';
@@ -1290,23 +1291,7 @@ export default function Home() {
                 )}
             </AnimatePresence>
 
-            <Hero>
-                <HeroTitle
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
-                >
-                    Encontre profissionais<br />
-                    <HeroGradientText>na sua região</HeroGradientText>
-                </HeroTitle>
-                <HeroSubtitle
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2, duration: 0.6 }}
-                >
-                    Encontre o profissional certo para cada serviço
-                </HeroSubtitle>
-            </Hero>
+            <HeroSection />
 
             {hasSearched && (
                 <Section>
@@ -1439,9 +1424,9 @@ export default function Home() {
 
             <Section style={{ background: 'var(--bg-secondary)', margin: '0', maxWidth: '100%', padding: '3rem 1rem' }}>
                 <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                    <SectionTitle>Para profissionais</SectionTitle>
+                    <SectionTitle>Como funciona para profissionais</SectionTitle>
                     <SectionSubtitle>
-                        Tenha seu espaço profissional e receba agendamentos todos os dias
+                        Em 3 passos você começa a receber clientes na sua região — grátis para sempre
                     </SectionSubtitle>
                     <HowItWorksGrid>
                         <HowItWorksCard
@@ -1451,11 +1436,11 @@ export default function Home() {
                             viewport={{ once: true }}
                         >
                             <IconWrapper>
-                                <Briefcase size={40} />
+                                <User size={40} />
                             </IconWrapper>
-                            <CardTitle>Exponha seus serviços</CardTitle>
+                            <CardTitle>1. Cadastre-se</CardTitle>
                             <CardText>
-                                Crie seu perfil profissional com fotos, descrições e valores dos seus serviços
+                                Crie seu perfil profissional gratuitamente em minutos, sem cartão de crédito
                             </CardText>
                         </HowItWorksCard>
 
@@ -1466,11 +1451,11 @@ export default function Home() {
                             viewport={{ once: true }}
                         >
                             <IconWrapper>
-                                <Calendar size={40} />
+                                <Briefcase size={40} />
                             </IconWrapper>
-                            <CardTitle>Controle sua agenda</CardTitle>
+                            <CardTitle>2. Monte seu perfil</CardTitle>
                             <CardText>
-                                Defina seus horários de atendimento e receba agendamentos automaticamente
+                                Adicione seus serviços, preços e configure seus horários de disponibilidade
                             </CardText>
                         </HowItWorksCard>
 
@@ -1483,9 +1468,9 @@ export default function Home() {
                             <IconWrapper>
                                 <DollarSign size={40} />
                             </IconWrapper>
-                            <CardTitle>Receba mais clientes</CardTitle>
+                            <CardTitle>3. Receba clientes</CardTitle>
                             <CardText>
-                                Seja encontrado por milhares de pessoas que buscam seus serviços na sua cidade
+                                Apareça nas buscas e receba agendamentos de clientes na sua cidade automaticamente
                             </CardText>
                         </HowItWorksCard>
                     </HowItWorksGrid>

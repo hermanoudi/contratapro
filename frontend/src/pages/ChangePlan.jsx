@@ -5,6 +5,7 @@ import { ArrowLeft, Check, AlertCircle, Crown, Star, Zap, X } from 'lucide-react
 import { toast } from 'sonner';
 
 import { API_URL } from '../config';
+import PlanComparisonTable from '../components/PlanComparisonTable';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -404,13 +405,13 @@ const PLANS = [
     name: 'Free',
     slug: 'free',
     price: 0,
-    max_services: 1,
+    max_services: null,
     icon: Zap,
     iconColor: '#10b981',
     bgColor: 'rgba(16, 185, 129, 0.1)',
     features: [
       'Gratuito permanente',
-      '1 serviço cadastrado',
+      'Serviços ilimitados',
       'Até 3 agendamentos por mês',
       'Perfil público',
     ],
@@ -649,81 +650,11 @@ export default function ChangePlan() {
         </Alert>
       )}
 
-      <PlansGrid>
-        {PLANS.map((plan) => {
-          const PlanIcon_ = plan.icon;
-          const buttonConfig = getButtonConfig(plan);
-          const isCurrentPlan = plan.slug === currentPlan;
-
-          return (
-            <PlanCard
-              key={plan.id}
-              $featured={plan.featured}
-              $current={isCurrentPlan}
-              $disabled={buttonConfig.disabled && !isCurrentPlan}
-            >
-              {plan.featured && !isCurrentPlan && (
-                <PlanBadge>
-                  <Crown size={14} />
-                  Mais Popular
-                </PlanBadge>
-              )}
-              {isCurrentPlan && (
-                <PlanBadge $type="current">
-                  <Check size={14} />
-                  Atual
-                </PlanBadge>
-              )}
-
-              <PlanIcon $color={plan.bgColor} $iconColor={plan.iconColor}>
-                <PlanIcon_ size={28} />
-              </PlanIcon>
-
-              <PlanName>{plan.name}</PlanName>
-
-              <PlanPrice>
-                {plan.price === 0 ? (
-                  <PriceValue>Grátis</PriceValue>
-                ) : (
-                  <>
-                    <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>R$</span>
-                    <PriceValue>{plan.price.toFixed(2).replace('.', ',')}</PriceValue>
-                    <PricePeriod>/mês</PricePeriod>
-                  </>
-                )}
-              </PlanPrice>
-
-              <FeatureList>
-                {plan.features.map((feature, index) => (
-                  <Feature key={index}>
-                    <Check size={18} />
-                    {feature}
-                  </Feature>
-                ))}
-              </FeatureList>
-
-              <ActionButton
-                $variant={buttonConfig.variant}
-                disabled={buttonConfig.disabled || changingPlan}
-                onClick={() => !buttonConfig.disabled && handleChangePlan(plan.slug)}
-              >
-                {changingPlan ? 'Processando...' : buttonConfig.text}
-              </ActionButton>
-
-              {plan.slug === 'free' && currentPlanData && currentPlanData.price > 0 && (
-                <div style={{
-                  marginTop: '0.75rem',
-                  fontSize: '0.8rem',
-                  color: 'var(--text-secondary)',
-                  textAlign: 'center'
-                }}>
-                  Downgrade para Free não disponível
-                </div>
-              )}
-            </PlanCard>
-          );
-        })}
-      </PlansGrid>
+      <PlanComparisonTable
+        currentPlan={currentPlan}
+        onChangePlan={handleChangePlan}
+        changingPlan={changingPlan}
+      />
 
       {/* Modal para remoção de serviços */}
       {showServiceModal && (
