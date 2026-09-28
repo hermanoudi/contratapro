@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from pydantic import BaseModel, EmailStr
@@ -18,6 +18,7 @@ from ..auth_utils import (
 )
 from ..dependencies import get_current_user
 from ..config import settings
+from ..rate_limit import limiter
 from ..services.notifications.templates import email_templates
 from ..services.notifications.resend_adapter import resend_adapter
 from datetime import timedelta
@@ -130,7 +131,8 @@ async def generate_password():
     return GeneratePasswordResponse(password=password)
 
 @router.post("/login", response_model=Token)
-async def login(login_data: UserLogin, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def login(request: Request, login_data: UserLogin, db: AsyncSession = Depends(get_db)):
     # Find user by email
     result = await db.execute(select(User).filter(User.email == login_data.email))
     user = result.scalars().first()
@@ -176,8 +178,10 @@ class ResetPasswordRequest(BaseModel):
 
 
 @router.post("/forgot-password", status_code=200)
+@limiter.limit("5/minute")
 async def forgot_password(
-    request: ForgotPasswordRequest,
+    request: Request,
+    data: ForgotPasswordRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
@@ -186,7 +190,7 @@ async def forgot_password(
     Sempre retorna 200 OK (blind response) para prevenir enumeracao de emails.
     """
     result = await db.execute(
-        select(User).filter(User.email == request.email)
+        select(User).filter(User.email == data.email)
     )
     user = result.scalars().first()
 

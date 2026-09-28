@@ -11,8 +11,12 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 import pytz
 from .database import engine, Base
+from .rate_limit import limiter
 from .routers import (
     users, services, appointments, subscriptions,
     auth, schedule, categories, admin, cep, health, plans,
@@ -81,6 +85,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Rate limiting (ver app/rate_limit.py) — contém brute-force/credential
+# stuffing em /auth/login e /auth/forgot-password (Fase 1.4 do plano de
+# melhorias).
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
 # Configuração de CORS
 # Lista de origens permitidas
 origins = [
@@ -108,7 +119,12 @@ def configure_cors():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.vercel\.app",  # Aceita todos os deploys do Vercel
+    # Restrito ao projeto Vercel do frontend (contratapro-frontend, ver
+    # frontend/package.json), não a qualquer app hospedado em *.vercel.app.
+    # allow_credentials=True + um regex genérico teria permitido que qualquer
+    # site de terceiros na Vercel fizesse requisições autenticadas contra
+    # esta API. Se o nome do projeto no Vercel mudar, ajuste este regex.
+    allow_origin_regex=r"https://contratapro-frontend.*\.vercel\.app",
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],

@@ -5,9 +5,11 @@ Suporta armazenamento local (desenvolvimento) e Cloudinary (produção).
 """
 import os
 import uuid
+from io import BytesIO
 from pathlib import Path
 from typing import Optional
 from fastapi import UploadFile, HTTPException
+from PIL import Image, UnidentifiedImageError
 from ..config import settings
 
 
@@ -47,6 +49,19 @@ class ImageStorageService:
             raise HTTPException(
                 status_code=400,
                 detail=f"Arquivo muito grande. Máximo: {settings.MAX_UPLOAD_SIZE / (1024*1024)}MB"
+            )
+
+        # Validar que o conteúdo é de fato uma imagem decodificável, não
+        # apenas um arquivo com extensão de imagem (ver plano de melhorias /
+        # Fase 1.4). Antes desta checagem, qualquer arquivo renomeado para
+        # .png/.jpg passava pela validação de extensão do nome do arquivo.
+        try:
+            with Image.open(BytesIO(contents)) as img:
+                img.verify()
+        except (UnidentifiedImageError, OSError):
+            raise HTTPException(
+                status_code=400,
+                detail="Arquivo não é uma imagem válida."
             )
 
         # Resetar ponteiro do arquivo

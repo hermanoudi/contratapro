@@ -133,37 +133,57 @@ async def test_expired_reset_token_is_rejected(async_client):
 # ============================================================
 
 @pytest.mark.asyncio
-async def test_setup_endpoint_rejects_wrong_secret_key(async_client):
+async def test_setup_create_admin_endpoint_no_longer_exists(async_client):
     """
-    Garante que o endpoint de criação de admin rejeita chaves secretas incorretas.
+    POST /admin/setup/create-admin foi removido (Fase 1.2 do plano de
+    melhorias): permitia criar um administrador com base apenas em uma
+    comparação de string não constant-time contra settings.SECRET_KEY,
+    sem exigir autenticação. O bootstrap do primeiro admin agora é feito
+    localmente via backend/scripts/create_admin.py, nunca por HTTP público.
     """
     resp = await async_client.post(
         "/admin/setup/create-admin",
         json={
-            "secret_key": "chave-errada-123",
             "email": f"admin_{uuid.uuid4()}@example.com",
             "password": "AdminPass@123",
             "name": "Admin Hacker",
         },
     )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_setup_update_trial_days_requires_authentication(async_client):
+    """
+    Garante que /admin/setup/update-trial-days exige um token de acesso válido.
+    """
+    resp = await async_client.post("/admin/setup/update-trial-days")
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_setup_update_trial_days_requires_admin(async_client):
+    """
+    Garante que um usuário autenticado, mas não-admin, não consegue acessar
+    /admin/setup/update-trial-days.
+    """
+    email, password, _ = await make_user(async_client)
+    headers = await get_auth_headers(async_client, email, password)
+
+    resp = await async_client.post("/admin/setup/update-trial-days", headers=headers)
     assert resp.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_setup_endpoint_rejects_empty_secret_key(async_client):
+async def test_setup_change_admin_password_requires_authentication(async_client):
     """
-    Garante que chave secreta vazia não contorna a validação.
+    Garante que /admin/setup/change-admin-password exige um token de acesso válido.
     """
     resp = await async_client.post(
-        "/admin/setup/create-admin",
-        json={
-            "secret_key": "",
-            "email": f"admin_{uuid.uuid4()}@example.com",
-            "password": "AdminPass@123",
-            "name": "Admin Vazio",
-        },
+        "/admin/setup/change-admin-password",
+        json={"email": "someone@example.com", "new_password": "NewPass@123"},
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 # ============================================================
@@ -217,3 +237,50 @@ async def test_protected_endpoint_rejects_tampered_token(async_client):
         headers={"Authorization": f"Bearer {tampered_token}"},
     )
     assert resp.status_code == 401
+
+
+# ============================================================
+# Rate limiting (Fase 1.4 do plano de melhorias)
+# ============================================================
+
+@pytest.mark.asyncio
+async def test_login_is_rate_limited_after_repeated_attempts(async_client):
+    """
+    Garante que POST /auth/login passa a responder 429 após repetidas
+    tentativas na mesma origem, contendo brute-force/credential stuffing.
+    """
+    email, password, _ = await make_user(async_client)
+
+    responses = []
+    for _ in range(15):
+        resp = await async_client.post(
+            "/auth/login",
+            json={"email": email, "password": "senha-errada-de-proposito"},
+        )
+        responses.append(resp.status_code)
+
+    assert 429 in responses, (
+        "Login não é limitado por taxa: 15 tentativas seguidas da mesma "
+        "origem não dispararam nenhum 429."
+    )
+
+
+@pytest.mark.asyncio
+async def test_forgot_password_is_rate_limited_after_repeated_attempts(async_client):
+    """
+    Garante que POST /auth/forgot-password também é limitado por taxa —
+    sem isso, o endpoint pode ser usado para enumerar e-mails cadastrados
+    em massa, além de disparar envio de e-mails em volume.
+    """
+    responses = []
+    for _ in range(10):
+        resp = await async_client.post(
+            "/auth/forgot-password",
+            json={"email": "qualquer@example.com"},
+        )
+        responses.append(resp.status_code)
+
+    assert 429 in responses, (
+        "Forgot-password não é limitado por taxa: 10 tentativas seguidas da "
+        "mesma origem não dispararam nenhum 429."
+    )
