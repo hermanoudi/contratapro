@@ -8,7 +8,6 @@ from passlib.context import CryptContext
 from ..database import get_db
 from ..models import User, Subscription, Appointment, SubscriptionPlan, Category
 from ..dependencies import get_current_user
-from ..config import settings
 from .auth import validate_password_strength
 
 router = APIRouter()
@@ -475,32 +474,34 @@ async def extend_trial(
 
 
 # =============================================================================
-# ENDPOINTS DE SETUP (Protegidos por chave secreta)
+# ENDPOINTS DE SETUP
 # =============================================================================
-
-class SetupRequest(BaseModel):
-    secret_key: str
-
-
-class CreateAdminRequest(BaseModel):
-    secret_key: str
-    email: str
-    password: str
-    name: str = "Administrador"
+# NOTA DE SEGURANÇA: até 2026-09, /setup/update-trial-days, /setup/create-admin
+# e /setup/change-admin-password (abaixo) eram protegidos apenas por uma
+# comparação de string não constant-time contra settings.SECRET_KEY — o mesmo
+# segredo usado para assinar JWTs, documentado apenas em .env.railway.template.
+# Qualquer pessoa com esse valor podia criar um administrador. Ver plano de
+# melhorias / Fase 1.2.
+#
+# /setup/create-admin foi removido: o bootstrap do primeiro admin agora é
+# feito localmente via `python backend/scripts/create_admin.py`, com acesso
+# direto ao banco, nunca por HTTP público.
+#
+# /setup/update-trial-days e /setup/change-admin-password passam a exigir
+# autenticação de administrador (mesmo padrão do restante deste router).
 
 
 @router.post("/setup/update-trial-days")
 async def setup_update_trial_days(
-    request: SetupRequest,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Atualiza o plano Trial para 30 dias.
-    Requer chave secreta JWT para execução.
+    Requer autenticação como administrador.
     """
-    # Validar chave secreta
-    if request.secret_key != settings.SECRET_KEY:
-        raise HTTPException(status_code=403, detail="Chave secreta inválida")
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem acessar")
 
     result = await db.execute(
         select(SubscriptionPlan).where(SubscriptionPlan.slug == "free")
@@ -523,69 +524,6 @@ async def setup_update_trial_days(
             "slug": trial_plan.slug,
             "trial_days": trial_plan.trial_days
         }
-    }
-
-
-@router.post("/setup/create-admin")
-async def setup_create_admin(
-    request: CreateAdminRequest,
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Cria um usuário administrador.
-    Requer chave secreta JWT para execução.
-    """
-    # Validar chave secreta
-    if request.secret_key != settings.SECRET_KEY:
-        raise HTTPException(status_code=403, detail="Chave secreta inválida")
-
-    # Verificar se já existe
-    result = await db.execute(
-        select(User).where(User.email == request.email)
-    )
-    existing_user = result.scalar_one_or_none()
-
-    if existing_user:
-        if existing_user.is_admin:
-            return {
-                "success": True,
-                "message": f"Usuário {request.email} já existe e é administrador",
-                "user_id": existing_user.id,
-                "already_existed": True
-            }
-        else:
-            # Promover para admin
-            existing_user.is_admin = True
-            await db.commit()
-            return {
-                "success": True,
-                "message": f"Usuário {request.email} promovido para administrador",
-                "user_id": existing_user.id,
-                "promoted": True
-            }
-
-    # Criar novo admin
-    hashed_password = pwd_context.hash(request.password)
-
-    admin = User(
-        name=request.name,
-        email=request.email,
-        hashed_password=hashed_password,
-        is_active=True,
-        is_admin=True,
-        is_professional=False
-    )
-
-    db.add(admin)
-    await db.commit()
-    await db.refresh(admin)
-
-    return {
-        "success": True,
-        "message": "Administrador criado com sucesso",
-        "user_id": admin.id,
-        "email": admin.email,
-        "created": True
     }
 
 
@@ -679,7 +617,6 @@ async def change_admin_password(
 
 
 class ChangeAdminPasswordRequest(BaseModel):
-    secret_key: str
     email: str
     new_password: str
 
@@ -687,15 +624,15 @@ class ChangeAdminPasswordRequest(BaseModel):
 @router.post("/setup/change-admin-password")
 async def setup_change_admin_password(
     request: ChangeAdminPasswordRequest,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Altera a senha de um administrador.
-    Requer chave secreta JWT para execução.
+    Altera a senha de outro administrador (recuperação de conta).
+    Requer autenticação como administrador.
     """
-    # Validar chave secreta
-    if request.secret_key != settings.SECRET_KEY:
-        raise HTTPException(status_code=403, detail="Chave secreta inválida")
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem acessar")
 
     # Validar força da senha
     password_criteria = validate_password_strength(request.new_password)

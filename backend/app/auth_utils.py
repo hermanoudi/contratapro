@@ -1,11 +1,13 @@
 import bcrypt
 from datetime import datetime, timedelta
 from jose import jwt
-import os
+from .config import settings
 
-# Configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey") # Change in production
-ALGORITHM = "HS256"
+# Fonte única do segredo de JWT: backend/app/config.py (Settings.SECRET_KEY).
+# A aplicação falha ao subir se o segredo estiver ausente ou for um dos
+# literais públicos que já circularam no código (ver config.py).
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 def verify_password(plain_password, hashed_password):

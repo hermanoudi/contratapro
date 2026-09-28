@@ -8,6 +8,9 @@ from typing import Optional
 import mercadopago
 import httpx
 import logging
+import hashlib
+import hmac
+import secrets
 
 from ..database import get_db
 from ..models import Subscription, SubscriptionPlan, User, Service
@@ -1712,6 +1715,67 @@ async def admin_force_trial(
     }
 
 
+def _verify_mercadopago_webhook_signature(request: Request) -> bool:
+    """
+    Valida a assinatura HMAC do webhook do Mercado Pago (header x-signature),
+    conforme:
+    https://www.mercadopago.com.br/developers/pt/docs/your-integrations/notifications/webhooks
+
+    Sem essa verificação, qualquer requisição externa podia forjar uma
+    notificação e ativar assinaturas de usuários arbitrários (ver plano de
+    melhorias / Fase 1.3). O segredo (MERCADOPAGO_WEBHOOK_SECRET) é
+    configurado no painel do Mercado Pago, na tela de configuração de
+    webhooks, e é diferente do MERCADOPAGO_ACCESS_TOKEN.
+    """
+    if not settings.MERCADOPAGO_WEBHOOK_SECRET:
+        logger.error(
+            "MERCADOPAGO_WEBHOOK_SECRET não configurado — recusando todos os "
+            "webhooks. Configure o segredo no painel do Mercado Pago e na "
+            "variável de ambiente antes de habilitar o recebimento de webhooks."
+        )
+        return False
+
+    signature_header = request.headers.get("x-signature", "")
+    request_id = request.headers.get("x-request-id", "")
+    data_id = request.query_params.get("data.id", "")
+
+    if not signature_header:
+        return False
+
+    parsed = {}
+    for chunk in signature_header.split(","):
+        if "=" not in chunk:
+            continue
+        key, _, value = chunk.strip().partition("=")
+        parsed[key.strip()] = value.strip()
+
+    ts = parsed.get("ts")
+    received_hash = parsed.get("v1")
+    if not ts or not received_hash:
+        return False
+
+    # Manifesto conforme a documentação oficial: id:[data.id];request-id:[x-request-id];ts:[ts];
+    # Quando data.id ou x-request-id não vêm na notificação, o segmento
+    # correspondente é OMITIDO do manifesto (não incluído vazio) — usar
+    # "id:;" quando data.id está ausente produziria um hash que nunca bate
+    # com o calculado pelo Mercado Pago.
+    manifest_parts = []
+    if data_id:
+        manifest_parts.append(f"id:{data_id.lower()}")
+    if request_id:
+        manifest_parts.append(f"request-id:{request_id}")
+    manifest_parts.append(f"ts:{ts}")
+    manifest = ";".join(manifest_parts) + ";"
+
+    expected_hash = hmac.new(
+        settings.MERCADOPAGO_WEBHOOK_SECRET.encode("utf-8"),
+        manifest.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+    return secrets.compare_digest(expected_hash, received_hash)
+
+
 @router.post("/webhook")
 async def mercadopago_webhook(
     request: Request,
@@ -1721,6 +1785,10 @@ async def mercadopago_webhook(
     Webhook para receber notificações do Mercado Pago
     Documentação: https://www.mercadopago.com.br/developers/pt/docs/subscriptions/integration-configuration/subscription-payments-notification
     """
+    if not _verify_mercadopago_webhook_signature(request):
+        logger.warning("Webhook rejeitado: assinatura x-signature ausente ou inválida")
+        raise HTTPException(status_code=401, detail="Assinatura inválida")
+
     try:
         body = await request.json()
         logger.info(f"Webhook recebido: {body}")
@@ -1760,23 +1828,47 @@ async def mercadopago_webhook(
 
             # Fallback: fluxo init_point salva preapproval_plan_id no campo,
             # não o preapproval_id real. Buscar pelo professional_id via external_reference.
+            #
+            # Endurecido na Fase 1.3 do plano de melhorias: só aceita a correção
+            # quando a assinatura encontrada está "pending" (aguardando ativação,
+            # o único estado em que este fluxo legitimamente acontece). Isso evita
+            # que um external_reference arbitrário sobrescreva o preapproval_id de
+            # uma assinatura já ativa/cancelada de outro usuário. O payload já
+            # passou pela verificação de assinatura HMAC no início do handler.
             if not subscription and external_reference:
                 try:
+                    candidate_professional_id = int(external_reference)
+                except (ValueError, TypeError):
+                    logger.error(
+                        f"Webhook com external_reference não numérico, "
+                        f"ignorando fallback: {external_reference!r}"
+                    )
+                else:
                     result = await db.execute(
                         select(Subscription).where(
-                            Subscription.professional_id == int(external_reference)
+                            Subscription.professional_id == candidate_professional_id
                         )
                     )
-                    subscription = result.scalar_one_or_none()
-                    if subscription:
-                        # Corrigir o campo com o preapproval_id real
+                    candidate = result.scalar_one_or_none()
+                    if candidate is None:
+                        logger.error(
+                            f"Webhook: nenhuma assinatura encontrada para "
+                            f"external_reference={candidate_professional_id}"
+                        )
+                    elif candidate.status != "pending":
+                        logger.error(
+                            f"Webhook: assinatura {candidate.id} encontrada via "
+                            f"external_reference, mas status={candidate.status!r} "
+                            f"(esperado 'pending') — recusando sobrescrever "
+                            f"mercadopago_preapproval_id."
+                        )
+                    else:
+                        subscription = candidate
                         subscription.mercadopago_preapproval_id = preapproval_id
                         logger.info(
                             f"Preapproval ID corrigido via external_reference: "
                             f"{preapproval_id} para assinatura {subscription.id}"
                         )
-                except (ValueError, TypeError):
-                    pass
 
             if not subscription:
                 logger.error(
