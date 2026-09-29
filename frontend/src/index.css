@@ -125,15 +125,16 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
     padding: 0 0.75rem;
   }
 
-  h1 {
+  /* Títulos com data-display controlam o próprio tamanho (ex.: Home) */
+  h1:not([data-display]) {
     font-size: 1.75rem !important;
   }
 
-  h2 {
+  h2:not([data-display]) {
     font-size: 1.5rem !important;
   }
 
-  h3 {
+  h3:not([data-display]) {
     font-size: 1.25rem !important;
   }
 

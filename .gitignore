@@ -146,3 +146,10 @@ ngrok
 ngrok.exe
 *_ngrok.sh
 install_ngrok.sh
+
+# Impeccable: artefatos locais (cache, decisões, capturas)
+.impeccable/hook.cache.json
+.impeccable/questions/
+.impeccable/review/
+.impeccable/live/
+.impeccable/config.local.json

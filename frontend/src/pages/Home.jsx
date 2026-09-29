@@ -1,1648 +1,1934 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
-import { Search, MapPin, Star, Menu, LogOut, User, LayoutDashboard, Check, Calendar, DollarSign, Briefcase, X, ChevronRight, Shield, Edit2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import CategoryMenu from '../components/CategoryMenu';
-import HeroSection from '../components/HeroSection';
+import styled, { css, keyframes } from 'styled-components';
+import { Menu, X, LogOut, Scissors, Star, MapPin, ArrowRight, Check, Minus, Plus } from 'lucide-react';
 import { API_URL } from '../config';
 import StructuredData from '../components/SEO/StructuredData';
 import SEOHead, { SEO_CONFIGS } from '../components/SEO/SEOHead';
 import logoImage from '../assets/contratapro-logo.png';
 
-const HomeContainer = styled.div`
-  min-height: 100vh;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-`;
+/* ------------------------------------------------------------------
+   Mundo visual "Talão de Orçamento": vias de papel chapadas, impressão
+   em uma cor (vermelho de gráfica) e preenchimento à mão em azul-carbono.
+   ------------------------------------------------------------------ */
 
-const Navbar = styled.nav`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-`;
+const PLANS = [
+  { id: 'free', name: 'Free', price: 'Grátis', period: 'para sempre', cta: 'Começar grátis', primary: true },
+  { id: 'pro', name: 'Pro', price: 'R$ 19,90', period: 'por mês', cta: 'Assinar o Pro' },
+  { id: 'premium', name: 'Premium', price: 'R$ 39,90', period: 'por mês', cta: 'Assinar o Premium' },
+];
 
-const NavContainer = styled.div`
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0.75rem 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+// Linhas da tabela de preços: um valor por plano (true = incluso, false = não incluso)
+const PLAN_ROWS = [
+  { label: 'Serviços cadastrados', values: ['1', 'Ilimitados', 'Ilimitados'] },
+  { label: 'Agendamentos por mês', values: ['Até 3', 'Ilimitados', 'Ilimitados'] },
+  { label: 'Perfil público e agenda online', values: [true, true, true] },
+  { label: 'Selo no perfil', values: [false, 'Profissional Ativo', 'Destaque'] },
+  { label: 'Posição na busca', values: ['Normal', 'Destaque intermediário', 'Topo da busca'] },
+  { label: 'Relatório de desempenho', values: [false, false, true] },
+  { label: 'Suporte prioritário', values: [false, false, true] },
+];
 
-  @media (min-width: 768px) {
-    padding: 1rem 2rem;
-  }
-`;
+const formatCep = (digits) => (digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5, 8)}` : digits);
 
-const SecondaryNav = styled.div`
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0.75rem 1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.75rem;
-  border-top: 1px solid var(--border);
+/* ------------------------------ Tokens ------------------------------ */
 
-  @media (min-width: 768px) {
-    flex-direction: row;
-    align-items: center;
-    gap: 1.5rem;
-    padding: 0.75rem 2rem;
-  }
-`;
+const Page = styled.div`
+  --papel: #ffffff;
+  --amarela: #fce58a;
+  --rosa: #f9cfda;
+  --azul: #cfe0f5;
+  --grafica: #c4201a;
+  --grafica-escura: #9e1712;
+  --pauta: rgba(196, 32, 26, 0.55);
+  --carbono: #2e3a9e;
+  --carbono-claro: #5c64a8;
+  --nanquim: #17171b;
+  --texto-2: #4a4550;
 
-const CEPDisplay = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: white;
-  border: 2px solid var(--border);
-  border-radius: 10px;
-  font-size: 0.85rem;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  font-weight: 600;
-  width: 100%;
+  --f-impresso: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --f-texto: 'Barlow', system-ui, sans-serif;
+  --f-mao: 'Caveat', 'Segoe Print', cursive;
 
-  &:hover {
-    border-color: var(--primary);
-    background: var(--bg-secondary);
-  }
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
-  @media (min-width: 768px) {
-    width: auto;
-    font-size: 0.9rem;
-  }
-`;
-
-const SearchContainer = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
-
-  @media (min-width: 768px) {
-    flex-direction: row;
-    align-items: center;
-  }
-`;
-
-const SearchInputWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: white;
-  border: 2px solid var(--border);
-  border-radius: 10px;
-  padding: 0.75rem 1rem;
-  transition: all 0.3s ease;
-  flex: 1;
-
-  &:focus-within {
-    border-color: var(--primary);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
-  }
-`;
-
-const SearchInput = styled.input`
-  flex: 1;
-  border: none;
-  background: transparent;
-  padding: 0.25rem;
-  font-size: 0.9rem;
-  color: var(--text-primary);
-  outline: none;
-
-  &::placeholder {
-    color: var(--text-secondary);
-  }
-
-  @media (min-width: 768px) {
-    font-size: 1rem;
-  }
-`;
-
-const SearchButton = styled.button`
-  width: 100%;
-  padding: 0.75rem;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-  }
-
-  @media (min-width: 768px) {
-    width: auto;
-    padding: 0.75rem 2rem;
-    font-size: 1rem;
-  }
-`;
-
-const ModalOverlay = styled(motion.div)`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-`;
-
-const ModalContent = styled(motion.div)`
-  background: white;
-  border-radius: 20px;
-  padding: 2rem;
-  max-width: 500px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-
-  @media (min-width: 768px) {
-    padding: 2.5rem;
-  }
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin: 0;
-
-  @media (min-width: 768px) {
-    font-size: 1.75rem;
-  }
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s;
-
-  &:hover {
-    background: var(--bg-secondary);
-    color: var(--primary);
-  }
-`;
-
-const ModalInput = styled.input`
-  width: 100%;
-  padding: 1rem;
-  font-size: 1.1rem;
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  margin-bottom: 1rem;
-  outline: none;
-  transition: all 0.2s;
-  text-align: center;
-  font-weight: 600;
-
-  &:focus {
-    border-color: var(--primary);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
-  }
-
-  &::placeholder {
-    color: var(--text-secondary);
-    font-weight: 400;
-  }
-`;
-
-const CityDisplay = styled.div`
-  text-align: center;
-  padding: 1rem;
-  background: var(--bg-secondary);
-  border-radius: 10px;
-  margin-bottom: 1.5rem;
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-
-  strong {
-    color: var(--primary);
-    font-size: 1.1rem;
-    display: block;
-    margin-top: 0.5rem;
-  }
-`;
-
-const ModalButton = styled.button`
-  width: 100%;
-  padding: 1rem;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
+  font-family: var(--f-texto);
   font-size: 1rem;
+  color: var(--nanquim);
+  background: var(--papel);
+  min-height: 100vh;
+
+  ::selection {
+    background: var(--amarela);
+    color: var(--nanquim);
+  }
+
+  a, button, input, summary {
+    &:focus-visible {
+      outline: 2px solid var(--carbono);
+      outline-offset: 3px;
+    }
+  }
+`;
+
+const Wrap = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 4vw, 2.5rem);
+`;
+
+const Display = styled.h2`
+  font-family: var(--f-impresso);
+  font-weight: 800;
+  font-size: clamp(2rem, 4.2vw, 3.25rem);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  margin-bottom: 1rem;
+`;
+
+const Lead = styled.p`
+  font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+  line-height: 1.55;
+  color: var(--texto-2);
+  max-width: 60ch;
+`;
+
+const Hand = styled.span`
+  font-family: var(--f-mao);
+  font-weight: 700;
+  color: var(--carbono);
+`;
+
+/* ------------------------------ Botões ------------------------------ */
+
+const buttonBase = css`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0 1.4rem;
+  border-radius: 2px;
+  font-family: var(--f-impresso);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-decoration: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out), transform 120ms var(--ease-out);
+
+  &:active {
+    transform: translateY(1px);
+  }
+`;
+
+const PrimaryButton = styled.button`
+  ${buttonBase}
+  background: var(--grafica);
+  color: var(--papel);
+  border: 2px solid var(--grafica);
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+    background: var(--grafica-escura);
+    border-color: var(--grafica-escura);
   }
+`;
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
+const PrimaryLink = styled(Link)`
+  ${buttonBase}
+  background: var(--grafica);
+  color: var(--papel);
+  border: 2px solid var(--grafica);
+
+  &:hover {
+    background: var(--grafica-escura);
+    border-color: var(--grafica-escura);
   }
+`;
+
+const StampLink = styled(Link)`
+  ${buttonBase}
+  background: transparent;
+  color: var(--grafica);
+  border: 2px solid var(--grafica);
+
+  &:hover {
+    background: var(--grafica);
+    color: var(--papel);
+  }
+`;
+
+/* ------------------------------ Topo ------------------------------ */
+
+const Topbar = styled.header`
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--papel);
+  border-bottom: 2px solid var(--grafica);
+`;
+
+const TopbarInner = styled(Wrap)`
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 `;
 
 const Logo = styled(Link)`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  text-decoration: none;
-  transition: transform 0.2s;
 
-  &:hover {
-    transform: scale(1.02);
-  }
-
-  @media (min-width: 768px) {
-    gap: 0.75rem;
+  img {
+    height: 34px;
+    width: auto;
+    display: block;
   }
 `;
 
-const LogoIcon = styled.img`
-  height: 38px;
-  width: auto;
-  object-fit: contain;
-
-  @media (min-width: 768px) {
-    height: 48px;
-  }
-`;
-
-const LogoText = styled.h2`
-  font-size: 1.25rem;
-  font-weight: 900;
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
-
-  @media (min-width: 768px) {
-    font-size: 1.5rem;
-  }
-`;
-
-const NavLinks = styled.div`
+const TopNav = styled.nav`
   display: none;
+  align-items: center;
+  gap: 1.5rem;
 
-  @media (min-width: 968px) {
+  @media (min-width: 860px) {
     display: flex;
-    gap: 2rem;
-    align-items: center;
   }
 `;
 
-const NavLink = styled(Link)`
-  color: var(--text-primary);
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: color 0.2s;
-  display: flex;
+const TopLink = styled(Link)`
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-
-  &:hover {
-    color: var(--primary);
-  }
-`;
-
-const NavButton = styled(Link)`
-  padding: 0.625rem 1.5rem;
-  border-radius: 10px;
+  gap: 0.4rem;
+  font-family: var(--f-impresso);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.03em;
+  color: var(--nanquim);
   text-decoration: none;
-  transition: all 0.2s;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  border: none;
-  cursor: pointer;
+  text-underline-offset: 5px;
+  text-decoration-thickness: 2px;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    color: var(--grafica);
+    text-decoration-line: underline;
   }
 `;
 
-const LogoutButton = styled.button`
+const TopButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   background: none;
   border: none;
-  color: var(--text-secondary);
   cursor: pointer;
+  font-family: var(--f-impresso);
   font-weight: 600;
-  font-size: 0.95rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: color 0.2s;
+  font-size: 1.1rem;
+  letter-spacing: 0.03em;
+  color: var(--nanquim);
 
   &:hover {
-    color: var(--primary);
+    color: var(--grafica);
   }
 `;
 
-const MobileMenuButton = styled.button`
-  display: block;
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  cursor: pointer;
-  padding: 0.5rem;
+const TopStamp = styled(StampLink)`
+  min-height: 38px;
+  font-size: 1rem;
+  padding: 0 0.9rem;
+  white-space: nowrap;
 
-  @media (min-width: 968px) {
+  @media (max-width: 380px) {
+    font-size: 0.9rem;
+    padding: 0 0.6rem;
+  }
+`;
+
+const MobileActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  @media (min-width: 860px) {
     display: none;
   }
 `;
 
-const MobileMenu = styled(motion.div)`
-  position: fixed;
-  top: 73px;
-  left: 0;
-  right: 0;
-  background: white;
-  border-bottom: 1px solid var(--border);
-  padding: 1rem 1rem 8rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  z-index: 50;
-
-  @media (min-width: 768px) {
-    padding: 1.5rem 2rem;
-  }
-`;
-
-const Hero = styled.section`
-  padding: 20rem 1rem 3rem;
-  text-align: center;
-  background:
-    linear-gradient(135deg, rgba(99, 102, 241, 0.03) 0%, rgba(168, 85, 247, 0.03) 100%),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.95), var(--bg-primary));
-  position: relative;
-  overflow: hidden;
-
-  @media (min-width: 768px) {
-    padding: 11rem 2rem 6rem;
-  }
-`;
-
-const HeroTitle = styled(motion.h1)`
-  font-size: clamp(1.75rem, 6vw, 4rem);
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  margin-bottom: 1rem;
-  line-height: 1.1;
-  color: var(--text-primary);
-`;
-
-const HeroGradientText = styled.span`
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-`;
-
-const HeroSubtitle = styled(motion.p)`
-  color: var(--text-secondary);
-  font-size: 1rem;
-  max-width: 600px;
-  margin: 0 auto 1rem;
-  line-height: 1.5;
-  padding: 0 1rem;
-
-  @media (min-width: 768px) {
-    font-size: 1.25rem;
-    padding: 0;
-  }
-`;
-
-const Section = styled.section`
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 3rem 1rem;
-
-  @media (min-width: 768px) {
-    padding: 5rem 2rem;
-  }
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 1.75rem;
-  font-weight: 900;
-  text-align: center;
-  margin-bottom: 1rem;
-  color: var(--text-primary);
-
-  @media (min-width: 768px) {
-    font-size: 2.5rem;
-  }
-`;
-
-const SectionSubtitle = styled.p`
-  font-size: 1rem;
-  text-align: center;
-  color: var(--text-secondary);
-  margin-bottom: 3rem;
-  max-width: 700px;
-  margin-left: auto;
-  margin-right: auto;
-  line-height: 1.6;
-  padding: 0 1rem;
-
-  @media (min-width: 768px) {
-    font-size: 1.125rem;
-    margin-bottom: 4rem;
-    padding: 0;
-  }
-`;
-
-const HowItWorksGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
-  margin-bottom: 3rem;
-
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 3rem;
-    margin-bottom: 4rem;
-  }
-`;
-
-const HowItWorksCard = styled(motion.div)`
-  text-align: center;
-  padding: 1.5rem;
-  background: white;
-  border-radius: 20px;
-  border: 2px solid var(--border);
-  transition: all 0.3s ease;
-
-  &:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 40px rgba(99, 102, 241, 0.15);
-    border-color: var(--primary);
-  }
-
-  @media (min-width: 768px) {
-    padding: 2rem;
-  }
-`;
-
-const IconWrapper = styled.div`
-  width: 70px;
-  height: 70px;
-  margin: 0 auto 1.5rem;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  border-radius: 20px;
-  display: flex;
+const MenuToggle = styled.button`
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: white;
-
-  @media (min-width: 768px) {
-    width: 80px;
-    height: 80px;
-  }
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: none;
+  color: var(--nanquim);
+  cursor: pointer;
 `;
 
-const CardTitle = styled.h3`
-  font-size: 1.25rem;
-  font-weight: 800;
-  margin-bottom: 1rem;
-  color: var(--text-primary);
-
-  @media (min-width: 768px) {
-    font-size: 1.5rem;
-  }
-`;
-
-const CardText = styled.p`
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-
-  @media (min-width: 768px) {
-    font-size: 1rem;
-  }
-`;
-
-const PricingSection = styled.div`
-  position: relative;
-  overflow: hidden;
-`;
-
-const PlansGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding-top: 1rem;
-
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
-    align-items: stretch;
-    padding-top: 1.5rem;
-  }
-`;
-
-const PriceBox = styled(motion.div)`
-  background: white;
-  border-radius: 20px;
-  padding: 2rem 1.5rem;
-  border: 2px solid ${props => props.$featured ? 'var(--primary)' : 'var(--border)'};
-  box-shadow: ${props => props.$featured
-    ? '0 20px 60px rgba(99, 102, 241, 0.2)'
-    : '0 4px 20px rgba(0, 0, 0, 0.06)'};
-  position: relative;
-  z-index: 1;
+const MobilePanel = styled.nav`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--papel);
+  border-bottom: 2px solid var(--grafica);
+  padding: 0.5rem clamp(1rem, 4vw, 2.5rem) 1.25rem;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
 
-  ${props => props.$featured && `
-    @media (min-width: 768px) {
-      transform: scale(1.05);
-    }
-  `}
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(99, 102, 241, 0.15);
+  a, button {
+    min-height: 48px;
+    border-bottom: 1px solid var(--pauta);
+    width: 100%;
+    justify-content: flex-start;
   }
 
-  @media (min-width: 768px) {
-    border-radius: 24px;
-    padding: 2.5rem 2rem;
+  a:last-child {
+    border-bottom: 2px solid var(--grafica);
+    justify-content: center;
+    margin-top: 1rem;
+  }
+
+  @media (min-width: 860px) {
+    display: none;
+  }
+`;
+
+/* ------------------------------ Hero: via amarela ------------------------------ */
+
+const Hero = styled.section`
+  background: var(--amarela);
+  --texto-2: #5b4a12;
+  padding: clamp(2rem, 6vw, 5rem) 0 clamp(3rem, 7vw, 6rem);
+`;
+
+// Mobile: título, talão e só depois a chamada para profissionais
+const HeroGrid = styled(Wrap)`
+  display: grid;
+  grid-template-areas: 'text' 'talao' 'foot';
+  gap: 1.75rem;
+
+  > div:first-child {
+    grid-area: text;
+  }
+
+  @media (min-width: 960px) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 32rem);
+    grid-template-areas: 'text talao' 'foot talao';
+    column-gap: clamp(2rem, 4vw, 4rem);
+    row-gap: 0;
+
+    > div:first-child {
+      align-self: end;
+    }
+  }
+`;
+
+const HeroTitle = styled.h1`
+  font-family: var(--f-impresso);
+  font-weight: 800;
+  font-size: clamp(2.6rem, 6.4vw, 5.25rem);
+  line-height: 0.95;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  margin-bottom: 1.25rem;
+`;
+
+const HeroFoot = styled.p`
+  grid-area: foot;
+  align-self: start;
+  display: flex;
+
+  @media (min-width: 960px) {
+    margin-top: 1.75rem;
+  }
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  font-size: 1.05rem;
+  color: var(--texto-2);
+
+  a {
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.2rem;
+    letter-spacing: 0.02em;
+    color: var(--grafica);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
 
     &:hover {
-      transform: ${props => props.$featured ? 'scale(1.05) translateY(-4px)' : 'translateY(-4px)'};
+      color: var(--grafica-escura);
     }
   }
 `;
 
-const PlanBadge = styled.div`
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: ${props => props.$color || 'linear-gradient(135deg, var(--primary), var(--accent))'};
-  color: white;
-  padding: 0.4rem 1rem;
-  border-radius: 50px;
-  font-size: 0.7rem;
-  font-weight: 700;
+/* O talão: folha branca com canhoto perfurado */
+const Talao = styled.form`
+  grid-area: talao;
+  align-self: center;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  background: var(--papel);
+  border: 2px solid var(--grafica);
+  box-shadow: 0 22px 36px -18px rgba(23, 23, 27, 0.45), 0 2px 4px rgba(23, 23, 27, 0.12);
+
+  @media (min-width: 560px) {
+    grid-template-columns: 2.75rem 1fr;
+  }
+
+  @media (min-width: 960px) {
+    transform: rotate(-1.2deg);
+  }
+`;
+
+const Canhoto = styled.div`
+  display: none;
+  border-right: 2px dashed var(--grafica);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: var(--f-impresso);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: var(--grafica);
+  align-items: center;
+  justify-content: center;
 
-  @media (min-width: 768px) {
-    font-size: 0.75rem;
-    padding: 0.5rem 1.25rem;
+  @media (min-width: 560px) {
+    display: flex;
   }
 `;
 
-const PlanName = styled.h3`
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-  text-align: center;
-  margin-top: ${props => props.$hasBadge ? '1rem' : '0'};
-
-  @media (min-width: 768px) {
-    font-size: 1.5rem;
-    margin-top: ${props => props.$hasBadge ? '0.75rem' : '0'};
-  }
+const TalaoBody = styled.div`
+  padding: 1.25rem clamp(1rem, 3vw, 1.75rem) 0;
+  min-width: 0;
 `;
 
-const Price = styled.div`
-  font-size: 2.25rem;
-  font-weight: 900;
-  color: var(--text-primary);
-  margin-bottom: 0.25rem;
+const TalaoHead = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--grafica);
+  color: var(--grafica);
+`;
+
+const TalaoBrand = styled.div`
+  font-family: var(--f-impresso);
   line-height: 1;
-  text-align: center;
 
-  &.free {
-    background: linear-gradient(135deg, #10b981, #059669);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+  strong {
+    display: block;
+    font-weight: 800;
+    font-size: 1.5rem;
+    letter-spacing: 0.02em;
   }
 
   span {
-    font-size: 1rem;
     font-weight: 600;
-    color: var(--text-secondary);
-    -webkit-text-fill-color: var(--text-secondary);
-  }
-
-  @media (min-width: 768px) {
-    font-size: 2.75rem;
-
-    span {
-      font-size: 1.125rem;
-    }
-  }
-`;
-
-const PlanDescription = styled.p`
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  text-align: center;
-  margin-bottom: 1.25rem;
-  line-height: 1.4;
-`;
-
-const FeatureList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0 0 1.5rem 0;
-  text-align: left;
-  flex: 1;
-`;
-
-const FeatureItem = styled.li`
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border);
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  svg {
-    color: #10b981;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-
-  @media (min-width: 768px) {
-    font-size: 0.9rem;
-    padding: 0.625rem 0;
-  }
-`;
-
-const PlanButton = styled(Link)`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.875rem 1rem;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 0.9rem;
-  text-decoration: none;
-  transition: all 0.2s;
-  margin-top: auto;
-
-  ${props => props.$primary ? `
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    color: white;
-    border: none;
-
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
-    }
-  ` : props.$green ? `
-    background: #10b981;
-    color: white;
-    border: none;
-
-    &:hover {
-      background: #059669;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
-    }
-  ` : props.$orange ? `
-    background: #f59e0b;
-    color: white;
-    border: none;
-
-    &:hover {
-      background: #d97706;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
-    }
-  ` : `
-    background: white;
-    color: var(--text-primary);
-    border: 2px solid var(--border);
-
-    &:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-  `}
-
-  @media (min-width: 768px) {
-    padding: 1rem 1.25rem;
     font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 `;
 
-const Footer = styled.footer`
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  padding: 2rem 1rem 1.5rem;
-  margin-top: 4rem;
-  text-align: center;
+const Numeradora = styled.div`
+  font-family: var(--f-impresso);
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
 
-  @media (min-width: 768px) {
-    padding: 3rem 2rem 2rem;
-    margin-top: 6rem;
+  @media (max-width: 480px) {
+    font-size: 1.15rem;
+  }
+
+  small {
+    display: block;
+    max-width: 10rem;
+    margin-left: auto;
+    white-space: normal;
+    line-height: 1.2;
+    margin-top: 0.2rem;
+    font-weight: 500;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    color: #8e1611;
   }
 `;
 
-const FooterLinks = styled.div`
+const Field = styled.label`
   display: flex;
-  gap: 1.5rem;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 1.5rem;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.9rem 0 0.2rem;
+  /* Única borda do campo em repouso: tinta cheia para passar 3:1 */
+  border-bottom: 1.5px solid var(--grafica);
+  cursor: text;
 
-  @media (min-width: 768px) {
-    gap: 2rem;
-    margin-bottom: 2rem;
+  > span {
+    flex: none;
+    font-family: var(--f-impresso);
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--grafica);
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-family: var(--f-mao);
+    font-weight: 700;
+    font-size: 1.75rem;
+    line-height: 1.2;
+    color: var(--carbono);
+    caret-color: var(--carbono);
+    padding: 0;
+
+    &::placeholder {
+      color: var(--carbono-claro);
+      font-weight: 500;
+    }
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  &:focus-within {
+    border-bottom-color: var(--carbono);
+    border-bottom-width: 2px;
   }
 `;
 
-const FooterLink = styled(Link)`
-  color: white;
-  text-decoration: none;
-  font-size: 0.9rem;
-
-  &:hover {
-    text-decoration: underline;
-  }
-
-  @media (min-width: 768px) {
-    font-size: 1rem;
-  }
+const writeIn = keyframes`
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
 `;
 
-const ProCard = styled(motion.div)`
-  background: white;
-  border-radius: 16px;
-  padding: 1.5rem;
-  border: 2px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-  }
-
-  &:hover {
-    border-color: var(--primary);
-    box-shadow: 0 12px 30px rgba(99, 102, 241, 0.15);
-    transform: translateY(-4px);
-  }
-
-  @media (min-width: 768px) {
-    border-radius: 20px;
-    padding: 2rem;
-    gap: 1.25rem;
-  }
-`;
-
-const ProAvatar = styled.div`
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+const CepStatus = styled.p`
+  min-height: 1.9rem;
+  padding-top: 0.35rem;
+  font-size: 0.95rem;
+  color: ${({ $tone }) => ($tone === 'erro' ? 'var(--grafica)' : 'var(--texto-2)')};
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 1.25rem;
-  font-weight: 800;
-  flex-shrink: 0;
-
-  @media (min-width: 768px) {
-    width: 60px;
-    height: 60px;
-    font-size: 1.5rem;
-  }
+  gap: 0.35rem;
 `;
 
-const VerifiedBadge = styled.div`
+const CityWrite = styled(Hand)`
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
-  padding: 0.25rem 0.625rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  border: 1px solid rgba(34, 197, 94, 0.2);
+  gap: 0.3rem;
+  font-size: 1.5rem;
+  line-height: 1;
+  animation: ${writeIn} 700ms var(--ease-out) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;
 
-const ResultsHeader = styled.div`
+const Checklist = styled.fieldset`
+  border: none;
+  margin-top: 1.25rem;
+
+  legend {
+    font-family: var(--f-impresso);
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--grafica);
+    margin-bottom: 0.4rem;
+  }
+`;
+
+const ChecklistGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1rem;
+`;
+
+const drawStroke = keyframes`
+  to { stroke-dashoffset: 0; }
+`;
+
+const CheckItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--f-texto);
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--nanquim);
+  min-width: 0;
+
+  > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:hover > span:last-child {
+    color: var(--grafica);
+  }
+`;
+
+const Box = styled.span`
+  flex: none;
+  position: relative;
+  width: 1.3rem;
+  height: 1.3rem;
+  border: 2px solid var(--grafica);
+
+  svg {
+    position: absolute;
+    inset: -5px;
+    width: calc(100% + 10px);
+    height: calc(100% + 10px);
+    overflow: visible;
+  }
+
+  path {
+    stroke: var(--carbono);
+    stroke-width: 3.2;
+    stroke-linecap: round;
+    fill: none;
+    stroke-dasharray: 30;
+    stroke-dashoffset: 30;
+    animation: ${drawStroke} 220ms var(--ease-out) forwards;
+  }
+
+  path + path {
+    animation-delay: 160ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    path {
+      animation: none;
+      stroke-dashoffset: 0;
+    }
+  }
+`;
+
+const FormError = styled.p`
+  margin-top: 0.75rem;
+  font-weight: 600;
+  color: var(--grafica);
+`;
+
+const SubmitRow = styled.div`
+  margin: 0.5rem 0 0;
+
+  button {
+    width: 100%;
+    min-height: 54px;
+    font-size: 1.2rem;
+  }
+`;
+
+const Perforation = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.25rem calc(-1 * clamp(1rem, 3vw, 1.75rem)) 0;
+  padding: 0.55rem clamp(1rem, 3vw, 1.75rem) 0.7rem;
+  border-top: 2px dashed var(--grafica);
+  font-family: var(--f-impresso);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--grafica);
+`;
+
+/* ------------------------------ Picote entre as vias ------------------------------ */
+
+// Hex das vias: o SVG do picote não enxerga variáveis CSS
+const PAPER = { amarela: '#fce58a', papel: '#ffffff', rosa: '#f9cfda', azul: '#cfe0f5' };
+
+const perforationTile = (color) =>
+  `url("data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='18' height='12'><circle cx='9' cy='0' r='5.5' fill='${color}'/></svg>`
+  )}")`;
+
+// A borda de baixo da folha de cima fica picotada, como um talão destacado
+const Seam = styled.div`
+  height: 12px;
+  background-color: ${({ $to }) => PAPER[$to]};
+  background-image: ${({ $from }) => perforationTile(PAPER[$from])};
+  background-repeat: repeat-x;
+  background-position: top center;
+`;
+
+/* ------------------------------ Duas vias ------------------------------ */
+
+const Section = styled.section`
+  padding: clamp(3.5rem, 8vw, 6.5rem) 0;
+`;
+
+const SectionHead = styled.div`
+  margin-bottom: clamp(2rem, 4vw, 3rem);
+`;
+
+const ViasGrid = styled.div`
+  display: grid;
+  gap: 1.5rem;
+
+  @media (min-width: 880px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem;
+  }
+`;
+
+const Via = styled.article`
+  background: ${({ $paper }) => `var(--${$paper})`};
+  --texto-2: ${({ $paper }) => ($paper === 'rosa' ? '#6b2638' : '#22385e')};
+  border-top: 6px solid var(--grafica);
+  padding: clamp(1.25rem, 3vw, 2rem);
+  display: flex;
+  flex-direction: column;
+`;
+
+const ViaHead = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
   gap: 1rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--grafica);
+`;
 
-  h2 {
-    font-size: 1.5rem;
-    font-weight: 800;
-    margin: 0;
+const ViaTitle = styled.h3`
+  font-family: var(--f-impresso);
+  font-weight: 800;
+  font-size: clamp(1.7rem, 3vw, 2.2rem);
+  line-height: 1.05;
+`;
+
+// Carimbo da via, como o da gráfica no canto do talão
+const ViaStamp = styled.span`
+  flex: none;
+  padding: 0.2rem 0.55rem;
+  border: 2px solid var(--grafica-escura);
+  font-family: var(--f-impresso);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--grafica-escura);
+  transform: rotate(-4deg);
+`;
+
+const ItemsTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.25rem;
+
+  th {
+    font-family: var(--f-impresso);
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--grafica);
+    text-align: left;
+    padding: 0 0 0.35rem;
+    border-bottom: 1.5px solid var(--grafica);
   }
 
-  @media (min-width: 768px) {
-    flex-wrap: nowrap;
+  td {
+    padding: 0.8rem 0;
+    border-bottom: 1.5px solid var(--pauta);
+    vertical-align: top;
+    line-height: 1.5;
+    color: var(--nanquim);
+  }
 
-    h2 {
-      font-size: 2rem;
+  td:first-child,
+  th:first-child {
+    width: 3rem;
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Texto vermelho pequeno sobre rosa/azul precisa da tinta escura para passar 4.5:1 */
+  th,
+  td:first-child {
+    color: var(--grafica-escura);
+  }
+`;
+
+const ViaNote = styled.p`
+  font-family: var(--f-mao);
+  font-weight: 700;
+  font-size: 1.45rem;
+  line-height: 1.2;
+  color: var(--carbono);
+  transform: rotate(-1deg);
+  margin-bottom: 1.5rem;
+`;
+
+const ViaAction = styled.div`
+  margin-top: auto;
+
+  > * {
+    width: 100%;
+  }
+
+  @media (min-width: 560px) {
+    > * {
+      width: auto;
     }
   }
 `;
 
-const ClearButton = styled.button`
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.9rem;
-  padding: 0.5rem;
+/* ------------------------------ Profissionais: via rosa ------------------------------ */
 
-  &:hover {
-    color: var(--primary);
-  }
-
-  @media (min-width: 768px) {
-    font-size: 1rem;
-    padding: 0;
-  }
+const Mesa = styled.section`
+  background: var(--rosa);
+  --texto-2: #6b2638;
+  padding: clamp(3.5rem, 8vw, 6.5rem) 0;
 `;
 
-const ProfessionalsGrid = styled.div`
+const CardsGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
+  gap: 1.25rem;
 
   @media (min-width: 640px) {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  @media (min-width: 768px) {
-    gap: 2rem;
+  @media (min-width: 1040px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 3rem 1rem;
-  background: var(--bg-secondary);
-  border-radius: 24px;
-  border: 1px solid var(--border);
+const Cartao = styled(Link)`
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: 1fr auto;
+  gap: 0.9rem 1rem;
+  min-height: 11rem;
+  padding: 1.25rem;
+  background: var(--papel);
+  color: var(--nanquim);
+  text-decoration: none;
+  border-bottom: 5px solid var(--grafica);
+  box-shadow: 0 16px 28px -18px rgba(107, 38, 56, 0.55), 0 1px 3px rgba(107, 38, 56, 0.18);
+  transition: transform 200ms var(--ease-out);
+
+  &:hover {
+    transform: translateY(-3px) rotate(-0.4deg);
+  }
+
+  &:hover [data-ver] {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+
+    &:hover {
+      transform: none;
+    }
+  }
+`;
+
+const Foto = styled.div`
+  width: 64px;
+  height: 64px;
+  border: 2px solid var(--nanquim);
+  background: var(--amarela);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--f-impresso);
+  font-weight: 800;
+  font-size: 1.9rem;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const CartaoInfo = styled.div`
+  min-width: 0;
 
   h3 {
-    font-size: 1.25rem;
-    font-weight: 800;
-    margin-bottom: 0.5rem;
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.45rem;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
   }
 
   p {
-    color: var(--text-secondary);
-    font-size: 1rem;
+    margin-top: 0.25rem;
+    font-size: 0.95rem;
+    color: #4a4550;
   }
 
-  @media (min-width: 768px) {
-    padding: 5rem 2rem;
-    border-radius: 32px;
+  [data-cat] {
+    color: var(--grafica);
+    font-weight: 600;
+  }
+`;
 
-    h3 {
-      font-size: 1.5rem;
+const CartaoFoot = styled.div`
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1.5px solid var(--pauta);
+  font-size: 0.95rem;
+
+  [data-nota] {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: #4a4550;
+  }
+
+  [data-ver] {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--grafica);
+    white-space: nowrap;
+  }
+`;
+
+const BlankCard = styled.div`
+  min-height: 11rem;
+  /* Cartão em branco com pautas enquanto a API responde */
+  background: repeating-linear-gradient(
+    to bottom,
+    #fbe3e9 0,
+    #fbe3e9 2.2rem,
+    #efb3c3 2.2rem,
+    #efb3c3 calc(2.2rem + 1.5px)
+  );
+  border-bottom: 5px solid #efb3c3;
+`;
+
+const MesaNote = styled.p`
+  margin-top: 1.75rem;
+  color: var(--texto-2);
+  max-width: 62ch;
+  line-height: 1.55;
+
+  a {
+    color: var(--grafica-escura);
+    font-weight: 600;
+    text-underline-offset: 4px;
+  }
+`;
+
+/* ------------------------------ O combinado ------------------------------ */
+
+const CombinadoGrid = styled.div`
+  display: grid;
+  gap: 2rem;
+  border: 2px solid var(--grafica);
+  padding: clamp(1.25rem, 3vw, 2.25rem);
+
+  @media (min-width: 880px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3rem;
+  }
+`;
+
+const ListTitle = styled.h3`
+  font-family: var(--f-impresso);
+  font-weight: 700;
+  font-size: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--grafica);
+`;
+
+const RuledList = styled.ul`
+  list-style: none;
+
+  li {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.85rem 0;
+    border-bottom: 1.5px solid var(--pauta);
+    line-height: 1.5;
+  }
+
+  svg {
+    flex: none;
+    margin-top: 0.15rem;
+    color: ${({ $mark }) => ($mark === 'carbono' ? 'var(--carbono)' : 'var(--grafica)')};
+  }
+`;
+
+const Perguntas = styled.div`
+  margin-top: clamp(2.5rem, 5vw, 3.5rem);
+  max-width: 52rem;
+
+  h3 {
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  details {
+    border-bottom: 1.5px solid var(--pauta);
+  }
+
+  summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    min-height: 56px;
+    font-weight: 600;
+    font-size: 1.08rem;
+
+    &::-webkit-details-marker {
+      display: none;
     }
 
-    p {
-      font-size: 1.1rem;
+    svg {
+      flex: none;
+      color: var(--grafica);
+      transition: transform 200ms var(--ease-out);
+    }
+
+    &:hover {
+      color: var(--grafica);
+    }
+  }
+
+  details[open] summary svg {
+    transform: rotate(45deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    summary svg {
+      transition: none;
+    }
+  }
+
+  details p {
+    padding: 0 0 1.1rem;
+    line-height: 1.6;
+    color: var(--texto-2);
+    max-width: 65ch;
+  }
+`;
+
+/* ------------------------------ Tabela de preços: via azul ------------------------------ */
+
+const Precos = styled.section`
+  background: var(--azul);
+  --texto-2: #22385e;
+  padding: clamp(3.5rem, 8vw, 6.5rem) 0;
+`;
+
+const PriceTable = styled.table`
+  display: none;
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--papel);
+  border: 2px solid var(--grafica);
+
+  @media (min-width: 760px) {
+    display: table;
+  }
+
+  th, td {
+    padding: 0.9rem 1.1rem;
+    border-bottom: 1.5px solid var(--pauta);
+    text-align: left;
+    vertical-align: middle;
+  }
+
+  thead th {
+    border-bottom: 2px solid var(--grafica);
+    vertical-align: bottom;
+  }
+
+  tbody th {
+    font-weight: 500;
+    color: var(--texto-2);
+    width: 30%;
+  }
+
+  td + td, th + th, th + td {
+    border-left: 1.5px solid var(--pauta);
+  }
+
+  tfoot td {
+    border-bottom: none;
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+  }
+`;
+
+const PlanHead = styled.div`
+  font-family: var(--f-impresso);
+  line-height: 1;
+
+  /* Nome do plano é o título da coluna; preço vem logo abaixo */
+  span {
+    display: block;
+    font-weight: 800;
+    font-size: 1.9rem;
+    color: var(--nanquim);
+    margin-bottom: 0.35rem;
+  }
+
+  strong {
+    font-weight: 700;
+    font-size: 1.45rem;
+    color: var(--grafica);
+    font-variant-numeric: tabular-nums;
+  }
+
+  small {
+    display: block;
+    margin-top: 0.3rem;
+    font-family: var(--f-texto);
+    font-size: 0.9rem;
+    color: var(--texto-2);
+  }
+`;
+
+const PlanStack = styled.div`
+  display: grid;
+  gap: 1.25rem;
+
+  @media (min-width: 760px) {
+    display: none;
+  }
+`;
+
+const PlanSheet = styled.div`
+  background: var(--papel);
+  border: 2px solid var(--grafica);
+  padding: 1.25rem;
+
+  dl {
+    margin: 1rem 0 1.25rem;
+  }
+
+  dl > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.65rem 0;
+    border-bottom: 1.5px solid var(--pauta);
+  }
+
+  dt {
+    color: var(--texto-2);
+  }
+
+  dd {
+    text-align: right;
+    font-weight: 600;
+  }
+
+  a {
+    width: 100%;
+  }
+`;
+
+const PrecosNote = styled.p`
+  margin-top: 1.5rem;
+  font-family: var(--f-mao);
+  font-weight: 700;
+  font-size: 1.45rem;
+  color: var(--carbono);
+`;
+
+/* ------------------------------ Rodapé ------------------------------ */
+
+const Footer = styled.footer`
+  background: var(--papel);
+  color: var(--nanquim);
+  padding: clamp(3rem, 6vw, 4.5rem) 0 2rem;
+
+  p {
+    color: var(--texto-2);
+    line-height: 1.6;
+    max-width: 68ch;
+  }
+`;
+
+const FooterGrid = styled.div`
+  display: grid;
+  gap: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px dashed var(--grafica);
+
+  @media (min-width: 860px) {
+    grid-template-columns: 1.4fr 1fr;
+  }
+
+  strong {
+    display: block;
+    font-family: var(--f-impresso);
+    font-weight: 800;
+    font-size: 1.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  h3 {
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--grafica);
+    margin-bottom: 0.4rem;
+  }
+`;
+
+const FooterLinks = styled.nav`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin-top: 1.5rem;
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--nanquim);
+    font-family: var(--f-impresso);
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: 0.03em;
+    text-underline-offset: 5px;
+
+    &:hover {
+      color: var(--grafica);
     }
   }
 `;
 
+const Legal = styled.p`
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+`;
+
+/* ------------------------------ Componentes ------------------------------ */
+
+function CheckMark() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 3 L21 21" />
+      <path d="M21 3 L3 21" />
+    </svg>
+  );
+}
+
+function ProCard({ pro, cep }) {
+  const hasReviews = pro.total_reviews > 0 && pro.average_rating;
+  const target = pro.slug ? `/p/${pro.slug}` : `/book/${pro.id}`;
+
+  return (
+    <Cartao to={target} state={{ pro, clientCep: cep }}>
+      <Foto aria-hidden="true">
+        {pro.profile_picture ? (
+          <img src={pro.profile_picture} alt="" loading="lazy" width="64" height="64" />
+        ) : (
+          pro.name.charAt(0).toUpperCase()
+        )}
+      </Foto>
+      <CartaoInfo>
+        <h3>{pro.name}</h3>
+        {pro.category && <p data-cat>{pro.category}</p>}
+        {pro.city && (
+          <p>
+            <MapPin size={14} aria-hidden="true" style={{ verticalAlign: '-2px', marginRight: 4 }} />
+            {pro.city}{pro.state ? `, ${pro.state}` : ''}
+          </p>
+        )}
+      </CartaoInfo>
+      <CartaoFoot>
+        {hasReviews ? (
+          <span data-nota>
+            <Star size={16} fill="var(--grafica)" color="var(--grafica)" aria-hidden="true" />
+            <strong>{pro.average_rating.toFixed(1).replace('.', ',')}</strong>
+            · {pro.total_reviews} {pro.total_reviews === 1 ? 'avaliação' : 'avaliações'}
+          </span>
+        ) : (
+          <span data-nota>Ainda sem avaliações</span>
+        )}
+        <span data-ver>
+          Ver agenda <ArrowRight size={16} aria-hidden="true" />
+        </span>
+      </CartaoFoot>
+    </Cartao>
+  );
+}
+
+function PlanValue({ value }) {
+  if (value === true) return <><Check size={18} color="var(--carbono)" aria-hidden="true" /><SrOnly>Incluso</SrOnly></>;
+  if (value === false) return <><Minus size={18} color="var(--texto-2)" aria-hidden="true" /><SrOnly>Não incluso</SrOnly></>;
+  return value;
+}
+
+const SrOnly = styled.span`
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+`;
+
+/* ------------------------------ Página ------------------------------ */
+
 export default function Home() {
-    const [search, setSearch] = useState('');
-    const [cep, setCep] = useState('');
-    const [city, setCity] = useState('');
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [cepModalOpen, setCepModalOpen] = useState(false);
-    const [tempCep, setTempCep] = useState('');
-    const [userInfo, setUserInfo] = useState(null);
-    const [professionals, setProfessionals] = useState([]);
-    const [searching, setSearching] = useState(false);
-    const [hasSearched, setHasSearched] = useState(false);
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const serviceInputRef = useRef(null);
+  const menuToggleRef = useRef(null);
+  const formId = useId();
 
-    useEffect(() => {
-        const validateAndLoadUser = async () => {
-            const token = localStorage.getItem('token');
-            if (token) {
-                try {
-                    // Validar token com o backend
-                    const res = await fetch(`${API_URL}/auth/me`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
+  const [userInfo, setUserInfo] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-                    if (res.ok) {
-                        const data = await res.json();
-                        setUserInfo(data);
-                    } else {
-                        // Token inválido ou expirado
-                        localStorage.removeItem('token');
-                        setUserInfo(null);
-                    }
-                } catch (e) {
-                    console.error('Error validating token:', e);
-                    localStorage.removeItem('token');
-                    setUserInfo(null);
-                }
-            }
-        };
+  // CEP salvo em visitas anteriores
+  const [savedLocation] = useState(() => {
+    const savedCep = localStorage.getItem('userCep');
+    const savedCity = localStorage.getItem('userCity');
+    return savedCep && savedCity ? { cep: savedCep, city: savedCity } : null;
+  });
 
-        validateAndLoadUser();
+  const [service, setService] = useState('');
+  const [cepDigits, setCepDigits] = useState(savedLocation?.cep ?? '');
+  const [city, setCity] = useState(savedLocation?.city ?? '');
+  const [cepState, setCepState] = useState(savedLocation ? 'ok' : 'idle'); // idle | loading | ok | notfound | offline
+  const [formError, setFormError] = useState('');
 
-        // Carregar CEP do localStorage
-        const savedCep = localStorage.getItem('userCep');
-        const savedCity = localStorage.getItem('userCity');
-        if (savedCep && savedCity) {
-            setCep(savedCep);
-            setCity(savedCity);
-        }
-    }, []);
+  const [categories, setCategories] = useState([]);
+  const [nextOrder, setNextOrder] = useState(null);
 
+  const [pros, setPros] = useState({ status: 'loading', items: [], fromCity: null });
 
-    const handleCepChange = async (value) => {
-        const cleanValue = value.replace(/\D/g, '');
-        setTempCep(cleanValue);
-
-        if (cleanValue.length === 8) {
-            try {
-                const res = await fetch(`/api/cep/${cleanValue}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setCity(data.city);
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        } else {
-            setCity('');
-        }
-    };
-
-    const handleSaveCep = () => {
-        if (tempCep.length === 8 && city) {
-            setCep(tempCep);
-            localStorage.setItem('userCep', tempCep);
-            localStorage.setItem('userCity', city);
-            setCepModalOpen(false);
-            setTempCep('');
-        }
-    };
-
-    const openCepModal = () => {
-        setTempCep(cep);
-        setCepModalOpen(true);
-    };
-
-    const handleSearch = async (categoryOverride) => {
-        const searchTerm = categoryOverride || search;
-        setSearching(true);
-        setHasSearched(true);
-
-        try {
-            const params = new URLSearchParams();
-            if (searchTerm) params.append('category', searchTerm);
-            if (city) params.append('city', city);
-
-            const res = await fetch(`/api/users/search?${params.toString()}`);
-            if (res.ok) {
-                setProfessionals(await res.json());
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setSearching(false);
-        }
-
-        window.scrollTo({ top: 600, behavior: 'smooth' });
-    };
-
-    const clearSearch = () => {
-        setSearch('');
-        setProfessionals([]);
-        setHasSearched(false);
-    };
-
-    const handleLogout = () => {
+  // Usuário logado
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
+      .then(setUserInfo)
+      .catch(() => {
         localStorage.removeItem('token');
-        window.location.reload();
-    };
+        setUserInfo(null);
+      });
+  }, []);
 
-    const handleHeaderSearch = () => {
-        if (search || city) {
-            navigate(`/search?service=${encodeURIComponent(search)}&city=${encodeURIComponent(city)}`);
+  // Categorias para o checklist e autocomplete (sem categorias, o campo livre continua funcionando)
+  useEffect(() => {
+    fetch(`${API_URL}/categories/groups`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        const names = Object.values(data).flat().map((c) => c.name);
+        setCategories([...new Set(names)]);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Numeração do talão: só aparece com o número real de agendamentos
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${API_URL}/users/stats/public`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && Number.isFinite(data.appointments_count)) setNextOrder(data.appointments_count + 1);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+
+  // Profissionais reais: primeiro da cidade do visitante, senão de qualquer lugar
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const fetchPros = async (cityName) => {
+        const params = new URLSearchParams({ limit: '6' });
+        if (cityName) params.append('city', cityName);
+        const res = await fetch(`${API_URL}/users/search?${params}`);
+        if (!res.ok) throw new Error(String(res.status));
+        return res.json();
+      };
+      try {
+        let items = city ? await fetchPros(city) : [];
+        let fromCity = city || null;
+        if (!items.length) {
+          items = await fetchPros(null);
+          fromCity = null;
         }
+        if (!cancelled) setPros({ status: 'ok', items, fromCity });
+      } catch {
+        if (!cancelled) setPros({ status: 'error', items: [], fromCity: null });
+      }
     };
+    load();
+    return () => { cancelled = true; };
+  }, [city]);
 
-    return (
-        <HomeContainer>
-            {/* SEO: Meta tags and Structured Data */}
-            <SEOHead {...SEO_CONFIGS.home} url="https://contratapro.com.br" />
-            <StructuredData type="website" />
-            <StructuredData type="organization" />
-            <StructuredData type="service" />
+  // Esc fecha o menu mobile
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+        menuToggleRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
 
-            <Navbar>
-                <NavContainer>
-                    <Logo to="/">
-                        <LogoIcon src={logoImage} alt="ContrataPro" />
-                    </Logo>
+  const handleCepChange = async (value) => {
+    const digits = value.replace(/\D/g, '').slice(0, 8);
+    setCepDigits(digits);
+    setFormError('');
 
-                    <NavLinks>
-                        {userInfo ? (
-                            <>
-                                {!userInfo.is_professional && !userInfo.is_admin && (
-                                    <NavLink to="/my-appointments">
-                                        <Calendar size={18} />
-                                        Meus Agendamentos
-                                    </NavLink>
-                                )}
-                                {!userInfo.is_professional && !userInfo.is_admin && (
-                                    <NavLink to="/my-appointments">
-                                        <User size={18} />
-                                        Minha Conta
-                                    </NavLink>
-                                )}
-                                {userInfo.is_professional && (
-                                    <NavLink to="/dashboard">
-                                        <LayoutDashboard size={18} />
-                                        Dashboard
-                                    </NavLink>
-                                )}
-                                {userInfo.is_admin && (
-                                    <NavLink to="/admin">Admin</NavLink>
-                                )}
-                                <LogoutButton onClick={handleLogout}>
-                                    <LogOut size={18} />
-                                    Sair
-                                </LogoutButton>
-                            </>
-                        ) : (
-                            <>
-                                <NavLink to="/login">Login</NavLink>
-                                <NavLink to="/register-client">Criar Conta</NavLink>
-                                <NavButton to="/register-pro">Sou Profissional</NavButton>
-                            </>
-                        )}
-                    </NavLinks>
+    if (digits.length < 8) {
+      setCity('');
+      setCepState('idle');
+      return;
+    }
 
-                    <MobileMenuButton onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                        <Menu size={24} />
-                    </MobileMenuButton>
-                </NavContainer>
+    setCepState('loading');
+    try {
+      const res = await fetch(`/api/cep/${digits}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.city) {
+          setCity(data.city);
+          setCepState('ok');
+          localStorage.setItem('userCep', digits);
+          localStorage.setItem('userCity', data.city);
+          return;
+        }
+      }
+      setCity('');
+      setCepState(res.status >= 500 ? 'offline' : 'notfound');
+    } catch {
+      setCity('');
+      setCepState('offline');
+    }
+  };
 
-                <AnimatePresence>
-                    {mobileMenuOpen && (
-                        <MobileMenu
-                            initial={{ opacity: 0, y: -20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            {userInfo ? (
-                                <>
-                                    <NavLink to="/my-appointments" onClick={() => setMobileMenuOpen(false)}>
-                                        Meus Agendamentos
-                                    </NavLink>
-                                    {userInfo.is_professional && (
-                                        <NavLink to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                                            Dashboard
-                                        </NavLink>
-                                    )}
-                                    {userInfo.is_admin && (
-                                        <NavLink to="/admin" onClick={() => setMobileMenuOpen(false)}>
-                                            Admin
-                                        </NavLink>
-                                    )}
-                                    <LogoutButton onClick={handleLogout}>
-                                        Sair
-                                    </LogoutButton>
-                                </>
-                            ) : (
-                                <>
-                                    <NavLink to="/login" onClick={() => setMobileMenuOpen(false)}>
-                                        Login
-                                    </NavLink>
-                                    <NavLink to="/register-client" onClick={() => setMobileMenuOpen(false)}>
-                                        Criar Conta
-                                    </NavLink>
-                                    <NavButton to="/register-pro" onClick={() => setMobileMenuOpen(false)}>
-                                        Sou Profissional
-                                    </NavButton>
-                                </>
-                            )}
-                        </MobileMenu>
-                    )}
-                </AnimatePresence>
+  const pickCategory = (name) => {
+    setService((current) => (current === name ? '' : name));
+    setFormError('');
+  };
 
-                <SecondaryNav>
-                    <CategoryMenu />
-                    <CEPDisplay onClick={openCepModal}>
-                        <MapPin size={18} />
-                        {cep ? `${cep.slice(0, 5)}-${cep.slice(5)} - ${city}` : 'Definir CEP'}
-                        <Edit2 size={16} />
-                    </CEPDisplay>
-                    <SearchContainer>
-                        <SearchInputWrapper>
-                            <Search size={20} color="var(--primary)" />
-                            <SearchInput
-                                placeholder="Buscar serviços"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleHeaderSearch()}
-                            />
-                        </SearchInputWrapper>
-                        <SearchButton onClick={handleHeaderSearch}>
-                            Buscar
-                        </SearchButton>
-                    </SearchContainer>
-                </SecondaryNav>
-            </Navbar>
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!service.trim() && !city) {
+      setFormError('Escreva o serviço ou um CEP válido para começar.');
+      serviceInputRef.current?.focus();
+      return;
+    }
+    const params = new URLSearchParams();
+    if (service.trim()) params.append('service', service.trim());
+    if (city) params.append('city', city);
+    if (cepState === 'ok' && cepDigits.length === 8) params.append('cep', cepDigits);
+    navigate(`/search?${params}`);
+  };
 
-            <AnimatePresence>
-                {cepModalOpen && (
-                    <ModalOverlay
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => setCepModalOpen(false)}
-                    >
-                        <ModalContent
-                            initial={{ scale: 0.9, y: 20 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.9, y: 20 }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <ModalHeader>
-                                <ModalTitle>Informe seu CEP</ModalTitle>
-                                <CloseButton onClick={() => setCepModalOpen(false)}>
-                                    <X size={24} />
-                                </CloseButton>
-                            </ModalHeader>
+  const focusTalao = () => {
+    document.getElementById(formId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    serviceInputRef.current?.focus({ preventScroll: true });
+  };
 
-                            <ModalInput
-                                type="text"
-                                placeholder="00000-000"
-                                value={tempCep.length > 5 ? `${tempCep.slice(0, 5)}-${tempCep.slice(5)}` : tempCep}
-                                onChange={(e) => handleCepChange(e.target.value)}
-                                maxLength={9}
-                            />
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.location.reload();
+  };
 
-                            {city && (
-                                <CityDisplay>
-                                    Localização encontrada:
-                                    <strong>{city}</strong>
-                                </CityDisplay>
-                            )}
+  const closeMenu = () => setMenuOpen(false);
 
-                            <ModalButton
-                                onClick={handleSaveCep}
-                                disabled={tempCep.length !== 8 || !city}
-                            >
-                                Salvar CEP
-                            </ModalButton>
-                        </ModalContent>
-                    </ModalOverlay>
-                )}
-            </AnimatePresence>
-
-            <HeroSection />
-
-            {hasSearched && (
-                <Section>
-                    <ResultsHeader>
-                        <h2>
-                            {professionals.length} {professionals.length === 1 ? 'Profissional encontrado' : 'Profissionais encontrados'}
-                        </h2>
-                        <ClearButton onClick={clearSearch}>
-                            <X size={18} /> Limpar busca
-                        </ClearButton>
-                    </ResultsHeader>
-
-                    {professionals.length > 0 ? (
-                        <ProfessionalsGrid>
-                            {professionals.map(pro => (
-                                <ProCard key={pro.id}>
-                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                                        <ProAvatar>
-                                            {pro.name.charAt(0).toUpperCase()}
-                                        </ProAvatar>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
-                                                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, wordBreak: 'break-word' }}>{pro.name}</h3>
-                                            </div>
-                                            <p style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.9rem', margin: 0 }}>{pro.category}</p>
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(245, 158, 11, 0.1)', padding: '0.5rem 0.875rem', borderRadius: '10px', width: 'fit-content' }}>
-                                        <Star size={16} fill="#f59e0b" color="#f59e0b" />
-                                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f59e0b' }}>4.9</span>
-                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginLeft: '0.25rem' }}>(128)</span>
-                                    </div>
-
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6, margin: 0 }}>
-                                        {pro.description || 'Sem descrição disponível.'}
-                                    </p>
-
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500 }}>
-                                        <MapPin size={16} color="var(--primary)" />
-                                        {pro.city}, {pro.state}
-                                    </div>
-
-                                    {pro.services && pro.services.length > 0 && (
-                                        <div style={{ marginTop: '0.5rem' }}>
-                                            <p style={{ fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Serviços:</p>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                                {pro.services.slice(0, 2).map(s => (
-                                                    <span key={s.id} style={{ fontSize: '0.75rem', background: 'var(--bg-secondary)', padding: '0.4rem 0.75rem', borderRadius: '8px', fontWeight: 600, border: '1px solid var(--border)' }}>
-                                                        {s.title}
-                                                    </span>
-                                                ))}
-                                                {pro.services.length > 2 && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>+{pro.services.length - 2} mais</span>}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <button
-                                        className="btn-primary"
-                                        style={{ marginTop: '1rem', width: '100%', padding: '1rem', fontSize: '0.9rem' }}
-                                        onClick={() => navigate(pro.slug ? `/p/${pro.slug}` : `/book/${pro.id}`, { state: { pro, clientCep: cep } })}
-                                    >
-                                        Ver Agenda e Reservar
-                                    </button>
-                                </ProCard>
-                            ))}
-                        </ProfessionalsGrid>
-                    ) : (
-                        <EmptyState>
-                            <Briefcase size={48} color="var(--text-secondary)" style={{ marginBottom: '1.5rem', opacity: 0.5 }} />
-                            <h3>Nenhum profissional encontrado</h3>
-                            <p>Tente buscar por outra categoria ou em uma região diferente.</p>
-                        </EmptyState>
-                    )}
-                </Section>
-            )}
-
-            <Section>
-                <SectionTitle>Como funciona para você</SectionTitle>
-                <SectionSubtitle>
-                    Em poucos cliques você encontra e agenda com profissionais qualificados
-                </SectionSubtitle>
-                <HowItWorksGrid>
-                    <HowItWorksCard
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0 }}
-                        viewport={{ once: true }}
-                    >
-                        <IconWrapper>
-                            <Search size={40} />
-                        </IconWrapper>
-                        <CardTitle>1. Busque</CardTitle>
-                        <CardText>
-                            Digite o serviço que precisa e seu CEP para encontrar profissionais na sua região
-                        </CardText>
-                    </HowItWorksCard>
-
-                    <HowItWorksCard
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        viewport={{ once: true }}
-                    >
-                        <IconWrapper>
-                            <Star size={40} />
-                        </IconWrapper>
-                        <CardTitle>2. Compare</CardTitle>
-                        <CardText>
-                            Veja avaliações, portfólio e valores para escolher o melhor profissional
-                        </CardText>
-                    </HowItWorksCard>
-
-                    <HowItWorksCard
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                        viewport={{ once: true }}
-                    >
-                        <IconWrapper>
-                            <Calendar size={40} />
-                        </IconWrapper>
-                        <CardTitle>3. Agende</CardTitle>
-                        <CardText>
-                            Escolha data e horário disponíveis e reserve diretamente na agenda do profissional
-                        </CardText>
-                    </HowItWorksCard>
-                </HowItWorksGrid>
-            </Section>
-
-            <Section style={{ background: 'var(--bg-secondary)', margin: '0', maxWidth: '100%', padding: '3rem 1rem' }}>
-                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                    <SectionTitle>Como funciona para profissionais</SectionTitle>
-                    <SectionSubtitle>
-                        Em 3 passos você começa a receber clientes na sua região — grátis para sempre
-                    </SectionSubtitle>
-                    <HowItWorksGrid>
-                        <HowItWorksCard
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0 }}
-                            viewport={{ once: true }}
-                        >
-                            <IconWrapper>
-                                <User size={40} />
-                            </IconWrapper>
-                            <CardTitle>1. Cadastre-se</CardTitle>
-                            <CardText>
-                                Crie seu perfil profissional gratuitamente em minutos, sem cartão de crédito
-                            </CardText>
-                        </HowItWorksCard>
-
-                        <HowItWorksCard
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            viewport={{ once: true }}
-                        >
-                            <IconWrapper>
-                                <Briefcase size={40} />
-                            </IconWrapper>
-                            <CardTitle>2. Monte seu perfil</CardTitle>
-                            <CardText>
-                                Adicione seus serviços, preços e configure seus horários de disponibilidade
-                            </CardText>
-                        </HowItWorksCard>
-
-                        <HowItWorksCard
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.4 }}
-                            viewport={{ once: true }}
-                        >
-                            <IconWrapper>
-                                <DollarSign size={40} />
-                            </IconWrapper>
-                            <CardTitle>3. Receba clientes</CardTitle>
-                            <CardText>
-                                Apareça nas buscas e receba agendamentos de clientes na sua cidade automaticamente
-                            </CardText>
-                        </HowItWorksCard>
-                    </HowItWorksGrid>
-                </div>
-            </Section>
-
-            <Section>
-                <SectionTitle>Escolha seu plano</SectionTitle>
-                <SectionSubtitle>
-                    Comece gratis para sempre com o Free ou escale com Pro e Premium
-                </SectionSubtitle>
-                <PricingSection>
-                    <PlansGrid>
-                        {/* Free - Gratuito permanente */}
-                        <PriceBox
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.4, delay: 0 }}
-                            viewport={{ once: true }}
-                        >
-                            <PlanBadge $color="#10b981">GRATIS PARA SEMPRE</PlanBadge>
-                            <PlanName $hasBadge>Free</PlanName>
-                            <Price className="free">
-                                GRATIS
-                            </Price>
-                            <PlanDescription>
-                                Totalmente Grátis, sem inserir cartão de crédito
-                            </PlanDescription>
-                            <FeatureList>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Perfil profissional completo
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    1 servico cadastrado
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Ate 3 agendamentos por mes
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Agenda online
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Sem cartao de credito
-                                </FeatureItem>
-                            </FeatureList>
-                            <PlanButton to="/register-pro" $green>
-                                Comecar gratis
-                                <ChevronRight size={18} />
-                            </PlanButton>
-                        </PriceBox>
-
-                        {/* Pro - Mais Popular */}
-                        <PriceBox
-                            $featured
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.4, delay: 0.1 }}
-                            viewport={{ once: true }}
-                        >
-                            <PlanBadge>MAIS POPULAR</PlanBadge>
-                            <PlanName $hasBadge>Pro</PlanName>
-                            <Price>
-                                R$ 19,90
-                                <span>/mes</span>
-                            </Price>
-                            <PlanDescription>
-                                Servicos ilimitados e destaque na busca
-                            </PlanDescription>
-                            <FeatureList>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Perfil profissional completo
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Servicos ilimitados
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Agendamentos ilimitados
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Badge Profissional Ativo
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Destaque intermediario na busca
-                                </FeatureItem>
-                            </FeatureList>
-                            <PlanButton to="/register-pro" $primary>
-                                Assinar Pro
-                                <ChevronRight size={18} />
-                            </PlanButton>
-                        </PriceBox>
-
-                        {/* Premium */}
-                        <PriceBox
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.4, delay: 0.2 }}
-                            viewport={{ once: true }}
-                        >
-                            <PlanBadge $color="#f59e0b">DESTAQUE</PlanBadge>
-                            <PlanName $hasBadge>Premium</PlanName>
-                            <Price>
-                                R$ 39,90
-                                <span>/mes</span>
-                            </Price>
-                            <PlanDescription>
-                                Maxima visibilidade e topo da busca
-                            </PlanDescription>
-                            <FeatureList>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Tudo do plano Pro
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Topo da busca
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Selo Destaque no perfil
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Relatorio de desempenho
-                                </FeatureItem>
-                                <FeatureItem>
-                                    <Check size={16} />
-                                    Suporte prioritario
-                                </FeatureItem>
-                            </FeatureList>
-                            <PlanButton to="/register-pro" $orange>
-                                Assinar Premium
-                                <ChevronRight size={18} />
-                            </PlanButton>
-                        </PriceBox>
-                    </PlansGrid>
-                </PricingSection>
-            </Section>
-
-            <Footer>
-                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1rem' }}>
-                        ContrataPro
-                    </h3>
-                    <p style={{ marginBottom: '1.5rem', opacity: 0.9, fontSize: '0.9rem' }}>
-                        Encontre o profissional certo para cada serviço
-                    </p>
-                    <p style={{ marginBottom: '1.5rem', opacity: 0.8, fontSize: '0.85rem', maxWidth: '800px', margin: '0 auto 1.5rem', lineHeight: '1.6' }}>
-                        <strong>Por que buscamos por região?</strong> Conectamos você com profissionais da sua região para garantir atendimento rápido, custos de deslocamento reduzidos e maior praticidade para ambos.
-                    </p>
-                    <p style={{ marginBottom: '1.5rem', opacity: 0.7, fontSize: '0.8rem', maxWidth: '800px', margin: '0 auto 1.5rem', lineHeight: '1.5', fontStyle: 'italic' }}>
-                        O ContrataPro é uma plataforma de conexão entre clientes e profissionais autônomos. Não somos empregadores nem responsáveis pelos serviços prestados. A contratação e execução dos serviços ocorre diretamente entre o cliente e o profissional.
-                    </p>
-                    <FooterLinks>
-                        <FooterLink to="/login">Login</FooterLink>
-                        <FooterLink to="/register-client">Criar Conta</FooterLink>
-                        <FooterLink to="/register-pro">Sou Profissional</FooterLink>
-                    </FooterLinks>
-                    <p style={{ opacity: 0.7, fontSize: '0.85rem' }}>
-                        © {new Date().getFullYear()} ContrataPro. Todos os direitos reservados.
-                    </p>
-                </div>
-            </Footer>
-        </HomeContainer>
+  const accountLinks = (onClick) =>
+    userInfo ? (
+      <>
+        {!userInfo.is_professional && !userInfo.is_admin && (
+          <TopLink to="/my-appointments" onClick={onClick}>Meus agendamentos</TopLink>
+        )}
+        {userInfo.is_professional && <TopLink to="/dashboard" onClick={onClick}>Meu painel</TopLink>}
+        {userInfo.is_admin && <TopLink to="/admin" onClick={onClick}>Admin</TopLink>}
+        <TopButton type="button" onClick={handleLogout}>
+          <LogOut size={18} aria-hidden="true" /> Sair
+        </TopButton>
+      </>
+    ) : (
+      <>
+        <TopLink to="/login" onClick={onClick}>Entrar</TopLink>
+        <TopLink to="/register-client" onClick={onClick}>Criar conta</TopLink>
+        <TopStamp to="/register-pro" onClick={onClick}>Sou profissional</TopStamp>
+      </>
     );
+
+  const cepStatus = {
+    idle: cepDigits.length > 0 ? { text: `Faltam ${8 - cepDigits.length} números.` } : { text: 'Com o CEP, mostramos quem atende perto de você.' },
+    loading: { text: 'Consultando o CEP…' },
+    notfound: { text: 'CEP não encontrado. Confira os números.', tone: 'erro' },
+    offline: { text: 'Não deu para consultar o CEP agora. Você pode buscar só pelo serviço.', tone: 'erro' },
+  }[cepState];
+
+  const checklist = categories.slice(0, 8);
+
+  return (
+    <Page>
+      <SEOHead {...SEO_CONFIGS.home} url="https://contratapro.com.br" />
+      <StructuredData type="website" />
+      <StructuredData type="organization" />
+      <StructuredData type="service" />
+
+      <Topbar>
+        <TopbarInner>
+          <Logo to="/" aria-label="ContrataPro, página inicial">
+            <img src={logoImage} alt="ContrataPro" width="120" height="34" />
+          </Logo>
+
+          <TopNav aria-label="Conta">{accountLinks()}</TopNav>
+
+          <MobileActions>
+            {!userInfo && <TopStamp to="/register-pro">Sou profissional</TopStamp>}
+            <MenuToggle
+              ref={menuToggleRef}
+              type="button"
+              aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+              aria-expanded={menuOpen}
+              aria-controls="menu-mobile"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              {menuOpen ? <X size={26} aria-hidden="true" /> : <Menu size={26} aria-hidden="true" />}
+            </MenuToggle>
+          </MobileActions>
+        </TopbarInner>
+
+        {menuOpen && (
+          <MobilePanel id="menu-mobile" aria-label="Menu">
+            {accountLinks(closeMenu)}
+          </MobilePanel>
+        )}
+      </Topbar>
+
+      <main>
+        <Hero aria-labelledby="titulo-home">
+          <HeroGrid>
+            <div>
+              <HeroTitle id="titulo-home" data-display>
+                Profissionais da sua região, com agenda aberta pra você.
+              </HeroTitle>
+              <Lead>
+                Escreva o serviço e o seu CEP. Você vê quem atende no seu bairro, confere o perfil e marca
+                o horário direto na agenda da pessoa. Para quem contrata, é grátis.
+              </Lead>
+            </div>
+
+            <HeroFoot>
+              É profissional autônomo?
+              <Link to="/register-pro">
+                Cadastre-se grátis, sem cartão <ArrowRight size={18} aria-hidden="true" />
+              </Link>
+            </HeroFoot>
+
+            <Talao id={formId} onSubmit={handleSubmit} noValidate aria-label="Pedido de serviço">
+              <Canhoto aria-hidden="true">Canhoto · ContrataPro</Canhoto>
+              <TalaoBody>
+                <TalaoHead>
+                  <TalaoBrand>
+                    <strong>CONTRATAPRO</strong>
+                    <span>Pedido de serviço</span>
+                  </TalaoBrand>
+                  <Numeradora aria-hidden={nextOrder ? undefined : 'true'}>
+                    {nextOrder ? (
+                      <>
+                        Nº {String(nextOrder).padStart(6, '0')}
+                        <small>o próximo agendamento pode ser o seu</small>
+                      </>
+                    ) : (
+                      'Nº ______'
+                    )}
+                  </Numeradora>
+                </TalaoHead>
+
+                <Field>
+                  <span>Serviço:</span>
+                  <input
+                    ref={serviceInputRef}
+                    type="text"
+                    name="service"
+                    list={categories.length ? `${formId}-servicos` : undefined}
+                    placeholder="eletricista, diarista…"
+                    autoComplete="off"
+                    value={service}
+                    onChange={(e) => {
+                      setService(e.target.value);
+                      setFormError('');
+                    }}
+                  />
+                </Field>
+                {categories.length > 0 && (
+                  <datalist id={`${formId}-servicos`}>
+                    {categories.map((name) => <option key={name} value={name} />)}
+                  </datalist>
+                )}
+
+                <Field>
+                  <span>CEP:</span>
+                  <input
+                    type="text"
+                    name="cep"
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    placeholder="00000-000"
+                    maxLength={9}
+                    value={formatCep(cepDigits)}
+                    onChange={(e) => handleCepChange(e.target.value)}
+                    aria-describedby={`${formId}-cep`}
+                    aria-invalid={cepState === 'notfound' || undefined}
+                  />
+                </Field>
+                <CepStatus id={`${formId}-cep`} aria-live="polite" $tone={cepStatus?.tone}>
+                  {cepState === 'ok' ? (
+                    <CityWrite key={city}>
+                      <Check size={20} aria-hidden="true" /> {city}
+                    </CityWrite>
+                  ) : (
+                    cepStatus?.text
+                  )}
+                </CepStatus>
+
+                {formError && <FormError role="alert">{formError}</FormError>}
+
+                <SubmitRow>
+                  <PrimaryButton type="submit">
+                    Buscar profissionais <ArrowRight size={20} aria-hidden="true" />
+                  </PrimaryButton>
+                </SubmitRow>
+
+                {checklist.length > 0 && (
+                  <Checklist>
+                    <legend>Ou marque um dos mais pedidos:</legend>
+                    <ChecklistGrid>
+                      {checklist.map((name) => {
+                        const checked = service === name;
+                        return (
+                          <CheckItem key={name} type="button" aria-pressed={checked} onClick={() => pickCategory(name)}>
+                            <Box>{checked && <CheckMark />}</Box>
+                            <span>{name}</span>
+                          </CheckItem>
+                        );
+                      })}
+                    </ChecklistGrid>
+                  </Checklist>
+                )}
+
+                <Perforation aria-hidden="true">
+                  <Scissors size={14} /> Destaque aqui
+                </Perforation>
+              </TalaoBody>
+            </Talao>
+          </HeroGrid>
+        </Hero>
+        <Seam $from="amarela" $to="papel" aria-hidden="true" />
+
+        <Section aria-labelledby="titulo-vias">
+          <Wrap>
+            <SectionHead>
+              <Display id="titulo-vias" data-display>Uma via para cada lado do serviço</Display>
+              <Lead>Quem precisa de um serviço e quem oferece usam o mesmo talão. Cada um fica com a sua via.</Lead>
+            </SectionHead>
+
+            <ViasGrid>
+              <Via $paper="rosa" aria-labelledby="via-cliente">
+                <ViaHead>
+                  <ViaTitle id="via-cliente" data-display>Preciso de um serviço</ViaTitle>
+                  <ViaStamp aria-hidden="true">1ª via</ViaStamp>
+                </ViaHead>
+                <ItemsTable>
+                  <thead>
+                    <tr><th scope="col">Item</th><th scope="col">Descrição</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>01</td><td>Escreva o serviço e o seu CEP.</td></tr>
+                    <tr><td>02</td><td>Veja o perfil, os serviços, os preços e as avaliações de quem já agendou.</td></tr>
+                    <tr><td>03</td><td>Escolha um horário livre na agenda do profissional. Pronto, está marcado.</td></tr>
+                  </tbody>
+                </ItemsTable>
+                <ViaNote>Pagamento? Você combina direto com o profissional: Pix, dinheiro, como preferirem.</ViaNote>
+                <ViaAction>
+                  <PrimaryButton type="button" onClick={focusTalao}>
+                    Preencher o pedido <ArrowRight size={18} aria-hidden="true" />
+                  </PrimaryButton>
+                </ViaAction>
+              </Via>
+
+              <Via $paper="azul" aria-labelledby="via-profissional">
+                <ViaHead>
+                  <ViaTitle id="via-profissional" data-display>Ofereço serviços</ViaTitle>
+                  <ViaStamp aria-hidden="true">2ª via</ViaStamp>
+                </ViaHead>
+                <ItemsTable>
+                  <thead>
+                    <tr><th scope="col">Item</th><th scope="col">Descrição</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>01</td><td>Crie seu perfil de graça, em minutos, sem cartão de crédito.</td></tr>
+                    <tr><td>02</td><td>Cadastre seus serviços e preços e marque os horários em que você atende.</td></tr>
+                    <tr><td>03</td><td>Clientes da sua região encontram você e agendam direto na sua agenda.</td></tr>
+                  </tbody>
+                </ItemsTable>
+                <ViaNote>Sem intermediário: o cliente fala e paga direto com você.</ViaNote>
+                <ViaAction>
+                  <PrimaryLink to="/register-pro">
+                    Quero oferecer serviços <ArrowRight size={18} aria-hidden="true" />
+                  </PrimaryLink>
+                </ViaAction>
+              </Via>
+            </ViasGrid>
+          </Wrap>
+        </Section>
+
+        {pros.status !== 'error' && (pros.status === 'loading' || pros.items.length > 0) && (
+          <>
+          <Seam $from="papel" $to="rosa" aria-hidden="true" />
+          <Mesa aria-labelledby="titulo-pros" aria-busy={pros.status === 'loading'}>
+            <Wrap>
+              <SectionHead>
+                <Display id="titulo-pros" data-display>
+                  {pros.fromCity ? `Quem atende em ${pros.fromCity}` : 'Gente que já está no ContrataPro'}
+                </Display>
+                <Lead>
+                  Perfis de verdade, com agenda online. As avaliações só vêm de clientes que agendaram pelo ContrataPro.
+                </Lead>
+              </SectionHead>
+
+              <CardsGrid>
+                {pros.status === 'loading'
+                  ? [0, 1, 2].map((i) => <BlankCard key={i} aria-hidden="true" />)
+                  : pros.items.map((pro) => <ProCard key={pro.id} pro={pro} cep={cepDigits} />)}
+              </CardsGrid>
+
+              {pros.status === 'ok' && city && !pros.fromCity && (
+                <MesaNote>
+                  Ainda não temos profissionais cadastrados em {city}; estes são de outras cidades. Conhece alguém bom
+                  de serviço aí? <Link to="/register-pro">Mostre o ContrataPro para essa pessoa</Link>.
+                </MesaNote>
+              )}
+            </Wrap>
+          </Mesa>
+          <Seam $from="rosa" $to="papel" aria-hidden="true" />
+          </>
+        )}
+
+        <Section aria-labelledby="titulo-combinado">
+          <Wrap>
+            <SectionHead>
+              <Display id="titulo-combinado" data-display>O combinado, preto no branco</Display>
+              <Lead>Antes de chamar alguém na sua casa, é bom saber exatamente o que o ContrataPro faz e o que fica entre você e o profissional.</Lead>
+            </SectionHead>
+
+            <CombinadoGrid>
+              <div>
+                <ListTitle>O que o ContrataPro faz</ListTitle>
+                <RuledList $mark="carbono">
+                  <li><Check size={20} aria-hidden="true" />Mostra o perfil, os serviços e os preços que o profissional cadastrou.</li>
+                  <li><Check size={20} aria-hidden="true" />Deixa você marcar horário direto na agenda dele.</li>
+                  <li><Check size={20} aria-hidden="true" />Avisa por e-mail quando o agendamento é feito ou muda.</li>
+                  <li><Check size={20} aria-hidden="true" />Só libera avaliação para quem agendou de verdade.</li>
+                </RuledList>
+              </div>
+              <div>
+                <ListTitle>O que fica entre você e o profissional</ListTitle>
+                <RuledList $mark="grafica">
+                  <li><ArrowRight size={20} aria-hidden="true" />O pagamento: Pix, dinheiro ou o que vocês combinarem. O ContrataPro não cobra nada de quem contrata.</li>
+                  <li><ArrowRight size={20} aria-hidden="true" />O orçamento final e a execução do serviço.</li>
+                  <li><ArrowRight size={20} aria-hidden="true" />A conversa antes: o ContrataPro não checa antecedentes, então confira o perfil e as avaliações e tire suas dúvidas com a pessoa.</li>
+                </RuledList>
+              </div>
+            </CombinadoGrid>
+
+            <Perguntas>
+              <h3>Perguntas que todo mundo faz</h3>
+              <details>
+                <summary>Quanto custa para contratar? <Plus size={22} aria-hidden="true" /></summary>
+                <p>Nada. Buscar, ver perfis e agendar é grátis para o cliente. O valor do serviço você combina com o profissional.</p>
+              </details>
+              <details>
+                <summary>O ContrataPro verifica os profissionais? <Plus size={22} aria-hidden="true" /></summary>
+                <p>Não. Mostramos o perfil que o profissional preencheu e as avaliações de clientes que agendaram pela plataforma. Leia as avaliações e converse com a pessoa antes de fechar.</p>
+              </details>
+              <details>
+                <summary>Como eu pago o profissional? <Plus size={22} aria-hidden="true" /></summary>
+                <p>Direto com ele, do jeito que vocês combinarem. O ContrataPro não intermedia pagamentos entre cliente e profissional.</p>
+              </details>
+              <details>
+                <summary>Quem pode deixar avaliação? <Plus size={22} aria-hidden="true" /></summary>
+                <p>Só quem agendou pelo ContrataPro. Depois que o serviço é concluído, o cliente recebe um link por e-mail para avaliar.</p>
+              </details>
+              <details>
+                <summary>Por que a busca é por região? <Plus size={22} aria-hidden="true" /></summary>
+                <p>Porque quem mora perto chega mais rápido, gasta menos com deslocamento e fica mais fácil de encontrar de novo.</p>
+              </details>
+            </Perguntas>
+          </Wrap>
+        </Section>
+
+        <Seam $from="papel" $to="azul" aria-hidden="true" />
+        <Precos aria-labelledby="titulo-precos">
+          <Wrap>
+            <SectionHead>
+              <Display id="titulo-precos" data-display>Tabela de preços para profissionais</Display>
+              <Lead>Todo profissional começa no Free, sem cartão. Os planos pagos são para quem quer aparecer mais na busca e atender sem limite.</Lead>
+            </SectionHead>
+
+            <PriceTable>
+              <caption><SrOnly>Comparação dos planos Free, Pro e Premium</SrOnly></caption>
+              <thead>
+                <tr>
+                  <td />
+                  {PLANS.map((plan) => (
+                    <th key={plan.id} scope="col">
+                      <PlanHead>
+                        <span>{plan.name}</span>
+                        <strong>{plan.price}</strong>
+                        <small>{plan.period}</small>
+                      </PlanHead>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {PLAN_ROWS.map((row) => (
+                  <tr key={row.label}>
+                    <th scope="row">{row.label}</th>
+                    {row.values.map((value, i) => (
+                      <td key={PLANS[i].id}><PlanValue value={value} /></td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td />
+                  {PLANS.map((plan) => (
+                    <td key={plan.id}>
+                      {plan.primary ? (
+                        <PrimaryLink to="/register-pro">{plan.cta}</PrimaryLink>
+                      ) : (
+                        <StampLink to="/register-pro">{plan.cta}</StampLink>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
+            </PriceTable>
+
+            <PlanStack>
+              {PLANS.map((plan, i) => (
+                <PlanSheet key={plan.id}>
+                  <PlanHead>
+                    <span>{plan.name}</span>
+                    <strong>{plan.price}</strong>
+                    <small>{plan.period}</small>
+                  </PlanHead>
+                  <dl>
+                    {PLAN_ROWS.map((row) => (
+                      <div key={row.label}>
+                        <dt>{row.label}</dt>
+                        <dd><PlanValue value={row.values[i]} /></dd>
+                      </div>
+                    ))}
+                  </dl>
+                  {plan.primary ? (
+                    <PrimaryLink to="/register-pro">{plan.cta}</PrimaryLink>
+                  ) : (
+                    <StampLink to="/register-pro">{plan.cta}</StampLink>
+                  )}
+                </PlanSheet>
+              ))}
+            </PlanStack>
+
+            <PrecosNote>Planos pagos pelo Mercado Pago. Dá para cancelar pelo seu painel.</PrecosNote>
+          </Wrap>
+        </Precos>
+        <Seam $from="azul" $to="papel" aria-hidden="true" />
+      </main>
+
+      <Footer>
+        <Wrap>
+          <FooterGrid>
+            <div>
+              <strong>ContrataPro</strong>
+              <p>Encontre quem resolve, perto de casa, e marque o horário direto na agenda da pessoa.</p>
+            </div>
+            <div>
+              <h3>Sobre a plataforma</h3>
+              <p>
+                O ContrataPro conecta clientes e profissionais autônomos. A contratação, o pagamento e a execução
+                do serviço são combinados diretamente entre o cliente e o profissional.
+              </p>
+            </div>
+          </FooterGrid>
+          <FooterLinks aria-label="Rodapé">
+            <Link to="/login">Entrar</Link>
+            <Link to="/register-client">Criar conta</Link>
+            <Link to="/register-pro">Sou profissional</Link>
+          </FooterLinks>
+          <Legal>© {new Date().getFullYear()} ContrataPro. Todos os direitos reservados.</Legal>
+        </Wrap>
+      </Footer>
+    </Page>
+  );
 }

@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-28T00:00:00Z",
+  "title": "Design System: ContrataPro",
+  "extensions": {
+    "scope": "Derived from the shipped Home (frontend/src/pages/Home.jsx). Other surfaces have not migrated and still use the legacy blue/indigo + Inter tokens in frontend/src/index.css. Talão tokens live on the Home's Page styled component, not :root.",
+    "colorMeta": {
+      "papel": { "role": "neutral", "displayName": "Papel", "canonical": "#ffffff", "tonalRamp": ["#16161a", "#2d2d32", "#47474c", "#636368", "#7f8085", "#a4a4a9", "#cacace", "#ffffff"] },
+      "amarela": { "role": "tertiary", "displayName": "Via Amarela", "canonical": "oklch(92.1% 0.114 95.6)", "tonalRamp": ["#261100", "#402a00", "#5b4500", "#776200", "#957f1c", "#baa449", "#dacb8f", "#fce58a"] },
+      "rosa": { "role": "tertiary", "displayName": "Via Rosa", "canonical": "oklch(89.3% 0.049 0.6)", "tonalRamp": ["#270b15", "#42232c", "#5e3c46", "#7b5862", "#9a747f", "#c098a3", "#dfc2c9", "#f9cfda"] },
+      "azul": { "role": "tertiary", "displayName": "Via Azul", "canonical": "oklch(90.0% 0.034 253.7)", "tonalRamp": ["#0a1725", "#222f3f", "#3b495a", "#566577", "#728295", "#96a6ba", "#c0ccda", "#cfe0f5"] },
+      "grafica": { "role": "primary", "displayName": "Vermelho de Gráfica", "canonical": "oklch(52.8% 0.198 28.6)", "tonalRamp": ["#500000", "#730000", "#9e1712", "#c4201a", "#de3e33", "#ff6858", "#ffa696", "#ffc3b0"] },
+      "grafica-escura": { "role": "primary", "displayName": "Gráfica Escura", "canonical": "#9e1712" },
+      "pauta": { "role": "primary", "displayName": "Pauta", "canonical": "rgba(196, 32, 26, 0.55)" },
+      "carbono": { "role": "secondary", "displayName": "Azul-Carbono", "canonical": "oklch(40.5% 0.161 271.8)", "tonalRamp": ["#0d005d", "#19177c", "#2e3a9e", "#4557bd", "#5c64a8", "#829cff", "#b0c6ff", "#c9e7ff"] },
+      "carbono-claro": { "role": "secondary", "displayName": "Carbono Claro", "canonical": "#5c64a8" },
+      "nanquim": { "role": "neutral", "displayName": "Nanquim", "canonical": "oklch(20.6% 0.008 285.7)", "tonalRamp": ["#17171b", "#2d2d32", "#47474c", "#636368", "#7f8085", "#a4a4a9", "#cacace", "#eeeef4"] },
+      "texto-2": { "role": "neutral", "displayName": "Texto Secundário", "canonical": "#4a4550" },
+      "texto-2-amarela": { "role": "neutral", "displayName": "Texto Secundário na Amarela", "canonical": "#5b4a12" },
+      "texto-2-rosa": { "role": "neutral", "displayName": "Texto Secundário na Rosa", "canonical": "#6b2638" },
+      "texto-2-azul": { "role": "neutral", "displayName": "Texto Secundário na Azul", "canonical": "#22385e" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The single page title (hero h1)." },
+      "headline": { "displayName": "Headline", "purpose": "Section titles; nothing printed above them." },
+      "title": { "displayName": "Title", "purpose": "Via titles, list titles, card names, plan names." },
+      "lead": { "displayName": "Lead", "purpose": "The one supporting paragraph under a heading, in texto-2, max 60ch." },
+      "body": { "displayName": "Body", "purpose": "Running text, table cells, FAQ answers." },
+      "label": { "displayName": "Printed Label", "purpose": "Uppercase gráfica form labels on the talão and vias only (field labels, legend, table heads, canhoto, tear line, stamps). Never a kicker above a heading." },
+      "action": { "displayName": "Action", "purpose": "Button text, uppercase." },
+      "hand": { "displayName": "Handwriting", "purpose": "Anything a person writes: input values, the resolved city, marginal notes. Carbono only." }
+    },
+    "shadows": [
+      { "name": "talao-on-table", "value": "0 22px 36px -18px rgba(23, 23, 27, 0.45), 0 2px 4px rgba(23, 23, 27, 0.12)", "purpose": "The order pad resting on the hero sheet." },
+      { "name": "card-on-rosa", "value": "0 16px 28px -18px rgba(107, 38, 56, 0.55), 0 1px 3px rgba(107, 38, 56, 0.18)", "purpose": "Professional cards on pink paper; tinted by the paper's own ink." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "All state transitions and reveals." },
+      { "name": "button-state", "value": "160ms", "purpose": "Button color change; press is translateY(1px) at 120ms." },
+      { "name": "card-lift", "value": "200ms", "purpose": "Card hover: translateY(-3px) rotate(-0.4deg); FAQ plus rotates 45deg." },
+      { "name": "write-in", "value": "700ms", "purpose": "Resolved city revealed left to right by clip-path inset." },
+      { "name": "draw-x", "value": "220ms (+160ms second stroke)", "purpose": "Checklist X drawn by stroke-dashoffset." }
+    ],
+    "breakpoints": [
+      { "name": "canhoto", "value": "560px" },
+      { "name": "cards-2up", "value": "640px" },
+      { "name": "price-table", "value": "760px" },
+      { "name": "topnav", "value": "860px" },
+      { "name": "vias-2up", "value": "880px" },
+      { "name": "hero-2col", "value": "960px" },
+      { "name": "cards-3up", "value": "1040px" }
+    ],
+    "seam": { "height": "12px", "tile": "18px x 12px", "scallopRadius": "5.5px", "note": "SVG data URI cannot read CSS vars; the PAPER hex map mirrors the paper tokens and must be kept in sync." }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action on a sheet, printed in gráfica red.",
+      "html": "<button class=\"ds-btn-primary\">Buscar profissionais <svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg></button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 48px; padding: 0 1.4rem; border-radius: 2px; background: #c4201a; color: #ffffff; border: 2px solid #c4201a; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1), border-color 160ms cubic-bezier(0.22, 1, 0.36, 1), transform 120ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-primary:hover { background: #9e1712; border-color: #9e1712; } .ds-btn-primary:focus-visible { outline: 2px solid #2e3a9e; outline-offset: 3px; } .ds-btn-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Stamp Button",
+      "kind": "button",
+      "refersTo": "button-stamp",
+      "description": "Secondary action as a red rubber stamp outline; inverts on hover.",
+      "html": "<a href=\"#\" class=\"ds-btn-stamp\">Sou profissional</a>",
+      "css": ".ds-btn-stamp { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 48px; padding: 0 1.4rem; border-radius: 2px; background: transparent; color: #c4201a; border: 2px solid #c4201a; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase; text-decoration: none; cursor: pointer; transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1), color 160ms cubic-bezier(0.22, 1, 0.36, 1), transform 120ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-stamp:hover { background: #c4201a; color: #ffffff; } .ds-btn-stamp:focus-visible { outline: 2px solid #2e3a9e; outline-offset: 3px; } .ds-btn-stamp:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Ruled Field",
+      "kind": "input",
+      "refersTo": "field-ruled",
+      "description": "Printed red label on a ruled line; the value is handwritten in carbon blue.",
+      "html": "<label class=\"ds-field\"><span>Serviço:</span><input type=\"text\" placeholder=\"eletricista, diarista…\"></label>",
+      "css": ".ds-field { display: flex; align-items: baseline; gap: 0.6rem; padding: 0.9rem 0 0.2rem; border-bottom: 1.5px solid rgba(196, 32, 26, 0.55); background: #ffffff; cursor: text; } .ds-field > span { flex: none; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 0.95rem; letter-spacing: 0.08em; text-transform: uppercase; color: #c4201a; } .ds-field input { flex: 1; min-width: 0; border: none; background: transparent; padding: 0; font-family: Caveat, 'Segoe Print', cursive; font-weight: 700; font-size: 1.75rem; line-height: 1.2; color: #2e3a9e; caret-color: #2e3a9e; } .ds-field input::placeholder { color: #5c64a8; font-weight: 500; } .ds-field input:focus { outline: none; } .ds-field:focus-within { border-bottom: 2px solid #2e3a9e; }"
+    },
+    {
+      "name": "Printed Checklist Item",
+      "kind": "chip",
+      "description": "Square red box; choosing draws a carbon-blue X.",
+      "html": "<button type=\"button\" class=\"ds-check\" aria-pressed=\"true\"><span class=\"ds-check-box\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 3 L21 21\"/><path d=\"M21 3 L3 21\"/></svg></span><span>Eletricista</span></button>",
+      "css": ".ds-check { display: flex; align-items: center; gap: 0.6rem; min-height: 44px; padding: 0; background: none; border: none; cursor: pointer; font-family: Barlow, system-ui, sans-serif; font-weight: 500; font-size: 1rem; color: #17171b; } .ds-check:hover > span:last-child { color: #c4201a; } .ds-check:focus-visible { outline: 2px solid #2e3a9e; outline-offset: 3px; } .ds-check-box { flex: none; position: relative; width: 1.3rem; height: 1.3rem; border: 2px solid #c4201a; } .ds-check-box svg { position: absolute; inset: -5px; width: calc(100% + 10px); height: calc(100% + 10px); overflow: visible; } .ds-check-box path { stroke: #2e3a9e; stroke-width: 3.2; stroke-linecap: round; fill: none; }"
+    },
+    {
+      "name": "Topbar",
+      "kind": "nav",
+      "refersTo": "topbar",
+      "description": "Sticky 56px papel bar closed by a red rule; condensed links, stamp at the end.",
+      "html": "<header class=\"ds-topbar\"><strong class=\"ds-topbar-logo\">ContrataPro</strong><nav class=\"ds-topbar-nav\"><a href=\"#\">Entrar</a><a href=\"#\">Criar conta</a><a href=\"#\" class=\"ds-topbar-stamp\">Sou profissional</a></nav></header>",
+      "css": ".ds-topbar { height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0 1.5rem; background: #ffffff; border-bottom: 2px solid #c4201a; } .ds-topbar-logo { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 1.3rem; color: #17171b; } .ds-topbar-nav { display: flex; align-items: center; gap: 1.5rem; } .ds-topbar-nav a { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 1.1rem; letter-spacing: 0.03em; color: #17171b; text-decoration: none; text-underline-offset: 5px; text-decoration-thickness: 2px; } .ds-topbar-nav a:hover { color: #c4201a; text-decoration-line: underline; } .ds-topbar-nav a:focus-visible { outline: 2px solid #2e3a9e; outline-offset: 3px; } .ds-topbar-nav a.ds-topbar-stamp { display: inline-flex; align-items: center; min-height: 38px; padding: 0 0.9rem; font-weight: 700; font-size: 1rem; letter-spacing: 0.05em; text-transform: uppercase; color: #c4201a; border: 2px solid #c4201a; border-radius: 2px; } .ds-topbar-nav a.ds-topbar-stamp:hover { background: #c4201a; color: #ffffff; text-decoration: none; }"
+    },
+    {
+      "name": "Cartão do Profissional",
+      "kind": "card",
+      "refersTo": "cartao",
+      "description": "Square papel card on pink paper with a 5px red foot rule and a paper-tinted shadow; lifts and tilts on hover.",
+      "html": "<div class=\"ds-cartao-bg\"><a href=\"#\" class=\"ds-cartao\"><div class=\"ds-cartao-foto\">M</div><div><h3>Maria Souza</h3><p class=\"ds-cartao-cat\">Diarista</p><p>Campinas, SP</p></div><div class=\"ds-cartao-foot\"><span>4,9 · 12 avaliações</span><span class=\"ds-cartao-ver\">Ver agenda <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg></span></div></a></div>",
+      "css": ".ds-cartao-bg { background: #f9cfda; padding: 1.5rem; } .ds-cartao { display: grid; grid-template-columns: auto 1fr; gap: 0.9rem 1rem; padding: 1.25rem; background: #ffffff; color: #17171b; text-decoration: none; border-bottom: 5px solid #c4201a; box-shadow: 0 16px 28px -18px rgba(107, 38, 56, 0.55), 0 1px 3px rgba(107, 38, 56, 0.18); font-family: Barlow, system-ui, sans-serif; transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-cartao:hover { transform: translateY(-3px) rotate(-0.4deg); } .ds-cartao:hover .ds-cartao-ver { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; } .ds-cartao:focus-visible { outline: 2px solid #2e3a9e; outline-offset: 3px; } .ds-cartao-foto { width: 64px; height: 64px; border: 2px solid #17171b; background: #fce58a; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 1.9rem; } .ds-cartao h3 { margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 1.45rem; line-height: 1.05; } .ds-cartao p { margin: 0.25rem 0 0; font-size: 0.95rem; color: #4a4550; } .ds-cartao p.ds-cartao-cat { color: #c4201a; font-weight: 600; } .ds-cartao-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding-top: 0.75rem; border-top: 1.5px solid rgba(196, 32, 26, 0.55); font-size: 0.95rem; color: #4a4550; } .ds-cartao-ver { display: inline-flex; align-items: center; gap: 0.25rem; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; text-transform: uppercase; color: #c4201a; }"
+    },
+    {
+      "name": "Via",
+      "kind": "custom",
+      "refersTo": "via",
+      "description": "A whole paper sheet with a 6px red top rule, rotated stamp, numbered ruled items and a handwritten note.",
+      "html": "<article class=\"ds-via\"><div class=\"ds-via-head\"><h3>Preciso de um serviço</h3><span class=\"ds-via-stamp\">1ª via</span></div><table class=\"ds-via-items\"><tbody><tr><td>01</td><td>Escreva o serviço e o seu CEP.</td></tr><tr><td>02</td><td>Escolha um horário livre na agenda.</td></tr></tbody></table><p class=\"ds-via-note\">Pagamento? Você combina direto com o profissional.</p></article>",
+      "css": ".ds-via { background: #f9cfda; border-top: 6px solid #c4201a; padding: 2rem; color: #17171b; font-family: Barlow, system-ui, sans-serif; } .ds-via-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding-bottom: 0.75rem; margin-bottom: 1rem; border-bottom: 2px solid #c4201a; } .ds-via-head h3 { margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 2.2rem; line-height: 1.05; } .ds-via-stamp { padding: 0.2rem 0.55rem; border: 2px solid #c4201a; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 1.2rem; letter-spacing: 0.1em; text-transform: uppercase; color: #c4201a; transform: rotate(-4deg); } .ds-via-items { width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; } .ds-via-items td { padding: 0.8rem 0; border-bottom: 1.5px solid rgba(196, 32, 26, 0.55); line-height: 1.5; vertical-align: top; } .ds-via-items td:first-child { width: 3rem; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 1.2rem; font-variant-numeric: tabular-nums; color: #c4201a; } .ds-via-note { font-family: Caveat, 'Segoe Print', cursive; font-weight: 700; font-size: 1.45rem; line-height: 1.2; color: #2e3a9e; transform: rotate(-1deg); margin: 0; }"
+    },
+    {
+      "name": "Perforated Seam",
+      "kind": "custom",
+      "description": "Scalloped tear edge where one paper sheet meets the next (here amarela over papel).",
+      "html": "<div class=\"ds-seam-top\"></div><div class=\"ds-seam\"></div><div class=\"ds-seam-bottom\"></div>",
+      "css": ".ds-seam-top { height: 40px; background: #fce58a; } .ds-seam { height: 12px; background-color: #ffffff; background-image: url(\"data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'18'%20height%3D'12'%3E%3Ccircle%20cx%3D'9'%20cy%3D'0'%20r%3D'5.5'%20fill%3D'%23fce58a'%2F%3E%3C%2Fsvg%3E\"); background-repeat: repeat-x; background-position: top center; } .ds-seam-bottom { height: 40px; background: #ffffff; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Talão de Orçamento",
+    "overview": "The product is dressed as the carbon-copy order pad (talão de pedido/orçamento) that every Brazilian autônomo keeps in the van or the toolbox. Whole sections are flat sheets of colored paper, the \"vias\": yellow, white, pink, blue. Everything printed by the gráfica is in a single red ink: rules, labels, numbering, stamps, primary buttons. Everything filled in by a person is carbon blue in a handwriting face. Near-black nanquim carries headings and running text. The effect is warm and local, a thing from the neighbourhood rather than a SaaS product, which is the tone PRODUCT.md commits to.\n\nDensity is that of a paper form: generous section padding, ruled lines instead of boxes, and tables and lists that read as printed rows. Sheets meet at a perforated seam (a scalloped tear edge) rather than a straight divider. State is carried by the stroke, not by fills: a solid rule is printed, a dashed rule is the tear line, a hand-drawn X marks a choice, and focus thickens the rule to carbon blue.\n\nMotion is small and physical: the city from the CEP writes itself in by a left-to-right clip reveal (700ms), a checkbox's X draws in two strokes (220ms, second delayed 160ms), a professional card lifts and tilts slightly on hover, and buttons press 1px down. All of it is disabled under `prefers-reduced-motion`.",
+    "keyCharacteristics": [
+      "Flat paper vias as full-bleed section colors, joined by a perforated seam.",
+      "One printing ink (gráfica red) for all print: rules, labels, numbers, stamps, primary actions.",
+      "Handwriting (Caveat, carbon blue) only for what a person writes: input values, the resolved city, marginal notes.",
+      "Condensed, heavy printed display type (Barlow Condensed 800) over a plain humanist text face (Barlow).",
+      "Square paper geometry; the only rounding is a 2px press on buttons.",
+      "Slight hand-placed rotation on physical objects (the talão, stamps, notes)."
+    ],
+    "rules": [
+      { "name": "The One Ink Rule", "body": "Everything printed is gráfica red; everything written is carbon blue. No third accent. Status red (errors) is the same gráfica ink.", "section": "colors" },
+      { "name": "The Paper Is the Color Rule", "body": "Color arrives as whole flat sheets of paper, edge to edge. No tinted cards floating on a neutral page, no color washes, no gradient fills.", "section": "colors" },
+      { "name": "The Small Print Rule", "body": "Red text smaller than about 18px regular / 14px bold sits on papel or amarela only (5.88:1 and 4.68:1). On rosa and azul, red at small sizes falls below 4.5:1; use it there only for large type or non-text rules.", "section": "colors" },
+      { "name": "The Seam Sync Rule", "body": "The perforated seam draws its scallops in an SVG data URI that cannot read CSS variables, so the paper hexes are repeated in a `PAPER` map beside it. That map is a mirror of the paper tokens, not a second palette; change both together.", "section": "colors" },
+      { "name": "The Printed vs. Written Rule", "body": "If the gráfica would have printed it, it is Barlow Condensed; if a person would have written it, it is Caveat in carbon blue. Caveat never sets headings, buttons, or labels.", "section": "typography" },
+      { "name": "The Numbers Are Printed Rule", "body": "Numbering, prices, and item numerals are Barlow Condensed with `tabular-nums`.", "section": "typography" },
+      { "name": "The Perforated Seam Rule", "body": "Two different paper sheets meet at the perforated seam (12px tall, 18px scallop tile, radius 5.5px) drawn in the upper sheet's color over the lower sheet's color. Never a straight line or a gradient fade between vias.", "section": "layout" },
+      { "name": "The Loose Sheet Rule", "body": "Only a loose sheet on top of another sheet casts a shadow, and its shadow is tinted by the paper under it. Vias, tables, and printed boxes stay flat.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do give each section a whole flat paper color (amarela, papel, rosa, azul) and join different papers with the perforated seam.",
+      "Do print every rule, label, number, and primary action in gráfica red, and write every user value and marginal note in Caveat carbon blue.",
+      "Do re-ink secondary text per paper by overriding `--texto-2` (texto-2-amarela / -rosa / -azul) on the section.",
+      "Do use ruled lines (1.5px pauta) for rows and fields, and let stroke carry state: solid printed, dashed tear, drawn X for chosen, carbono underline for focus.",
+      "Do keep corners square; buttons alone take 2px.",
+      "Do place physical objects (the talão, stamps, notes) at a slight hand angle, and keep all motion off under `prefers-reduced-motion`.",
+      "Do keep numbering and counts tied to real API data, and leave a printed blank when the data is missing."
+    ],
+    "donts": [
+      "Don't use a gradient as a color fill or a fade between sections; the only gradient in the world is the repeating ruled-line pattern of a blank card.",
+      "Don't introduce a second accent color or reuse the legacy blue/indigo (`#2563eb` family) or Inter on Talão surfaces.",
+      "Don't set small red text on rosa or azul.",
+      "Don't put the uppercase tracked label style above section headings as a kicker or eyebrow; it belongs to printed form labels on the talão and vias only.",
+      "Don't use Caveat for headings, buttons, or labels.",
+      "Don't give flat vias, tables, or printed boxes a shadow, and never use a hard offset shadow; only loose sheets cast a soft, paper-tinted one.",
+      "Don't round cards or containers."
+    ]
+  }
+}

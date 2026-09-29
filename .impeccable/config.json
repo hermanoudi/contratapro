@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "inter",
+        "createdAt": "2026-09-29T02:00:01.675Z",
+        "reason": "claude: Inter is the legacy font still used by every non-Home surface; DESIGN.md records those surfaces as not migrated yet"
+      }
+    ]
+  }
+}

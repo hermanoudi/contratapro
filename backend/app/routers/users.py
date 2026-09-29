@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import datetime
@@ -189,11 +189,13 @@ async def toggle_suspension(current_user: User = Depends(get_current_user), db: 
 async def search_professionals(
     category: Optional[str] = None,
     city: Optional[str] = None,
+    limit: Optional[int] = Query(None, ge=1, le=50),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Busca profissionais disponíveis na plataforma.
     Apenas profissionais com assinatura ativa são exibidos.
+    `limit` é usado pela Home para mostrar só alguns profissionais.
     """
     from sqlalchemy.orm import selectinload
     query = select(User).filter(
@@ -209,6 +211,9 @@ async def search_professionals(
         query = query.filter(User.category.ilike(f"%{category}%"))
     if city:
         query = query.filter(User.city.ilike(f"%{city}%"))
+    if limit:
+        # Home: prioriza quem tem avaliações reais
+        query = query.order_by(User.total_reviews.desc().nullslast(), User.id.desc()).limit(limit)
 
     result = await db.execute(query)
     return result.scalars().all()
