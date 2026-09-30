@@ -1,1197 +1,735 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Check, MapPin, User, Briefcase, Phone, Lock, Mail, Award, TrendingUp, Users } from 'lucide-react';
+import { useState, useEffect, useRef, useId } from 'react';
 import styled from 'styled-components';
+import { ArrowRight, ArrowLeft, Check, User, Phone, Mail, ImagePlus, RotateCw } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { API_URL } from '../config';
-import logoImage from '../assets/contratapro-logo.png';
 import PasswordInput from '../components/PasswordInput';
+import AuthLayout from '../components/AuthLayout';
+import { PrimaryButton, StampButton, FieldLabel, FieldNote, TextInput } from '../components/talao';
+import { StepHead, Group, Actions, FormError, FooterNote, TextField, AddressFields } from '../components/SignupParts';
+import { formatCpf, formatWhatsApp, translateError, validateAddress } from '../components/signupUtils';
 
-const PageContainer = styled.div`
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  overflow: hidden;
+// Só o que o ContrataPro faz de fato (PRODUCT.md): cadastro grátis, sem intermediar serviço nem pagamento
+const FACTS = [
+  { strong: 'Grátis e sem cartão:', text: 'o plano Free não vence. Os planos pagos só dão mais visibilidade.' },
+  { strong: 'Clientes da sua região:', text: 'quem busca pelo CEP encontra seu perfil e agenda direto na sua agenda.' },
+  { strong: 'Sem intermediário:', text: 'o cliente combina e paga direto com você, por Pix, dinheiro ou como preferirem.' },
+];
 
-  @media (max-width: 968px) {
-    grid-template-columns: 1fr;
+const TOTAL = 5;
+
+/* ------------------------------ Foto ------------------------------ */
+
+const PhotoBox = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  background: var(--papel-2);
+  border: 1.5px dashed ${({ $erro }) => ($erro ? 'var(--grafica)' : 'var(--controle)')};
+
+  @media (max-width: 420px) {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
   }
 `;
 
-const LeftSection = styled.div`
+// Mesma moldura da foto no cartão de profissional: é assim que o cliente vai ver
+const Frame = styled.div`
+  flex: none;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto;
+  border: 2px solid var(--nanquim);
+  background: var(--amarela);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3rem;
-  background: linear-gradient(135deg,
-    rgba(196, 32, 26, 0.05) 0%,
-    rgba(168, 85, 247, 0.05) 100%);
-  position: relative;
   overflow: hidden;
+  color: var(--nanquim);
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(196, 32, 26, 0.1) 0%, transparent 70%);
-    animation: pulse 15s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { transform: scale(1) rotate(0deg); }
-    50% { transform: scale(1.1) rotate(180deg); }
-  }
-
-  @media (max-width: 968px) {
-    display: none;
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 `;
 
-const BrandSection = styled.div`
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  max-width: 500px;
-`;
-
-const BrandTitle = styled.h1`
-  font-size: 3.5rem;
-  font-weight: 900;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 1.5rem;
-  letter-spacing: -0.02em;
-`;
-
-const BrandSubtitle = styled.p`
-  font-size: 1.25rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin-bottom: 2rem;
-`;
-
-const FeatureList = styled.div`
+const PhotoActions = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  margin-top: 2rem;
-`;
-
-const FeatureItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  border: 1px solid rgba(196, 32, 26, 0.1);
-`;
-
-const FeatureIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-`;
-
-const FeatureText = styled.div`
-  flex: 1;
-
-  h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.25rem;
-  }
+  gap: 0.6rem;
+  min-width: 0;
 
   p {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    margin: 0;
+    font-size: 0.95rem;
+    color: var(--texto-2-papel);
   }
 `;
 
-const RightSection = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  background: white;
-  overflow-y: auto;
-`;
-
-const FormCard = styled(motion.div)`
-  width: 100%;
-  max-width: 500px;
-  padding: 2rem;
-
-  @media (max-width: 768px) {
-    padding: 1.5rem;
-  }
-
-  @media (max-width: 480px) {
-    padding: 1rem;
-  }
-`;
-
-const StepIndicator = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 2.5rem;
-  position: relative;
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: var(--border);
-    z-index: 0;
-    transform: translateY(-50%);
-  }
-`;
-
-const StepDot = styled.div`
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: ${props => props.$active ? 'var(--primary)' : 'var(--bg-secondary)'};
-  border: 2px solid ${props => props.$active ? 'var(--primary)' : 'var(--border)'};
-  color: ${props => props.$active ? 'white' : 'var(--text-secondary)'};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.875rem;
-  font-weight: 600;
-  z-index: 1;
-  transition: all 0.3s ease;
-  box-shadow: ${props => props.$active ? '0 0 15px var(--primary-glow)' : 'none'};
-`;
-
-const Title = styled.h2`
-  font-size: 2rem;
-  font-weight: 800;
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
-`;
-
-const Subtitle = styled.p`
-  color: var(--text-secondary);
-  margin-bottom: 2rem;
-  font-size: 1rem;
-  line-height: 1.5;
-`;
-
-const InputGroup = styled.div`
-  margin-bottom: 1.25rem;
-  position: relative;
-`;
-
-const Label = styled.label`
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  background: var(--bg-secondary);
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem;
-  color: var(--text-primary);
-  font-size: 1rem;
-  transition: all 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: var(--primary);
-    background: white;
-    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
-  }
-
-  &::placeholder {
-    color: var(--text-secondary);
-    opacity: 0.6;
-  }
-
-  &:read-only {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-`;
-
-const Select = styled.select`
-  width: 100%;
-  background: var(--bg-secondary);
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem;
-  color: var(--text-primary);
-  font-size: 1rem;
-  transition: all 0.2s;
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 1rem center;
-  background-size: 1em;
-
-  &:focus {
-    outline: none;
-    border-color: var(--primary);
-    background: white;
-    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
-  }
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-`;
-
-const Button = styled.button`
-  flex: 1;
-  display: flex;
+// O input fica acessível (só escondido da vista): o rótulo estilizado é o botão
+const FilePick = styled.label`
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 1rem;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1rem;
+  min-height: 48px;
+  padding: 0 1.2rem;
+  border: 2px solid var(--grafica);
+  border-radius: 2px;
+  font-family: var(--f-impresso);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--grafica);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out);
 
-  ${props => props.$variant === 'outline' ? `
-    background: var(--bg-secondary);
-    border: 2px solid var(--border);
-    color: var(--text-primary);
-    &:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-      background: rgba(196, 32, 26, 0.05);
-    }
-  ` : `
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    border: none;
-    color: white;
-    box-shadow: 0 4px 12px rgba(196, 32, 26, 0.25);
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(196, 32, 26, 0.35);
-    }
-    &:active {
-      transform: translateY(0);
-    }
-  `}
+  &:hover {
+    background: var(--grafica);
+    color: var(--papel);
+  }
 
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
+  &:focus-within {
+    outline: 2px solid var(--carbono);
+    outline-offset: 3px;
   }
 `;
 
-const FooterLink = styled.p`
-  text-align: center;
-  margin-top: 1.5rem;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+const TextButton = styled.button`
+  align-self: center;
+  background: none;
+  border: none;
+  padding: 0;
+  min-height: 0;
+  font-size: 0.95rem;
+  color: var(--texto-2-papel);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
 
-  a {
-    color: var(--primary);
-    text-decoration: none;
-    font-weight: 600;
-    &:hover { text-decoration: underline; }
+  &:hover {
+    color: var(--grafica);
+  }
+
+  @media (min-width: 421px) {
+    align-self: flex-start;
   }
 `;
 
-const BrandLogo = styled.img`
-  height: 80px;
-  width: auto;
-  object-fit: contain;
-  margin-bottom: 2rem;
+/* ------------------------------ Planos ------------------------------ */
 
-  @media (min-width: 768px) {
-    height: 120px;
+const PlanList = styled.fieldset`
+  border: none;
+  display: grid;
+  gap: 1rem;
+
+  legend {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
   }
 `;
 
-const MobileLogo = styled.img`
-  height: 60px;
-  width: auto;
-  object-fit: contain;
-  margin: 0 auto 1.5rem;
+// Cada plano é uma folha; a escolhida ganha a moldura de gráfica
+const PlanSheet = styled.label`
+  position: relative;
   display: block;
+  padding: 1.1rem 1.25rem 1.1rem 3.25rem;
+  background: var(--papel);
+  border: ${({ $on }) => ($on ? '2px solid var(--grafica)' : '1.5px solid var(--controle)')};
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 160ms var(--ease-out);
 
-  @media (min-width: 969px) {
-    display: none;
+  input {
+    position: absolute;
+    left: 1.2rem;
+    top: 1.35rem;
+    width: 1.2rem;
+    height: 1.2rem;
+    margin: 0;
+    accent-color: var(--grafica);
+  }
+
+  &:hover {
+    border-color: var(--grafica);
+  }
+
+  &:focus-within {
+    outline: 2px solid var(--carbono);
+    outline-offset: 3px;
   }
 `;
+
+const PlanHead = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+
+  strong {
+    font-family: var(--f-impresso);
+    font-weight: 800;
+    font-size: 1.5rem;
+    line-height: 1.1;
+  }
+
+  span {
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.35rem;
+    color: var(--grafica-escura);
+    font-variant-numeric: tabular-nums;
+
+    small {
+      font-family: var(--f-texto);
+      font-weight: 500;
+      font-size: 0.95rem;
+      color: var(--texto-2-papel);
+    }
+  }
+`;
+
+const PlanItems = styled.ul`
+  list-style: none;
+  margin-top: 0.6rem;
+  display: grid;
+  gap: 0.3rem;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    font-size: 0.98rem;
+    line-height: 1.4;
+  }
+
+  svg {
+    flex: none;
+    margin-top: 0.15rem;
+    color: var(--carbono);
+  }
+`;
+
+const Loading = styled.p`
+  padding: 1rem 0;
+  color: var(--texto-2-papel);
+`;
+
+const formatPrice = (value) => `R$ ${Number(value).toFixed(2).replace('.', ',')}`;
+
+// O que cada plano dá, lido do próprio plano (seed_plans.py é a fonte)
+const planItems = (plan) => {
+  const items = [];
+  items.push(plan.max_services ? `Até ${plan.max_services} ${plan.max_services === 1 ? 'serviço' : 'serviços'} no perfil` : 'Serviços ilimitados no perfil');
+  items.push(plan.max_appointments_per_month ? `Até ${plan.max_appointments_per_month} agendamentos por mês` : 'Agendamentos ilimitados');
+  if (plan.can_manage_schedule) items.push('Agenda online com seus horários');
+  if (plan.priority_in_search >= 2) items.push('Aparece no topo da busca');
+  else if (plan.priority_in_search === 1) items.push('Aparece antes dos perfis do plano grátis na busca');
+  if (plan.badge_label) items.push(`Selo "${plan.badge_label}" no seu perfil`);
+  return items;
+};
+
+/* ------------------------------ Página ------------------------------ */
 
 export default function RegisterProfessional() {
-    const [step, setStep] = useState(1);
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [profilePicture, setProfilePicture] = useState(null);
-    const [profilePicturePreview, setProfilePicturePreview] = useState(null);
-    const [categories, setCategories] = useState({});
-    const [loadingCategories, setLoadingCategories] = useState(true);
-    const [plans, setPlans] = useState([]);
-    const [loadingPlans, setLoadingPlans] = useState(true);
-    const [selectedPlan, setSelectedPlan] = useState(null);
-    const [isPasswordValid, setIsPasswordValid] = useState(false);
-    const [formData, setFormData] = useState({
-        name: '', email: '', password: '',
-        cpf: '',
-        cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '',
-        whatsapp: '', category: '', description: ''
-    });
+  const [step, setStep] = useState(1);
+  const navigate = useNavigate();
+  const id = useId();
+  const headingRef = useRef(null);
+  const firstStepRender = useRef(true);
+  const fieldRefs = useRef({});
+  const [loading, setLoading] = useState(false);
+  const [profilePicture, setProfilePicture] = useState(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState(null);
+  const [categories, setCategories] = useState({});
+  const [categoriesState, setCategoriesState] = useState('loading'); // loading | ok | error
+  const [plans, setPlans] = useState([]);
+  const [plansState, setPlansState] = useState('loading'); // loading | ok | error
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [formError, setFormError] = useState('');
+  const [formData, setFormData] = useState({
+    name: '', email: '', password: '',
+    cpf: '',
+    cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '',
+    whatsapp: '', category: '', description: ''
+  });
 
-    useEffect(() => {
-        fetchCategories();
-        fetchPlans();
-    }, []);
+  const fetchCategories = async () => {
+    setCategoriesState('loading');
+    try {
+      const res = await fetch(`${API_URL}/categories/groups`);
+      if (!res.ok) throw new Error(String(res.status));
+      setCategories(await res.json());
+      setCategoriesState('ok');
+    } catch (e) {
+      console.error('Erro ao buscar categorias:', e);
+      setCategoriesState('error');
+    }
+  };
 
-    const fetchCategories = async () => {
-        setLoadingCategories(true);
-        try {
-            const res = await fetch(`${API_URL}/categories/groups`);
-            if (res.ok) {
-                const data = await res.json();
-                console.log('Categorias carregadas:', data);
-                setCategories(data);
-            } else {
-                console.error('Erro ao buscar categorias - status:', res.status);
-                toast.error('Erro ao carregar categorias');
-            }
-        } catch (e) {
-            console.error('Erro ao buscar categorias:', e);
-            toast.error('Erro ao carregar categorias');
-        } finally {
-            setLoadingCategories(false);
-        }
-    };
+  const fetchPlans = async () => {
+    setPlansState('loading');
+    try {
+      const res = await fetch(`${API_URL}/plans/`);
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      // Ordenar: Free primeiro, depois Pro, Premium
+      const ordered = [...data].sort((a, b) => {
+        const order = { free: 0, pro: 1, premium: 2 };
+        return (order[a.slug] ?? 99) - (order[b.slug] ?? 99);
+      });
+      setPlans(ordered);
+      // Selecionar Free por padrão
+      setSelectedPlan((current) => current ?? (ordered.find((p) => p.slug === 'free')?.id || ordered[0]?.id));
+      setPlansState('ok');
+    } catch (e) {
+      console.error('Erro ao buscar planos:', e);
+      setPlansState('error');
+    }
+  };
 
-    const fetchPlans = async () => {
-        setLoadingPlans(true);
-        try {
-            const res = await fetch(`${API_URL}/plans/`);
-            if (res.ok) {
-                const data = await res.json();
-                // Ordenar: Free primeiro, depois Pro, Premium
-                const ordered = data.sort((a, b) => {
-                    const order = { free: 0, pro: 1, premium: 2 };
-                    return (order[a.slug] ?? 99) - (order[b.slug] ?? 99);
-                });
-                setPlans(ordered);
-                // Selecionar Free por padrão
-                setSelectedPlan(ordered.find(p => p.slug === 'free')?.id || ordered[0]?.id);
-            } else {
-                console.error('Erro ao buscar planos - status:', res.status);
-                toast.error('Erro ao carregar planos');
-            }
-        } catch (e) {
-            console.error('Erro ao buscar planos:', e);
-            toast.error('Erro ao carregar planos');
-        } finally {
-            setLoadingPlans(false);
-        }
-    };
+  useEffect(() => {
+    fetchCategories();
+    fetchPlans();
+  }, []);
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+  // Troca de passo: o foco vai para o título do passo novo
+  useEffect(() => {
+    if (firstStepRender.current) {
+      firstStepRender.current = false;
+      return;
+    }
+    headingRef.current?.focus();
+  }, [step]);
 
-    const handleCpfChange = (e) => {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 11) value = value.slice(0, 11);
+  const clear = (name) => {
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
+    setFormError('');
+  };
 
-        let displayValue = value;
-        if (value.length > 9) {
-            displayValue = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6, 9)}-${value.slice(9)}`;
-        } else if (value.length > 6) {
-            displayValue = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6)}`;
-        } else if (value.length > 3) {
-            displayValue = `${value.slice(0, 3)}.${value.slice(3)}`;
-        }
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    clear(e.target.name);
+  };
 
-        setFormData(prev => ({ ...prev, cpf: displayValue }));
-    };
+  const handleProfilePictureChange = (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    // Validar tipo e tamanho (máx 5MB)
+    if (!file.type.startsWith('image/')) {
+      setErrors((prev) => ({ ...prev, photo: 'Escolha um arquivo de imagem (JPG, PNG ou GIF).' }));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, photo: 'Essa imagem passa de 5 MB. Escolha uma menor.' }));
+      return;
+    }
+    clear('photo');
+    setProfilePicture(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setProfilePicturePreview(reader.result);
+    reader.readAsDataURL(file);
+  };
 
-    const handleWhatsAppChange = (e) => {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 11) value = value.slice(0, 11);
+  const focusFirst = (found) => {
+    const first = Object.keys(found)[0];
+    const el = fieldRefs.current[first] || document.getElementById(`${id}-${first}`);
+    el?.focus();
+  };
 
-        let displayValue = value;
-        if (value.length === 11) {
-            displayValue = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
-        } else if (value.length === 10) {
-            displayValue = `(${value.slice(0, 2)}) ${value.slice(2, 6)}-${value.slice(6)}`;
-        } else if (value.length > 6) {
-            displayValue = `(${value.slice(0, 2)}) ${value.slice(2)}`;
-        } else if (value.length > 2) {
-            displayValue = `(${value.slice(0, 2)}) ${value.slice(2)}`;
-        }
+  // Regras de cada passo (as mesmas de antes, agora com o erro no próprio campo)
+  const validateStep = () => {
+    const found = {};
+    if (step === 1) {
+      if (!formData.name.trim()) found.name = 'Informe seu nome.';
+      if (formData.cpf.replace(/\D/g, '').length !== 11) found.cpf = 'O CPF precisa ter 11 números.';
+      if (!formData.email.trim()) found.email = 'Informe seu e-mail.';
+      if (!formData.password) found.password = 'Crie uma senha.';
+      else if (!isPasswordValid) found.password = 'A senha ainda não cumpre todas as regras abaixo.';
+    }
+    if (step === 2) Object.assign(found, validateAddress(formData));
+    if (step === 3) {
+      if (formData.whatsapp.replace(/\D/g, '').length < 10) found.whatsapp = 'Informe o WhatsApp com DDD.';
+      if (!formData.category) found.category = 'Escolha a categoria do seu trabalho.';
+    }
+    if (step === 4 && !profilePicture) found.photo = 'A foto é obrigatória: é ela que o cliente vê no seu cartão.';
+    if (step === 5 && !selectedPlan) found.plan = 'Escolha um plano.';
+    return found;
+  };
 
-        setFormData(prev => ({ ...prev, whatsapp: displayValue }));
-    };
+  const nextStep = (e) => {
+    e.preventDefault();
+    const found = validateStep();
+    setErrors(found);
+    if (Object.keys(found).length) {
+      focusFirst(found);
+      return;
+    }
+    setStep((s) => Math.min(s + 1, TOTAL));
+  };
 
-    const handleCepChange = (e) => {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 8) value = value.slice(0, 8);
+  const prevStep = () => {
+    setErrors({});
+    setFormError('');
+    setStep((s) => Math.max(s - 1, 1));
+  };
 
-        let displayValue = value;
-        if (value.length > 5) {
-            displayValue = value.replace(/^(\d{5})(\d)/, '$1-$2');
-        }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const found = validateStep();
+    setErrors(found);
+    if (Object.keys(found).length) return;
 
-        setFormData(prev => ({ ...prev, cep: displayValue }));
+    setLoading(true);
+    setFormError('');
+    try {
+      const payload = {
+        ...formData,
+        is_professional: true,
+        cpf: formData.cpf.replace(/\D/g, ''),  // Enviar apenas números
+        cep: formData.cep.replace('-', '')
+      };
 
-        if (value.length === 8) {
-            fetchAddress(value);
-        }
-    };
+      // 1. Criar usuário
+      const response = await fetch(`${API_URL}/users/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    const fetchAddress = async (cleanCep) => {
-        try {
-            const response = await fetch(`/api/cep/${cleanCep}`);
-            if (response.ok) {
-                const data = await response.json();
-                setFormData(prev => ({
-                    ...prev,
-                    street: data.street,
-                    neighborhood: data.neighborhood,
-                    city: data.city,
-                    state: data.state
-                }));
-                toast.success('Endereço localizado!');
-            } else {
-                toast.error('CEP não encontrado.');
-                setFormData(prev => ({ ...prev, city: '', state: '', street: '', neighborhood: '' }));
-            }
-        } catch (error) {
-            console.error('Erro ao buscar CEP:', error);
-            toast.error('Erro ao buscar CEP. Tente novamente.');
-        }
-    };
+      if (response.ok) {
+        // 2. Fazer login
+        const loginRes = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: formData.email, password: formData.password })
+        });
 
-    const handleProfilePictureChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            // Validar tamanho (máx 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                toast.error('Imagem muito grande. Máximo: 5MB');
-                return;
-            }
-            // Validar tipo
-            if (!file.type.startsWith('image/')) {
-                toast.error('Apenas imagens são permitidas');
-                return;
-            }
-            setProfilePicture(file);
-            // Criar preview
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setProfilePicturePreview(reader.result);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
+        if (loginRes.ok) {
+          const loginData = await loginRes.json();
+          localStorage.setItem('token', loginData.access_token);
 
-    const nextStep = () => {
-        if (step === 1 && (!formData.name || !formData.email || !formData.password || !formData.cpf)) {
-            toast.error('Preencha todos os dados básicos incluindo o CPF.');
-            return;
-        }
-        if (step === 1 && !isPasswordValid) {
-            toast.error('Crie uma senha forte que atenda a todos os requisitos.');
-            return;
-        }
-        if (step === 1 && formData.cpf.replace(/\D/g, '').length !== 11) {
-            toast.error('CPF deve conter 11 dígitos.');
-            return;
-        }
-        if (step === 2 && (!formData.cep || !formData.street || !formData.number || !formData.city)) {
-            toast.error('Preencha o endereço completo.');
-            return;
-        }
-        if (step === 3 && (!formData.whatsapp || !formData.category)) {
-            toast.error('Preencha os dados profissionais.');
-            return;
-        }
-        setStep(s => Math.min(s + 1, 5));
-    };
-    const prevStep = () => setStep(s => Math.max(s - 1, 1));
+          // 3. Fazer upload da foto de perfil
+          if (profilePicture) {
+            const formDataPhoto = new FormData();
+            formDataPhoto.append('file', profilePicture);
 
-    const handleSubmit = async () => {
-        if (!profilePicture) {
-            toast.error('Foto de perfil é obrigatória para profissionais.');
-            return;
-        }
-
-        if (!selectedPlan) {
-            toast.error('Selecione um plano.');
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const payload = {
-                ...formData,
-                is_professional: true,
-                cpf: formData.cpf.replace(/\D/g, ''),  // Enviar apenas números
-                cep: formData.cep.replace('-', '')
-            };
-
-            // 1. Criar usuário
-            const response = await fetch(`${API_URL}/users/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+            await fetch(`${API_URL}/users/upload-profile-picture`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${loginData.access_token}` },
+              body: formDataPhoto
             });
+          }
 
-            if (response.ok) {
-                // 2. Fazer login
-                const loginRes = await fetch(`${API_URL}/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: formData.email, password: formData.password })
-                });
+          // 4. Atribuir plano selecionado
+          const selectedPlanData = plans.find((p) => p.id === selectedPlan);
+          if (selectedPlanData) {
+            await fetch(`${API_URL}/plans/me/change-plan`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${loginData.access_token}`
+              },
+              body: JSON.stringify({ new_plan_slug: selectedPlanData.slug })
+            });
+          }
 
-                if (loginRes.ok) {
-                    const loginData = await loginRes.json();
-                    localStorage.setItem('token', loginData.access_token);
-
-                    // 3. Fazer upload da foto de perfil
-                    if (profilePicture) {
-                        const formDataPhoto = new FormData();
-                        formDataPhoto.append('file', profilePicture);
-
-                        await fetch(`${API_URL}/users/upload-profile-picture`, {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${loginData.access_token}` },
-                            body: formDataPhoto
-                        });
-                    }
-
-                    // 4. Atribuir plano selecionado
-                    const selectedPlanData = plans.find(p => p.id === selectedPlan);
-                    if (selectedPlanData) {
-                        await fetch(`${API_URL}/plans/me/change-plan`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${loginData.access_token}`
-                            },
-                            body: JSON.stringify({ new_plan_slug: selectedPlanData.slug })
-                        });
-                    }
-
-                    // 5. Redirecionar baseado no plano
-                    const isFreePlan = selectedPlanData?.slug === 'free';
-                    if (isFreePlan) {
-                        toast.success(`Cadastro realizado! Seu plano Free gratuito foi ativado.`);
-                        navigate('/dashboard');
-                    } else {
-                        toast.success(`Cadastro realizado! Agora vamos configurar o pagamento.`);
-                        navigate('/subscription/setup');
-                    }
-                } else {
-                    toast.warning('Cadastro realizado, mas erro ao fazer login. Faça login manualmente.');
-                    navigate('/login');
-                }
-            } else {
-                const errorData = await response.json();
-                toast.error(`Erro ao cadastrar: ${errorData.detail || 'Verifique os dados.'}`);
-            }
-        } catch (error) {
-            console.error('Erro na requisição:', error);
-            toast.error('Erro de conexão com o servidor.');
-        } finally {
-            setLoading(false);
+          // 5. Redirecionar baseado no plano
+          const isFreePlan = selectedPlanData?.slug === 'free';
+          if (isFreePlan) {
+            toast.success('Cadastro feito. Seu plano Free já está ativo.');
+            navigate('/dashboard');
+          } else {
+            toast.success('Cadastro feito. Agora é só configurar o pagamento do plano.');
+            navigate('/subscription/setup');
+          }
+        } else {
+          toast.warning('Cadastro feito, mas não deu para entrar automaticamente. Entre com seu e-mail e senha.');
+          navigate('/login');
         }
-    };
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setFormError(translateError(errorData.detail, 'Não deu para concluir o cadastro. Confira os dados e tente de novo.'));
+      }
+    } catch (error) {
+      console.error('Erro na requisição:', error);
+      setFormError('Não deu para falar com o servidor. Confira sua conexão e tente de novo.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <PageContainer>
-            <LeftSection>
-                <BrandSection>
-                    <BrandLogo src={logoImage} alt="ContrataPro" />
-                    <BrandSubtitle>
-                        Transforme seu talento em oportunidades. Conecte-se com clientes que precisam dos seus serviços.
-                    </BrandSubtitle>
+  const back = (
+    <StampButton type="button" onClick={prevStep}>
+      <ArrowLeft size={20} aria-hidden="true" /> Voltar
+    </StampButton>
+  );
 
-                    <FeatureList>
-                        <FeatureItem>
-                            <FeatureIcon>
-                                <Award size={24} />
-                            </FeatureIcon>
-                            <FeatureText>
-                                <h3>Perfil Profissional</h3>
-                                <p>Destaque suas habilidades e experiência</p>
-                            </FeatureText>
-                        </FeatureItem>
+  return (
+    <AuthLayout asideTitle="Seu trabalho, na agenda de quem mora perto." facts={FACTS} wide={step === 5}>
+      {step === 1 && (
+        <form onSubmit={nextStep} noValidate>
+          <StepHead ref={headingRef} step={1} total={TOTAL} title="Crie sua conta de profissional" lead="Seus dados de acesso. O cadastro é grátis e sem cartão." />
 
-                        <FeatureItem>
-                            <FeatureIcon>
-                                <Users size={24} />
-                            </FeatureIcon>
-                            <FeatureText>
-                                <h3>Novos Clientes</h3>
-                                <p>Alcance mais pessoas que procuram seus serviços</p>
-                            </FeatureText>
-                        </FeatureItem>
+          <TextField
+            id={`${id}-name`}
+            label="Nome completo"
+            icon={User}
+            name="name"
+            autoComplete="name"
+            placeholder="Como os clientes vão te ver"
+            value={formData.name}
+            onChange={handleChange}
+            error={errors.name}
+            required
+          />
+          <TextField
+            id={`${id}-cpf`}
+            label="CPF"
+            name="cpf"
+            inputMode="numeric"
+            placeholder="000.000.000-00"
+            maxLength={14}
+            value={formData.cpf}
+            onChange={(e) => { setFormData((prev) => ({ ...prev, cpf: formatCpf(e.target.value) })); clear('cpf'); }}
+            error={errors.cpf}
+            required
+          />
+          <TextField
+            id={`${id}-email`}
+            label="E-mail"
+            icon={Mail}
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="seu@email.com"
+            value={formData.email}
+            onChange={handleChange}
+            error={errors.email}
+            required
+          />
+          <Group>
+            <FieldLabel htmlFor={`${id}-password`}>Senha</FieldLabel>
+            <PasswordInput
+              id={`${id}-password`}
+              name="password"
+              placeholder="Crie uma senha"
+              value={formData.password}
+              onChange={handleChange}
+              onValidChange={setIsPasswordValid}
+              showGenerateButton={true}
+              showTooltip={true}
+              required
+            />
+            {errors.password && <FieldNote $tone="erro" role="alert">{errors.password}</FieldNote>}
+          </Group>
 
-                        <FeatureItem>
-                            <FeatureIcon>
-                                <TrendingUp size={24} />
-                            </FeatureIcon>
-                            <FeatureText>
-                                <h3>Cresça Seu Negócio</h3>
-                                <p>Ferramentas para gerenciar e expandir sua atuação</p>
-                            </FeatureText>
-                        </FeatureItem>
-                    </FeatureList>
-                </BrandSection>
-            </LeftSection>
+          <Actions $single>
+            <PrimaryButton type="submit">Continuar para o endereço <ArrowRight size={20} aria-hidden="true" /></PrimaryButton>
+          </Actions>
+        </form>
+      )}
 
-            <RightSection>
-                <FormCard
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                >
-                <MobileLogo src={logoImage} alt="ContrataPro" />
-                <StepIndicator>
-                    {[1, 2, 3, 4, 5].map(i => (
-                        <StepDot key={i} $active={step >= i}>
-                            {step > i ? <Check size={16} /> : i}
-                        </StepDot>
-                    ))}
-                </StepIndicator>
+      {step === 2 && (
+        <form onSubmit={nextStep} noValidate>
+          <StepHead ref={headingRef} step={2} total={TOTAL} title="Onde você atende" lead="Pelo seu endereço, os clientes da região encontram você na busca por CEP." />
+          <AddressFields
+            idPrefix={id}
+            formData={formData}
+            setFormData={(update) => { setFormData(update); setFormError(''); }}
+            errors={errors}
+            cepRef={(el) => { fieldRefs.current.cep = el; }}
+          />
+          <Actions>
+            {back}
+            <PrimaryButton type="submit">Continuar <ArrowRight size={20} aria-hidden="true" /></PrimaryButton>
+          </Actions>
+        </form>
+      )}
 
-                <AnimatePresence mode='wait'>
-                    {step === 1 && (
-                        <motion.div
-                            key="step1"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                                <div style={{
-                                    background: 'rgba(196, 32, 26, 0.1)',
-                                    width: '64px', height: '64px',
-                                    borderRadius: '50%',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    margin: '0 auto 1rem',
-                                    color: 'var(--primary)'
-                                }}>
-                                    <User size={32} />
-                                </div>
-                                <Title>Crie sua conta Pro</Title>
-                                <Subtitle>Comece a oferecer seus serviços hoje mesmo.</Subtitle>
-                            </div>
+      {step === 3 && (
+        <form onSubmit={nextStep} noValidate>
+          <StepHead ref={headingRef} step={3} total={TOTAL} title="Seu trabalho" lead="Como os clientes falam com você e o que você faz." />
 
-                            <InputGroup>
-                                <Label>Nome Completo</Label>
-                                <Input
-                                    name="name"
-                                    placeholder="Ex: João da Silva"
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                />
-                            </InputGroup>
-                            <InputGroup>
-                                <Label>CPF *</Label>
-                                <Input
-                                    name="cpf"
-                                    placeholder="000.000.000-00"
-                                    value={formData.cpf}
-                                    onChange={handleCpfChange}
-                                    maxLength={14}
-                                />
-                            </InputGroup>
-                            <InputGroup>
-                                <Label>E-mail</Label>
-                                <Input
-                                    name="email"
-                                    type="email"
-                                    placeholder="seu@email.com"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                />
-                            </InputGroup>
-                            <InputGroup>
-                                <Label>Senha</Label>
-                                <PasswordInput
-                                    name="password"
-                                    placeholder="Crie uma senha forte"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    onValidChange={setIsPasswordValid}
-                                    showGenerateButton={true}
-                                    showTooltip={true}
-                                />
-                            </InputGroup>
-                            <ButtonGroup>
-                                <Button onClick={nextStep}>
-                                    Continuar para Endereço <ChevronRight size={20} />
-                                </Button>
-                            </ButtonGroup>
-                        </motion.div>
-                    )}
+          <TextField
+            id={`${id}-whatsapp`}
+            label="WhatsApp"
+            icon={Phone}
+            name="whatsapp"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel-national"
+            placeholder="(00) 00000-0000"
+            value={formData.whatsapp}
+            onChange={(e) => { setFormData((prev) => ({ ...prev, whatsapp: formatWhatsApp(e.target.value) })); clear('whatsapp'); }}
+            error={errors.whatsapp}
+            required
+          />
 
-                    {step === 2 && (
-                        <motion.div
-                            key="step2"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                                <div style={{
-                                    background: 'rgba(16, 185, 129, 0.1)',
-                                    width: '64px', height: '64px',
-                                    borderRadius: '50%',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    margin: '0 auto 1rem',
-                                    color: '#10b981'
-                                }}>
-                                    <MapPin size={32} />
-                                </div>
-                                <Title>Sua Localização</Title>
-                                <Subtitle>Onde você está baseado?</Subtitle>
-                            </div>
+          <Group>
+            <FieldLabel htmlFor={`${id}-category`}>Categoria principal</FieldLabel>
+            <TextInput
+              as="select"
+              id={`${id}-category`}
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              disabled={categoriesState === 'loading'}
+              aria-invalid={errors.category ? true : undefined}
+              aria-describedby={errors.category || categoriesState === 'error' ? `${id}-category-nota` : undefined}
+              required
+            >
+              <option value="">
+                {categoriesState === 'loading' ? 'Carregando as categorias…' : 'Escolha uma categoria'}
+              </option>
+              {Object.entries(categories).map(([group, items]) => (
+                <optgroup key={group} label={group}>
+                  {items.map((cat) => (
+                    <option key={cat.id} value={cat.slug}>{cat.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </TextInput>
+            {categoriesState === 'error' ? (
+              <FieldNote id={`${id}-category-nota`} $tone="erro">
+                Não deu para carregar as categorias.{' '}
+                <TextButton type="button" onClick={fetchCategories}><RotateCw size={14} aria-hidden="true" /> Tentar de novo</TextButton>
+              </FieldNote>
+            ) : errors.category && (
+              <FieldNote id={`${id}-category-nota`} $tone="erro">{errors.category}</FieldNote>
+            )}
+          </Group>
 
-                            <InputGroup>
-                                <Label>CEP</Label>
-                                <Input
-                                    name="cep"
-                                    placeholder="00000-000"
-                                    value={formData.cep}
-                                    onChange={handleCepChange}
-                                    maxLength={9}
-                                />
-                            </InputGroup>
+          <Group>
+            <FieldLabel htmlFor={`${id}-description`}>Descrição curta</FieldLabel>
+            <TextInput
+              as="textarea"
+              id={`${id}-description`}
+              rows={3}
+              name="description"
+              placeholder="Ex.: faço acabamento fino, atendo aos sábados"
+              value={formData.description}
+              onChange={handleChange}
+              style={{ resize: 'vertical', padding: '0.75rem 1rem', minHeight: '6rem' }}
+            />
+            <FieldNote>Opcional. Aparece no seu perfil.</FieldNote>
+          </Group>
 
-                            <InputGroup>
-                                <Label>Rua / Logradouro</Label>
-                                <Input name="street" value={formData.street} onChange={handleChange} placeholder="Rua..." />
-                            </InputGroup>
+          <Actions>
+            {back}
+            <PrimaryButton type="submit">Continuar para a foto <ArrowRight size={20} aria-hidden="true" /></PrimaryButton>
+          </Actions>
+        </form>
+      )}
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <InputGroup>
-                                    <Label>Número</Label>
-                                    <Input name="number" value={formData.number} onChange={handleChange} placeholder="123" />
-                                </InputGroup>
-                                <InputGroup>
-                                    <Label>Complemento</Label>
-                                    <Input name="complement" value={formData.complement} onChange={handleChange} placeholder="Apto, Sala..." />
-                                </InputGroup>
-                            </div>
+      {step === 4 && (
+        <form onSubmit={nextStep} noValidate>
+          <StepHead ref={headingRef} step={4} total={TOTAL} title="Sua foto" lead="Quem vai receber você em casa quer ver seu rosto. É esta foto que aparece no seu cartão na busca." />
 
-                            <InputGroup>
-                                <Label>Bairro</Label>
-                                <Input name="neighborhood" value={formData.neighborhood} onChange={handleChange} placeholder="Bairro..." />
-                            </InputGroup>
+          <PhotoBox $erro={!!errors.photo}>
+            <Frame>
+              {profilePicturePreview ? <img src={profilePicturePreview} alt="Prévia da sua foto" /> : <User size={56} aria-hidden="true" />}
+            </Frame>
+            <PhotoActions>
+              <FilePick>
+                <input
+                  id={`${id}-photo`}
+                  className="sr-only"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePictureChange}
+                  aria-describedby={`${id}-photo-nota`}
+                  ref={(el) => { fieldRefs.current.photo = el; }}
+                />
+                <ImagePlus size={20} aria-hidden="true" />
+                {profilePicture ? 'Trocar a foto' : 'Escolher a foto'}
+              </FilePick>
+              {profilePicture && (
+                <TextButton type="button" onClick={() => { setProfilePicture(null); setProfilePicturePreview(null); }}>
+                  Tirar esta foto
+                </TextButton>
+              )}
+              <p id={`${id}-photo-nota`}>JPG, PNG ou GIF, até 5 MB.</p>
+            </PhotoActions>
+          </PhotoBox>
+          {errors.photo && <FieldNote $tone="erro" role="alert">{errors.photo}</FieldNote>}
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
-                                <InputGroup>
-                                    <Label>Cidade</Label>
-                                    <Input name="city" value={formData.city} readOnly style={{ opacity: 0.7 }} />
-                                </InputGroup>
-                                <InputGroup>
-                                    <Label>UF</Label>
-                                    <Input name="state" value={formData.state} readOnly style={{ opacity: 0.7 }} />
-                                </InputGroup>
-                            </div>
+          <Actions>
+            {back}
+            <PrimaryButton type="submit">Continuar para o plano <ArrowRight size={20} aria-hidden="true" /></PrimaryButton>
+          </Actions>
+        </form>
+      )}
 
-                            <ButtonGroup>
-                                <Button $variant="outline" onClick={prevStep}>
-                                    <ChevronLeft size={20} /> Voltar
-                                </Button>
-                                <Button onClick={nextStep}>
-                                    Continuar <ChevronRight size={20} />
-                                </Button>
-                            </ButtonGroup>
-                        </motion.div>
-                    )}
+      {step === 5 && (
+        <form onSubmit={handleSubmit} noValidate>
+          <StepHead ref={headingRef} step={5} total={TOTAL} title="Escolha seu plano" lead="Dá para começar no Free e passar para um plano pago depois." />
 
-                    {step === 3 && (
-                        <motion.div
-                            key="step3"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                                <div style={{
-                                    background: 'rgba(139, 92, 246, 0.1)',
-                                    width: '64px', height: '64px',
-                                    borderRadius: '50%',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    margin: '0 auto 1rem',
-                                    color: 'var(--accent)'
-                                }}>
-                                    <Briefcase size={32} />
-                                </div>
-                                <Title>Perfil Profissional</Title>
-                                <Subtitle>Conte-nos o que você faz de melhor.</Subtitle>
-                            </div>
+          {plansState === 'loading' && <Loading role="status">Carregando os planos…</Loading>}
+          {plansState === 'error' && (
+            <FieldNote $tone="erro" role="alert">
+              Não deu para carregar os planos.{' '}
+              <TextButton type="button" onClick={fetchPlans}><RotateCw size={14} aria-hidden="true" /> Tentar de novo</TextButton>
+            </FieldNote>
+          )}
+          {plansState === 'ok' && (
+            <PlanList>
+              <legend>Planos</legend>
+              {plans.map((plan) => {
+                const isFree = plan.slug === 'free';
+                const on = selectedPlan === plan.id;
+                return (
+                  <PlanSheet key={plan.id} $on={on}>
+                    <input
+                      type="radio"
+                      name="plano"
+                      value={plan.id}
+                      checked={on}
+                      onChange={() => { setSelectedPlan(plan.id); clear('plan'); }}
+                    />
+                    <PlanHead>
+                      <strong>{plan.name}</strong>
+                      <span>
+                        {isFree ? 'Grátis' : formatPrice(plan.price)}
+                        <small>{isFree ? ' sem prazo' : ' por mês'}</small>
+                      </span>
+                    </PlanHead>
+                    <PlanItems>
+                      {planItems(plan).map((item) => (
+                        <li key={item}><Check size={16} aria-hidden="true" /> {item}</li>
+                      ))}
+                    </PlanItems>
+                  </PlanSheet>
+                );
+              })}
+            </PlanList>
+          )}
+          {errors.plan && <FieldNote $tone="erro" role="alert">{errors.plan}</FieldNote>}
+          {formError && <FormError>{formError}</FormError>}
 
-                            <InputGroup>
-                                <Label>WhatsApp</Label>
-                                <Input
-                                    name="whatsapp"
-                                    placeholder="(00) 00000-0000"
-                                    value={formData.whatsapp}
-                                    onChange={handleWhatsAppChange}
-                                />
-                            </InputGroup>
-                            <InputGroup>
-                                <Label>Categoria Principal</Label>
-                                <Select
-                                    name="category"
-                                    value={formData.category}
-                                    onChange={handleChange}
-                                    disabled={loadingCategories}
-                                >
-                                    <option value="">
-                                        {loadingCategories ? 'Carregando categorias...' : 'Selecione uma categoria...'}
-                                    </option>
-                                    {!loadingCategories && Object.entries(categories).map(([group, items]) => (
-                                        <optgroup key={group} label={group}>
-                                            {items.map((cat) => (
-                                                <option key={cat.id} value={cat.slug}>
-                                                    {cat.name}
-                                                </option>
-                                            ))}
-                                        </optgroup>
-                                    ))}
-                                </Select>
-                            </InputGroup>
-                            <InputGroup>
-                                <Label>Descrição Curta</Label>
-                                <Input
-                                    as="textarea"
-                                    rows="3"
-                                    name="description"
-                                    placeholder="Ex: Especialista em acabamentos finos..."
-                                    value={formData.description}
-                                    onChange={handleChange}
-                                    style={{ resize: 'none', height: '80px' }}
-                                />
-                            </InputGroup>
+          <Actions>
+            {back}
+            <PrimaryButton type="submit" disabled={loading || plansState !== 'ok'}>
+              {loading ? 'Criando o cadastro…' : <>Criar meu cadastro <Check size={20} aria-hidden="true" /></>}
+            </PrimaryButton>
+          </Actions>
+        </form>
+      )}
 
-                            <ButtonGroup>
-                                <Button $variant="outline" onClick={prevStep}>
-                                    <ChevronLeft size={20} /> Voltar
-                                </Button>
-                                <Button onClick={nextStep}>
-                                    Continuar para Foto <ChevronRight size={20} />
-                                </Button>
-                            </ButtonGroup>
-                        </motion.div>
-                    )}
-
-                    {step === 4 && (
-                        <motion.div
-                            key="step4"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                                <div style={{
-                                    background: 'rgba(196, 32, 26, 0.1)',
-                                    width: '64px', height: '64px',
-                                    borderRadius: '50%',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    margin: '0 auto 1rem',
-                                    color: 'var(--primary)'
-                                }}>
-                                    <User size={32} />
-                                </div>
-                                <Title>Foto de Perfil</Title>
-                                <Subtitle>Adicione uma foto para os clientes te conhecerem</Subtitle>
-                            </div>
-
-                            <div style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: '1.5rem',
-                                padding: '2rem',
-                                background: 'var(--bg-secondary)',
-                                borderRadius: '16px',
-                                border: '2px dashed var(--border)'
-                            }}>
-                                {profilePicturePreview ? (
-                                    <div style={{ position: 'relative' }}>
-                                        <img
-                                            src={profilePicturePreview}
-                                            alt="Preview"
-                                            style={{
-                                                width: '200px',
-                                                height: '200px',
-                                                borderRadius: '50%',
-                                                objectFit: 'cover',
-                                                border: '4px solid var(--primary)'
-                                            }}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setProfilePicture(null);
-                                                setProfilePicturePreview(null);
-                                            }}
-                                            style={{
-                                                position: 'absolute',
-                                                top: '10px',
-                                                right: '10px',
-                                                background: '#ef4444',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '50%',
-                                                width: '32px',
-                                                height: '32px',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontSize: '1.2rem',
-                                                fontWeight: 'bold'
-                                            }}
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div style={{
-                                        width: '200px',
-                                        height: '200px',
-                                        borderRadius: '50%',
-                                        background: 'rgba(196, 32, 26, 0.1)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: 'var(--primary)'
-                                    }}>
-                                        <User size={80} />
-                                    </div>
-                                )}
-
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleProfilePictureChange}
-                                    style={{ display: 'none' }}
-                                    id="profile-picture-input"
-                                />
-                                <label htmlFor="profile-picture-input" style={{ width: '100%' }}>
-                                    <div style={{
-                                        width: '100%',
-                                        padding: '1rem',
-                                        background: 'linear-gradient(135deg, var(--primary), var(--accent))',
-                                        color: 'white',
-                                        borderRadius: '12px',
-                                        textAlign: 'center',
-                                        cursor: 'pointer',
-                                        fontWeight: 600,
-                                        transition: 'transform 0.2s',
-                                    }}
-                                    onMouseEnter={(e) => e.target.style.transform = 'translateY(-2px)'}
-                                    onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
-                                    >
-                                        {profilePicture ? 'Trocar Foto' : 'Selecionar Foto'}
-                                    </div>
-                                </label>
-
-                                <p style={{
-                                    fontSize: '0.875rem',
-                                    color: 'var(--text-secondary)',
-                                    textAlign: 'center',
-                                    margin: 0
-                                }}>
-                                    Formatos aceitos: JPG, PNG, GIF (máx 5MB)
-                                </p>
-                            </div>
-
-                            <ButtonGroup>
-                                <Button $variant="outline" onClick={prevStep}>
-                                    <ChevronLeft size={20} /> Voltar
-                                </Button>
-                                <Button onClick={nextStep}>
-                                    Continuar para Plano <ChevronRight size={20} />
-                                </Button>
-                            </ButtonGroup>
-                        </motion.div>
-                    )}
-
-                    {step === 5 && (
-                        <motion.div
-                            key="step5"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                                <div style={{
-                                    background: 'rgba(16, 185, 129, 0.1)',
-                                    width: '64px', height: '64px',
-                                    borderRadius: '50%',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    margin: '0 auto 1rem',
-                                    color: '#10b981'
-                                }}>
-                                    <Award size={32} />
-                                </div>
-                                <Title>Escolha seu Plano</Title>
-                                <Subtitle>Selecione o plano ideal para o seu negócio</Subtitle>
-                            </div>
-
-                            {loadingPlans ? (
-                                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                                    Carregando planos...
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                                    {plans.map(plan => {
-                                        const isTrial = plan.slug === 'free';
-                                        const isSelected = selectedPlan === plan.id;
-                                        return (
-                                            <div
-                                                key={plan.id}
-                                                onClick={() => setSelectedPlan(plan.id)}
-                                                style={{
-                                                    border: isSelected ? '2px solid var(--primary)' : '2px solid var(--border)',
-                                                    borderRadius: '12px',
-                                                    padding: '1.5rem',
-                                                    cursor: 'pointer',
-                                                    background: isSelected ? 'rgba(196, 32, 26, 0.05)' : 'var(--bg)',
-                                                    transition: 'all 0.2s',
-                                                    position: 'relative'
-                                                }}
-                                            >
-                                                {isTrial && (
-                                                    <div style={{
-                                                        position: 'absolute',
-                                                        top: '-10px',
-                                                        right: '20px',
-                                                        background: '#10b981',
-                                                        color: 'white',
-                                                        padding: '0.25rem 0.75rem',
-                                                        borderRadius: '12px',
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 700
-                                                    }}>
-                                                        🎁 GRÁTIS PERMANENTE
-                                                    </div>
-                                                )}
-                                                {plan.slug === 'pro' && (
-                                                    <div style={{
-                                                        position: 'absolute',
-                                                        top: '-10px',
-                                                        right: '20px',
-                                                        background: 'var(--primary)',
-                                                        color: 'white',
-                                                        padding: '0.25rem 0.75rem',
-                                                        borderRadius: '12px',
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 700
-                                                    }}>
-                                                        ✨ MAIS POPULAR
-                                                    </div>
-                                                )}
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>{plan.name}</h3>
-                                                    <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)' }}>
-                                                        {isTrial ? 'GRÁTIS' : `R$ ${plan.price.toFixed(2).replace('.', ',')}`}
-                                                        <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-secondary)' }}>
-                                                            {isTrial ? ' permanente' : '/mês'}
-                                                        </span>
-                                                    </p>
-                                                </div>
-                                                <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                                                    {isTrial && 'Comece sem compromisso, gratuito para sempre'}
-                                                    {plan.slug === 'pro' && 'Ideal para quem quer crescer e ser encontrado'}
-                                                    {plan.slug === 'premium' && 'Máxima visibilidade, topo da busca'}
-                                                </p>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
-                                                    {isTrial && (
-                                                        <>
-                                                            <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                <Check size={16} color="#10b981" /> Gratuito permanente
-                                                            </p>
-                                                            <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                <Check size={16} color="#10b981" /> Até 3 agendamentos/mês
-                                                            </p>
-                                                        </>
-                                                    )}
-                                                    <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        <Check size={16} color="#10b981" />
-                                                        {plan.max_services ? `Máximo ${plan.max_services} serviço` : 'Serviços ilimitados'}
-                                                    </p>
-                                                    {plan.can_manage_schedule && (
-                                                        <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                            <Check size={16} color="#10b981" /> Agenda online
-                                                        </p>
-                                                    )}
-                                                    {plan.priority_in_search > 0 && (
-                                                        <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                            <Check size={16} color="#10b981" /> ⭐ Prioridade na busca
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-                            <ButtonGroup>
-                                <Button $variant="outline" onClick={prevStep}>
-                                    <ChevronLeft size={20} /> Voltar
-                                </Button>
-                                <Button onClick={handleSubmit} disabled={loading || !selectedPlan}>
-                                    {loading ? 'Cadastrando...' : 'Finalizar Cadastro'}
-                                    {!loading && <Check size={20} />}
-                                </Button>
-                            </ButtonGroup>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                <FooterLink>
-                    Já tem uma conta? <Link to="/login">Entrar</Link>
-                </FooterLink>
-            </FormCard>
-            </RightSection>
-        </PageContainer>
-    );
+      <FooterNote>
+        Já tem uma conta? <Link to="/login">Entrar</Link>
+      </FooterNote>
+    </AuthLayout>
+  );
 }

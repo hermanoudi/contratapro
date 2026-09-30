@@ -1,236 +1,106 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { motion } from 'framer-motion';
-import { CheckCircle, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
-import logoImage from '../assets/contratapro-logo.png';
+import { CheckCircle, AlertCircle, Lock, RotateCw } from 'lucide-react';
 import PasswordInput from '../components/PasswordInput';
+import ForgotPasswordModal from '../components/ForgotPasswordModal';
+import AuthLayout, { AuthTitle, AuthLead } from '../components/AuthLayout';
+import { PrimaryButton, StampButton, FieldLabel, InputBox, TextInput, FieldNote } from '../components/talao';
+import { Group, Actions, FormError } from '../components/SignupParts';
+import { translateError } from '../components/signupUtils';
 import { API_URL } from '../config';
 
-const PageContainer = styled.div`
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg,
-    rgba(196, 32, 26, 0.05) 0%,
-    rgba(168, 85, 247, 0.05) 100%);
-  padding: 2rem;
-`;
+// Estado do link numa folha só: ícone, título e o que fazer agora
+const Status = styled.div`
 
-const Card = styled(motion.div)`
-  background: white;
-  border-radius: 20px;
-  padding: 2.5rem;
-  max-width: 440px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-`;
+  svg {
+    color: ${({ $tone }) => ($tone === 'ok' ? 'var(--sucesso)' : 'var(--grafica)')};
+  }
 
-const Logo = styled.img`
-  height: 60px;
-  margin: 0 auto 1.5rem;
-  display: block;
-`;
+  h1 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--f-impresso);
+    font-weight: 800;
+    font-size: clamp(1.9rem, 4vw, 2.4rem);
+    line-height: 1.05;
+  }
 
-const Title = styled.h1`
-  font-size: 1.75rem;
-  font-weight: 800;
-  text-align: center;
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
-`;
-
-const Subtitle = styled.p`
-  color: var(--text-secondary);
-  text-align: center;
-  margin-bottom: 2rem;
-  line-height: 1.5;
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: 1.5rem;
-
-  label {
-    display: block;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
+  p {
+    margin-top: 0.75rem;
+    line-height: 1.55;
+    color: var(--texto-2-papel);
   }
 `;
 
-const ConfirmInput = styled.input`
-  width: 100%;
-  padding: 0.875rem 1rem;
-  border: 2px solid ${props =>
-    props.$match === true ? '#10b981' :
-    props.$match === false ? '#ef4444' : 'var(--border)'};
-  border-radius: 12px;
-  font-size: 1rem;
-  transition: all 0.2s;
-  background: white;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: ${props =>
-      props.$match === true ? '#10b981' :
-      props.$match === false ? '#ef4444' : 'var(--primary)'};
-    box-shadow: 0 0 0 3px ${props =>
-      props.$match === true ? 'rgba(16, 185, 129, 0.1)' :
-      props.$match === false ? 'rgba(239, 68, 68, 0.1)' : 'var(--primary-glow)'};
-  }
-
-  &::placeholder {
-    color: var(--text-muted);
-  }
-`;
-
-const MatchMessage = styled.p`
-  font-size: 0.75rem;
-  margin-top: 0.5rem;
-  color: ${props => props.$match ? '#10b981' : '#ef4444'};
-`;
-
-const Button = styled.button`
-  width: 100%;
-  padding: 1rem;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 1rem;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(196, 32, 26, 0.35);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-  }
-`;
-
-const StatusContainer = styled.div`
-  text-align: center;
-  padding: 2rem 0;
-`;
-
-const StatusIcon = styled.div`
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: ${props =>
-    props.$success ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 1.5rem;
-  color: ${props => props.$success ? '#10b981' : '#ef4444'};
-`;
-
-const StatusTitle = styled.h2`
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 0.75rem;
-  color: var(--text-primary);
-`;
-
-const StatusDescription = styled.p`
-  color: var(--text-secondary);
-  font-size: 1rem;
-  line-height: 1.6;
-  margin-bottom: 1.5rem;
-`;
-
-const LinkButton = styled.button`
-  background: var(--bg-secondary);
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  cursor: pointer;
-  text-align: center;
-  padding: 0.875rem;
-  transition: all 0.2s;
-  font-weight: 600;
-  width: 100%;
-
-  &:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-    background: rgba(196, 32, 26, 0.05);
-  }
+const Loading = styled.p`
+  color: var(--texto-2-papel);
+  font-size: 1.05rem;
 `;
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token');
+  const id = useId();
 
-  const [validating, setValidating] = useState(true);
-  const [tokenValid, setTokenValid] = useState(false);
+  const [linkState, setLinkState] = useState(token ? 'validating' : 'invalid'); // validating | valid | invalid | offline
+  const [attempt, setAttempt] = useState(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordValid, setPasswordValid] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+  const [forgotOpen, setForgotOpen] = useState(false);
 
-  const passwordsMatch = confirmPassword.length > 0
-    ? password === confirmPassword
-    : null;
+  const passwordsMatch = confirmPassword.length > 0 ? password === confirmPassword : null;
 
   useEffect(() => {
-    const validateToken = async () => {
-      if (!token) {
-        setValidating(false);
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `${API_URL}/auth/validate-reset-token?token=${token}`
-        );
-        const data = await response.json();
-
+    if (!token) return undefined;
+    let cancelled = false;
+    fetch(`${API_URL}/auth/validate-reset-token?token=${encodeURIComponent(token)}`)
+      .then((response) => (response.ok || response.status < 500 ? response.json() : Promise.reject(new Error(String(response.status)))))
+      .then((data) => {
+        if (cancelled) return;
         if (data.valid) {
-          setTokenValid(true);
           setEmail(data.email);
+          setLinkState('valid');
+        } else {
+          setLinkState('invalid');
         }
-      } catch (error) {
-        console.error('Error validating token:', error);
-      } finally {
-        setValidating(false);
-      }
-    };
+      })
+      .catch((err) => {
+        console.error('Error validating token:', err);
+        // Falha de rede não é link vencido: deixa tentar de novo
+        if (!cancelled) setLinkState('offline');
+      });
+    return () => { cancelled = true; };
+  }, [token, attempt]);
 
-    validateToken();
-  }, [token]);
+  const retry = () => {
+    setLinkState('validating');
+    setAttempt((n) => n + 1);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (password !== confirmPassword) {
-      toast.error('As senhas nao conferem');
-      return;
-    }
+    setError('');
 
     if (!passwordValid) {
-      toast.error('A senha nao atende aos criterios de seguranca');
+      setError('A senha ainda não cumpre todas as regras.');
+      document.getElementById(`${id}-senha`)?.focus();
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('As duas senhas não são iguais.');
+      document.getElementById(`${id}-confirmar`)?.focus();
       return;
     }
 
     setLoading(true);
-
     try {
       const response = await fetch(`${API_URL}/auth/reset-password`, {
         method: 'POST',
@@ -240,133 +110,116 @@ export default function ResetPassword() {
 
       if (response.ok) {
         setSuccess(true);
-        toast.success('Senha alterada com sucesso!');
       } else {
-        const data = await response.json();
-        toast.error(data.detail || 'Erro ao redefinir senha');
+        const data = await response.json().catch(() => ({}));
+        setError(translateError(data.detail, 'Não deu para trocar a senha. Tente de novo.'));
       }
-    } catch (error) {
-      console.error(error);
-      toast.error('Erro de conexao');
+    } catch (err) {
+      console.error(err);
+      setError('Não deu para falar com o servidor. Confira sua conexão e tente de novo.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (validating) {
-    return (
-      <PageContainer>
-        <Card>
-          <Logo src={logoImage} alt="ContrataPro" />
-          <Subtitle>Validando link...</Subtitle>
-        </Card>
-      </PageContainer>
+  let content;
+  if (linkState === 'validating') {
+    content = <Loading role="status">Conferindo o link…</Loading>;
+  } else if (success) {
+    content = (
+      <Status $tone="ok" role="status">
+        <h1><CheckCircle size={30} aria-hidden="true" /> Senha trocada</h1>
+        <p>Pronto. Agora é só entrar com a senha nova.</p>
+        <Actions $single>
+          <PrimaryButton type="button" onClick={() => navigate('/login')}>Ir para o login</PrimaryButton>
+        </Actions>
+      </Status>
     );
-  }
-
-  if (success) {
-    return (
-      <PageContainer>
-        <Card
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <Logo src={logoImage} alt="ContrataPro" />
-          <StatusContainer>
-            <StatusIcon $success>
-              <CheckCircle size={40} />
-            </StatusIcon>
-            <StatusTitle>Senha alterada!</StatusTitle>
-            <StatusDescription>
-              Sua senha foi redefinida com sucesso. Voce ja pode fazer login
-              com sua nova senha.
-            </StatusDescription>
-            <LinkButton onClick={() => navigate('/login')}>
-              Ir para o Login
-            </LinkButton>
-          </StatusContainer>
-        </Card>
-      </PageContainer>
+  } else if (linkState === 'offline') {
+    content = (
+      <Status role="status">
+        <h1><AlertCircle size={30} aria-hidden="true" /> Não deu para conferir o link</h1>
+        <p>Pode ser a sua conexão ou uma instabilidade do nosso lado. O link continua valendo; tente de novo.</p>
+        <Actions $single>
+          <PrimaryButton type="button" onClick={retry}><RotateCw size={18} aria-hidden="true" /> Tentar de novo</PrimaryButton>
+        </Actions>
+      </Status>
     );
-  }
-
-  if (!tokenValid) {
-    return (
-      <PageContainer>
-        <Card
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <Logo src={logoImage} alt="ContrataPro" />
-          <StatusContainer>
-            <StatusIcon>
-              <AlertCircle size={40} />
-            </StatusIcon>
-            <StatusTitle>Link invalido</StatusTitle>
-            <StatusDescription>
-              Este link de recuperacao de senha e invalido ou ja expirou.
-              Solicite um novo link de recuperacao.
-            </StatusDescription>
-            <LinkButton onClick={() => navigate('/login')}>
-              Voltar para o Login
-            </LinkButton>
-          </StatusContainer>
-        </Card>
-      </PageContainer>
+  } else if (linkState === 'invalid') {
+    content = (
+      <Status role="status">
+        <h1><AlertCircle size={30} aria-hidden="true" /> Este link não vale mais</h1>
+        <p>O link para criar uma senha nova vale por 24 horas e só pode ser usado uma vez. Peça um link novo: ele chega no seu e-mail.</p>
+        <Actions>
+          <StampButton type="button" onClick={() => navigate('/login')}>Voltar</StampButton>
+          <PrimaryButton type="button" onClick={() => setForgotOpen(true)}>Pedir um link novo</PrimaryButton>
+        </Actions>
+      </Status>
     );
-  }
+  } else {
+    content = (
+      <>
+        <AuthTitle>Crie uma senha nova</AuthTitle>
+        <AuthLead>Para a conta <strong>{email}</strong>.</AuthLead>
 
-  return (
-    <PageContainer>
-      <Card
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <Logo src={logoImage} alt="ContrataPro" />
-        <Title>Nova Senha</Title>
-        <Subtitle>
-          Digite sua nova senha para a conta {email}
-        </Subtitle>
-
-        <form onSubmit={handleSubmit}>
-          <FormGroup>
-            <label>Nova Senha</label>
+        <form onSubmit={handleSubmit} noValidate>
+          <Group>
+            <FieldLabel htmlFor={`${id}-senha`}>Senha nova</FieldLabel>
             <PasswordInput
+              id={`${id}-senha`}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Digite sua nova senha"
+              onChange={(e) => { setPassword(e.target.value); setError(''); }}
+              placeholder="Crie uma senha"
               showGenerateButton={true}
               showTooltip={true}
               onValidChange={setPasswordValid}
               required
             />
-          </FormGroup>
+          </Group>
 
-          <FormGroup>
-            <label>Confirmar Senha</label>
-            <ConfirmInput
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirme sua nova senha"
-              $match={passwordsMatch}
-              required
-            />
+          <Group>
+            <FieldLabel htmlFor={`${id}-confirmar`}>Repita a senha</FieldLabel>
+            <InputBox>
+              <Lock size={20} aria-hidden="true" />
+              <TextInput
+                id={`${id}-confirmar`}
+                $icon
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                placeholder="A mesma senha"
+                aria-invalid={passwordsMatch === false ? true : undefined}
+                aria-describedby={`${id}-confere`}
+                required
+              />
+            </InputBox>
             {confirmPassword.length > 0 && (
-              <MatchMessage $match={passwordsMatch}>
-                {passwordsMatch ? 'Senhas conferem' : 'Senhas nao conferem'}
-              </MatchMessage>
+              <FieldNote id={`${id}-confere`} aria-live="polite" $tone={passwordsMatch ? undefined : 'erro'}>
+                {passwordsMatch ? 'As duas senhas são iguais.' : 'As duas senhas ainda não são iguais.'}
+              </FieldNote>
             )}
-          </FormGroup>
+          </Group>
 
-          <Button
-            type="submit"
-            disabled={loading || !passwordValid || !passwordsMatch}
-          >
-            {loading ? 'Redefinindo...' : 'Redefinir Senha'}
-          </Button>
+          {error && <FormError>{error}</FormError>}
+
+          <Actions $single>
+            <PrimaryButton type="submit" disabled={loading}>
+              {loading ? 'Trocando a senha…' : 'Trocar a senha'}
+            </PrimaryButton>
+          </Actions>
         </form>
-      </Card>
-    </PageContainer>
+      </>
+    );
+  }
+
+  return (
+    <AuthLayout
+      asideTitle="Senha nova, mesma conta."
+      asideLead="Depois de trocar, entre com a senha nova. Seu cadastro continua como estava."
+    >
+      {content}
+      <ForgotPasswordModal isOpen={forgotOpen} onClose={() => setForgotOpen(false)} />
+    </AuthLayout>
   );
 }

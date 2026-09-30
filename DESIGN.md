@@ -247,6 +247,18 @@ Shared pieces live in `frontend/src/components/talao/`. Pages import them from t
   - `TextInput` is a square box: 1.5px `--controle` border (3:1), 52px tall. Focus is the talão focus: an azul wash with a carbono inset rule.
   - Errors are written under the form in gráfica with `role="alert"`, not only in a toast.
 - **Dialogs:** use native `<dialog>` with `showModal()`, so Esc and focus trapping come for free. The sheet is papel with a 4px gráfica top rule and square corners. Content renders only while open (see `ForgotPasswordModal`).
+- **Signups (contained register):** `components/SignupParts.jsx` and `components/signupUtils.js`.
+  - **Step header:** printed "Passo N de M" in gráfica-escura caps over the h1. Focus moves to the h1 on every step change.
+  - **Fields:** `TextField` is label, input and its own error in one piece.
+  - **Address:** `AddressFields` looks the CEP up at `${API_URL}/cep/`. Its status line reads "Consultando…", "Endereço em…", or not found/offline. When the lookup fails, Cidade and UF become editable, so a CEP outage never blocks a signup.
+  - **Actions:** "Voltar" as a stamp beside the primary. Under 480px they stack with the primary on top.
+  - **Validation:** errors are written under each field and the first invalid field takes focus. Toasts are only for what happens after navigation.
+  - **Backend messages:** `translateError` maps the ones that arrive in English or without accents.
+- **Password field:** `components/PasswordInput.jsx`, used by the signups, the new-password page and admin.
+  - **Rules:** they sit in an inline list under the field and tick in sucesso as they are met. The field is never red while the person is typing; it turns sucesso only when every rule passes.
+  - **Eye toggle:** reachable by Tab.
+  - **Generated password:** shown in a papel-2 box with a sucesso rule and a copy button, in monospace so l, I and 1 don't get confused.
+- **Plan choice:** each plan is a papel sheet holding a real radio. The chosen one gets a 2px gráfica frame; the others a 1.5px controle frame. Plan items come from the plan record (services, bookings/month, search priority, badge label), never hardcoded marketing ("mais popular", emoji).
 - **Surface:** `TalaoPage` sets the font, ink, paper, `::selection` and focus ring, and holds `font-size: 1rem` against the mobile body shrink in `index.css`. `Wrap` is the 1200px column. `paperSurface('rosa')` paints a via and tints `--texto-2` for it. Every sheet of papel resting on a coloured via resets `--texto-2` via `cardSheet`.
 - **Components:**
   - Type: `Display` (always carries `data-display`, so the mobile `!important` heading rule never shrinks it), `Lead`, `Hand`.

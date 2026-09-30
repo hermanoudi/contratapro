@@ -368,7 +368,7 @@ export default function ProfessionalProfile() {
 
     if (value.length === 8) {
       try {
-        const response = await fetch(`/api/cep/${value}`);
+        const response = await fetch(`${API_URL}/cep/${value}`);
         if (response.ok) {
           const data = await response.json();
           setFormData(prev => ({

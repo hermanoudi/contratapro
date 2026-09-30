@@ -1,15 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
-import { Eye, EyeOff, Check, X, RefreshCw, Copy } from 'lucide-react';
+import { Eye, EyeOff, Check, Circle, RefreshCw, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { API_URL } from '../config';
 
-const InputContainer = styled.div`
+/* Campo de senha nova no registro contido. As regras aparecem logo abaixo, em lista,
+   e vão sendo marcadas enquanto a pessoa digita; o campo não fica vermelho no meio
+   da digitação: só ganha a borda de sucesso quando tudo foi atendido. */
+
+const Wrapper = styled.div`
   position: relative;
   width: 100%;
 `;
 
-const InputWrapper = styled.div`
+const InputRow = styled.div`
   position: relative;
   display: flex;
   align-items: center;
@@ -17,195 +21,162 @@ const InputWrapper = styled.div`
 
 const StyledInput = styled.input`
   width: 100%;
-  padding: 0.875rem 1rem;
-  padding-right: ${props => props.$hasActions ? '5rem' : '3rem'};
-  border: 2px solid ${props => props.$isValid === true ? '#10b981' : props.$isValid === false ? '#ef4444' : 'var(--border)'};
-  border-radius: 12px;
-  font-size: 1rem;
-  transition: all 0.2s;
-  background: white;
-
-  &:focus {
-    outline: none;
-    border-color: ${props => props.$isValid === true ? '#10b981' : props.$isValid === false ? '#ef4444' : 'var(--primary)'};
-    box-shadow: 0 0 0 3px ${props => props.$isValid === true ? 'rgba(16, 185, 129, 0.1)' : props.$isValid === false ? 'rgba(239, 68, 68, 0.1)' : 'var(--primary-glow)'};
-  }
+  min-height: 52px;
+  padding: 0 3.25rem 0 1rem;
+  background: var(--papel);
+  border: 1.5px solid ${({ $isValid }) => ($isValid ? 'var(--sucesso)' : 'var(--controle)')};
+  border-radius: 2px;
+  font-family: var(--f-texto);
+  font-size: 1.05rem;
+  color: var(--nanquim);
+  transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), background-color 160ms var(--ease-out);
 
   &::placeholder {
-    color: var(--text-muted);
+    color: var(--texto-2-papel);
+    opacity: 1;
+  }
+
+  &:focus,
+  &:focus-visible {
+    outline: none;
+    border-color: ${({ $isValid }) => ($isValid ? 'var(--sucesso)' : 'var(--carbono)')};
+    background: rgba(207, 224, 245, 0.35);
+    box-shadow: inset 0 -2.5px 0 ${({ $isValid }) => ($isValid ? 'var(--sucesso)' : 'var(--carbono)')};
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 `;
 
-const IconButton = styled.button`
+const EyeButton = styled.button`
   position: absolute;
-  right: ${props => props.$position || '0.75rem'};
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-secondary);
-  padding: 0.25rem;
-  display: flex;
+  right: 0.25rem;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s;
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: none;
+  color: var(--texto-2-papel);
+  cursor: pointer;
 
   &:hover {
-    color: var(--primary);
+    color: var(--grafica);
   }
+`;
 
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
+const Rules = styled.ul`
+  list-style: none;
+  display: grid;
+  gap: 0.2rem 1rem;
+  margin-top: 0.6rem;
+
+  @media (min-width: 420px) {
+    grid-template-columns: 1fr 1fr;
   }
+`;
+
+const Rule = styled.li`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  color: ${({ $met }) => ($met ? 'var(--sucesso)' : 'var(--texto-2-papel)')};
+
+  svg {
+    flex: none;
+  }
+`;
+
+const Strong = styled.p`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--sucesso);
 `;
 
 const GenerateButton = styled.button`
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+  gap: 0.45rem;
+  min-height: 40px;
+  margin-top: 0.6rem;
+  padding: 0 0.8rem;
+  background: none;
+  border: 1.5px solid var(--controle);
+  border-radius: 2px;
+  font-family: var(--f-impresso);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.03em;
+  color: var(--nanquim);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color 160ms var(--ease-out), color 160ms var(--ease-out);
 
-  &:hover {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
+  &:hover:not(:disabled) {
+    border-color: var(--grafica);
+    color: var(--grafica);
   }
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.5;
-  }
-
-  svg {
-    transition: transform 0.3s;
-  }
-
-  &:hover svg {
-    transform: rotate(180deg);
+    opacity: 0.55;
   }
 `;
 
-const Tooltip = styled.div`
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  z-index: 100;
-  opacity: ${props => props.$show ? 1 : 0};
-  visibility: ${props => props.$show ? 'visible' : 'hidden'};
-  transform: translateY(${props => props.$show ? '0' : '-10px'});
-  transition: all 0.2s;
-`;
-
-const TooltipTitle = styled.div`
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: var(--text-primary);
-  margin-bottom: 0.75rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const CriteriaList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
-const CriteriaItem = styled.li`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: ${props => props.$met ? '#10b981' : 'var(--text-secondary)'};
-  transition: color 0.2s;
-
-  svg {
-    flex-shrink: 0;
-  }
-`;
-
-const StrengthBar = styled.div`
-  margin-top: 0.75rem;
-  height: 4px;
-  background: var(--border);
-  border-radius: 2px;
-  overflow: hidden;
-`;
-
-const StrengthFill = styled.div`
-  height: 100%;
-  width: ${props => props.$strength}%;
-  background: ${props => {
-    if (props.$strength <= 20) return '#ef4444';
-    if (props.$strength <= 40) return '#f97316';
-    if (props.$strength <= 60) return '#eab308';
-    if (props.$strength <= 80) return '#84cc16';
-    return '#10b981';
-  }};
-  transition: all 0.3s;
-`;
-
-const StrengthLabel = styled.div`
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  margin-top: 0.25rem;
-  text-align: right;
-`;
-
-const GeneratedPasswordDisplay = styled.div`
+// A senha gerada aparece por extenso para a pessoa guardar; monoespaçada para não confundir l, I e 1
+const Generated = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin-top: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: #f0fdf4;
-  border: 1px solid #86efac;
-  border-radius: 8px;
-  font-family: monospace;
-  font-size: 0.875rem;
-  color: #166534;
-`;
+  padding: 0.5rem 0.5rem 0.5rem 0.9rem;
+  background: var(--papel-2);
+  border: 1.5px solid var(--sucesso);
+  border-radius: 2px;
 
-const CopyButton = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #166534;
-  padding: 0.25rem;
-  display: flex;
-  align-items: center;
-  transition: transform 0.2s;
+  code {
+    flex: 1;
+    font-family: monospace;
+    font-size: 0.95rem;
+    color: var(--nanquim);
+    word-break: break-all;
+  }
 
-  &:hover {
-    transform: scale(1.1);
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: none;
+    border: none;
+    color: var(--sucesso);
+    cursor: pointer;
   }
 `;
 
 const criteriaLabels = {
-  min_length: 'Mínimo 8 caracteres',
-  has_uppercase: 'Letra maiúscula (A-Z)',
-  has_lowercase: 'Letra minúscula (a-z)',
-  has_number: 'Número (0-9)',
-  has_special: 'Caractere especial (!@#$%...)'
+  min_length: 'Mínimo de 8 caracteres',
+  has_uppercase: 'Uma letra maiúscula',
+  has_lowercase: 'Uma letra minúscula',
+  has_number: 'Um número',
+  has_special: 'Um símbolo (!@#$…)'
 };
+
+// Validação local, para resposta imediata; a API confirma logo depois
+const validateLocally = (password) => ({
+  min_length: password.length >= 8,
+  has_uppercase: /[A-Z]/.test(password),
+  has_lowercase: /[a-z]/.test(password),
+  has_number: /[0-9]/.test(password),
+  has_special: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)
+});
 
 export default function PasswordInput({
   value,
@@ -220,51 +191,23 @@ export default function PasswordInput({
   required = false
 }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  const [criteria, setCriteria] = useState({
-    min_length: false,
-    has_uppercase: false,
-    has_lowercase: false,
-    has_number: false,
-    has_special: false
-  });
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState('');
+  // Resposta da API guardada junto com a senha que ela avaliou
+  const [apiResult, setApiResult] = useState({ value: null, criteria: null });
 
-  // Validação local (fallback)
-  const validateLocally = useCallback((password) => {
-    return {
-      min_length: password.length >= 8,
-      has_uppercase: /[A-Z]/.test(password),
-      has_lowercase: /[a-z]/.test(password),
-      has_number: /[0-9]/.test(password),
-      has_special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
-    };
-  }, []);
+  const localCriteria = useMemo(() => validateLocally(value || ''), [value]);
+  const criteria = apiResult.value === value && apiResult.criteria ? apiResult.criteria : localCriteria;
+  const isValid = !!value && Object.values(criteria).every(Boolean);
 
-  // Validar senha quando o valor muda
   useEffect(() => {
-    if (!value) {
-      setCriteria({
-        min_length: false,
-        has_uppercase: false,
-        has_lowercase: false,
-        has_number: false,
-        has_special: false
-      });
-      if (onValidChange) onValidChange(false);
-      return;
-    }
-
-    // Validação local primeiro (para feedback imediato)
-    const localCriteria = validateLocally(value);
-    setCriteria(localCriteria);
-
-    const isValid = Object.values(localCriteria).every(Boolean);
     if (onValidChange) onValidChange(isValid);
+  }, [isValid, onValidChange]);
 
-    // Validação na API (opcional, para consistência)
-    const validateWithApi = async () => {
+  // Confirma na API com debounce; sem API, fica a validação local
+  useEffect(() => {
+    if (!value) return undefined;
+    const timeoutId = setTimeout(async () => {
       try {
         const res = await fetch(`${API_URL}/auth/validate-password`, {
           method: 'POST',
@@ -273,37 +216,27 @@ export default function PasswordInput({
         });
         if (res.ok) {
           const data = await res.json();
-          setCriteria(data.criteria);
-          if (onValidChange) onValidChange(data.is_valid);
+          if (data?.criteria) setApiResult({ value, criteria: data.criteria });
         }
-      } catch (e) {
-        // Fallback: usar validação local
-        console.log('Usando validação local');
+      } catch {
+        // Sem conexão: vale a validação local
       }
-    };
-
-    // Debounce para não fazer muitas requisições
-    const timeoutId = setTimeout(validateWithApi, 300);
+    }, 300);
     return () => clearTimeout(timeoutId);
-  }, [value, onValidChange, validateLocally]);
+  }, [value]);
 
   const handleGeneratePassword = async () => {
     setIsGenerating(true);
     try {
       const res = await fetch(`${API_URL}/auth/generate-password`);
-      if (res.ok) {
-        const data = await res.json();
-        setGeneratedPassword(data.password);
-        onChange({ target: { value: data.password, name } });
-        toast.success('Senha forte gerada!');
-      } else {
-        throw new Error('Erro ao gerar senha');
-      }
-    } catch (e) {
-      // Fallback: gerar localmente
+      if (!res.ok) throw new Error('Erro ao gerar senha');
+      const data = await res.json();
+      setGeneratedPassword(data.password);
+      onChange({ target: { value: data.password, name } });
+    } catch {
+      // Sem API: gera no navegador, com um de cada tipo
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=';
       let password = '';
-      // Garantir pelo menos um de cada tipo
       password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
       password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
       password += '0123456789'[Math.floor(Math.random() * 10)];
@@ -311,109 +244,86 @@ export default function PasswordInput({
       for (let i = 0; i < 12; i++) {
         password += chars[Math.floor(Math.random() * chars.length)];
       }
-      // Embaralhar
       password = password.split('').sort(() => Math.random() - 0.5).join('');
       setGeneratedPassword(password);
       onChange({ target: { value: password, name } });
-      toast.success('Senha forte gerada!');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedPassword);
-    toast.success('Senha copiada!');
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedPassword);
+      toast.success('Senha copiada.');
+    } catch {
+      toast.error('Não deu para copiar. Selecione a senha e copie à mão.');
+    }
   };
 
-  const metCount = Object.values(criteria).filter(Boolean).length;
-  const strength = (metCount / 5) * 100;
-  const isValid = metCount === 5;
-
-  const getStrengthLabel = () => {
-    if (strength <= 20) return 'Muito fraca';
-    if (strength <= 40) return 'Fraca';
-    if (strength <= 60) return 'Média';
-    if (strength <= 80) return 'Boa';
-    return 'Forte';
-  };
+  const rulesId = id ? `${id}-regras` : undefined;
 
   return (
-    <InputContainer>
-      <InputWrapper>
+    <Wrapper>
+      <InputRow>
         <StyledInput
           type={showPassword ? 'text' : 'password'}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-          $isValid={value ? isValid : null}
-          $hasActions={showGenerateButton}
+          $isValid={isValid}
           disabled={disabled}
           name={name}
           id={id}
           required={required}
           autoComplete="new-password"
+          aria-describedby={showTooltip ? rulesId : undefined}
         />
-        <IconButton
+        <EyeButton
           type="button"
           onClick={() => setShowPassword(!showPassword)}
-          $position={showGenerateButton ? '2.5rem' : '0.75rem'}
-          tabIndex={-1}
           aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+          aria-pressed={showPassword}
         >
-          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-        </IconButton>
-      </InputWrapper>
+          {showPassword ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
+        </EyeButton>
+      </InputRow>
 
       {showTooltip && (
-        <Tooltip $show={isFocused && value?.length > 0} role="tooltip" aria-live="polite">
-          <TooltipTitle>
-            {isValid ? (
-              <>
-                <Check size={16} color="#10b981" />
-                Senha forte!
-              </>
-            ) : (
-              'Requisitos da senha:'
-            )}
-          </TooltipTitle>
-          <CriteriaList>
-            {Object.entries(criteria).map(([key, met]) => (
-              <CriteriaItem key={key} $met={met} aria-label={`${criteriaLabels[key]}: ${met ? 'atendido' : 'não atendido'}`}>
-                {met ? <Check size={16} color="#10b981" /> : <X size={16} color="#d1d5db" />}
-                {criteriaLabels[key]}
-              </CriteriaItem>
-            ))}
-          </CriteriaList>
-          <StrengthBar role="progressbar" aria-valuenow={strength} aria-valuemin="0" aria-valuemax="100">
-            <StrengthFill $strength={strength} />
-          </StrengthBar>
-          <StrengthLabel>{getStrengthLabel()}</StrengthLabel>
-        </Tooltip>
+        isValid ? (
+          <Strong id={rulesId} aria-live="polite">
+            <Check size={16} aria-hidden="true" /> Senha forte.
+          </Strong>
+        ) : (
+          <Rules id={rulesId} aria-label="A senha precisa ter">
+            {Object.entries(criteriaLabels).map(([key, label]) => {
+              const met = !!criteria[key];
+              return (
+                <Rule key={key} $met={met}>
+                  {met ? <Check size={16} aria-hidden="true" /> : <Circle size={10} aria-hidden="true" />}
+                  <span>{label}{met ? <span className="sr-only"> (ok)</span> : ''}</span>
+                </Rule>
+              );
+            })}
+          </Rules>
+        )
       )}
 
       {showGenerateButton && (
-        <GenerateButton
-          type="button"
-          onClick={handleGeneratePassword}
-          disabled={isGenerating || disabled}
-          aria-label="Gerar senha forte automaticamente"
-        >
-          <RefreshCw size={16} className={isGenerating ? 'animate-spin' : ''} />
-          {isGenerating ? 'Gerando...' : 'Gerar senha forte'}
+        <GenerateButton type="button" onClick={handleGeneratePassword} disabled={isGenerating || disabled}>
+          <RefreshCw size={16} aria-hidden="true" />
+          {isGenerating ? 'Gerando…' : 'Gerar uma senha forte'}
         </GenerateButton>
       )}
 
       {generatedPassword && generatedPassword === value && (
-        <GeneratedPasswordDisplay>
-          <span style={{ flex: 1, wordBreak: 'break-all' }}>{generatedPassword}</span>
-          <CopyButton type="button" onClick={copyToClipboard} aria-label="Copiar senha">
-            <Copy size={16} />
-          </CopyButton>
-        </GeneratedPasswordDisplay>
+        <Generated>
+          <code>{generatedPassword}</code>
+          <button type="button" onClick={copyToClipboard} aria-label="Copiar senha">
+            <Copy size={18} aria-hidden="true" />
+          </button>
+        </Generated>
       )}
-    </InputContainer>
+    </Wrapper>
   );
 }
