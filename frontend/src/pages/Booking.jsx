@@ -1,712 +1,344 @@
-import { useState, useEffect } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useId } from 'react';
+import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { Calendar as CalendarIcon, Clock, MapPin, Star, ChevronLeft, CheckCircle, Briefcase, MessageCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';
-import { API_URL } from '../config';
+import { MapPin, Star, ArrowLeft, ArrowRight, MessageCircle, RotateCw, Check, AlertCircle } from 'lucide-react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
+import { API_URL } from '../config';
+import { translateError } from '../components/apiErrors';
+import {
+  TalaoPage,
+  Wrap,
+  paperSurface,
+  Display,
+  Lead,
+  Hand,
+  PrimaryButton,
+  StampLink,
+  Seam,
+  TrustNote,
+  SiteHeader,
+  SiteFooter,
+  TalaoSheet,
+  Canhoto,
+  TalaoBody,
+  TalaoHead,
+  TalaoBrand,
+  SubmitRow,
+  Perforation,
+  PrintedCircle,
+  HandCross,
+  FieldNote,
+  whatsappLink as buildWhatsappLink,
+} from '../components/talao';
 
-const BookingContainer = styled.div`
-  min-height: 100vh;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  padding: 2rem;
+/* Perfil público e agendamento (/p/:slug) no mundo "Talão de Orçamento":
+   o profissional na via amarela, o pedido de agendamento num talão de verdade
+   e as avaliações na via rosa. É a continuação da Home e da busca. */
 
-  @media (max-width: 768px) {
-    padding: 1rem;
-  }
+/* ------------------------------ Regras de data e horário ------------------------------ */
 
-  @media (max-width: 480px) {
-    padding: 0.75rem;
-  }
+const formatDateToISO = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
-  @media (max-width: 360px) {
-    padding: 0.75rem;
-  }
+// working_hours usa 0 = segunda … 6 = domingo
+const weekdayIndex = (date) => (date.getDay() === 0 ? 6 : date.getDay() - 1);
+
+// Segunda-feira da semana da data: a API devolve 7 dias a partir do start_date
+const weekStart = (date) => {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  d.setDate(d.getDate() - weekdayIndex(d));
+  return d;
+};
+
+const toMinutes = (time) => {
+  if (!time) return null;
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + (m || 0);
+};
+
+// A mesma normalização da Home: "Uberlandia" e "Uberlândia" são a mesma cidade
+const norm = (value) => (value || '').normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
+
+const formatPrice = (value) =>
+  Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: Number.isInteger(Number(value)) ? 0 : 2 });
+
+const longDate = (date) => date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+/* ------------------------------ Perfil: via amarela ------------------------------ */
+
+const Perfil = styled.section`
+  ${paperSurface('amarela')}
+  padding: clamp(1.25rem, 4vw, 2.5rem) 0 clamp(2.5rem, 6vw, 4rem);
 `;
 
-const Content = styled.div`
-  max-width: 1000px;
-  margin: 0 auto;
-
-  .back-button {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    margin-bottom: 2rem;
-    font-size: 1rem;
-
-    @media (max-width: 768px) {
-      font-size: 0.9rem;
-      margin-bottom: 1.5rem;
-    }
-  }
-`;
-
-const ProHeader = styled.div`
-  background: var(--bg-secondary);
-  border-radius: 24px;
-  padding: 2rem;
-  border: 1px solid var(--border);
-  display: flex;
-  gap: 2rem;
-  margin-bottom: 2rem;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 1.5rem;
-    padding: 1.5rem;
-    border-radius: 16px;
-  }
-
-  @media (max-width: 480px) {
-    gap: 1rem;
-    padding: 1.25rem;
-    border-radius: 12px;
-  }
-
-  @media (max-width: 360px) {
-    gap: 0.75rem;
-    padding: 1rem;
-  }
-
-  .pro-avatar {
-    width: 100px;
-    height: 100px;
-    border-radius: 24px;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2.5rem;
-    overflow: hidden;
-    flex-shrink: 0;
-
-    @media (max-width: 768px) {
-      width: 80px;
-      height: 80px;
-      font-size: 2rem;
-      border-radius: 16px;
-    }
-
-    @media (max-width: 360px) {
-      width: 70px;
-      height: 70px;
-      font-size: 1.75rem;
-      border-radius: 12px;
-    }
-
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-  }
-
-  h1 {
-    font-size: 2rem;
-    font-weight: 800;
-
-    @media (max-width: 768px) {
-      font-size: 1.5rem;
-    }
-
-    @media (max-width: 480px) {
-      font-size: 1.3rem;
-    }
-
-    @media (max-width: 380px) {
-      font-size: 1.2rem;
-    }
-  }
-
-  .pro-category {
-    color: var(--primary);
-    font-weight: 600;
-    font-size: 1.1rem;
-
-    @media (max-width: 768px) {
-      font-size: 1rem;
-    }
-
-    @media (max-width: 480px) {
-      font-size: 0.9rem;
-    }
-  }
-
-  .pro-description {
-    color: var(--text-secondary);
-    margin-top: 1rem;
-    line-height: 1.6;
-
-    @media (max-width: 768px) {
-      font-size: 0.9rem;
-    }
-  }
-`;
-
-const Section = styled.div`
-  background: var(--bg-secondary);
-  border-radius: 24px;
-  padding: 2rem;
-  border: 1px solid var(--border);
-  margin-bottom: 2rem;
-  box-sizing: border-box;
-  max-width: 100%;
-
-  @media (max-width: 768px) {
-    padding: 1.5rem;
-    border-radius: 16px;
-  }
-
-  @media (max-width: 360px) {
-    padding: 1rem;
-  }
-
-  h2 {
-    font-size: 1.25rem;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    line-height: 1.4;
-    word-break: break-word;
-
-    svg {
-      flex-shrink: 0;
-    }
-
-    @media (max-width: 768px) {
-      font-size: 1.05rem;
-      margin-bottom: 1rem;
-    }
-
-    @media (max-width: 480px) {
-      font-size: 0.88rem;
-      gap: 0.4rem;
-      line-height: 1.3;
-
-      svg {
-        width: 18px;
-        height: 18px;
-      }
-    }
-
-    @media (max-width: 380px) {
-      font-size: 0.82rem;
-      gap: 0.35rem;
-
-      svg {
-        width: 16px;
-        height: 16px;
-      }
-    }
-
-    @media (max-width: 360px) {
-      font-size: 0.62rem;
-      gap: 0.15rem;
-      line-height: 1.1;
-
-      svg {
-        width: 12px;
-        height: 12px;
-      }
-    }
-  }
-
-  h3 {
-    font-size: 1rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    color: var(--text-secondary);
-
-    @media (max-width: 768px) {
-      font-size: 0.95rem;
-    }
-
-    @media (max-width: 480px) {
-      font-size: 0.85rem;
-      line-height: 1.3;
-    }
-
-    @media (max-width: 380px) {
-      font-size: 0.8rem;
-    }
-  }
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr));
-  gap: 1rem;
-  margin-top: 1.5rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.65rem;
-    margin-top: 1rem;
-  }
-
-  @media (max-width: 400px) {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
-  }
-
-  @media (max-width: 360px) {
-    gap: 0.4rem;
-  }
-`;
-
-const SlotButton = styled.button`
-  padding: 1rem;
-  border-radius: 12px;
-  border: 1px solid ${props => props.$selected ? 'var(--primary)' : 'var(--border)'};
-  background: ${props => props.$selected ? 'rgba(196, 32, 26, 0.1)' : 'var(--bg-secondary)'};
-  color: ${props => props.$selected ? 'var(--primary)' : 'var(--text-primary)'};
-  cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
-  opacity: ${props => props.$disabled ? 0.3 : 1};
+const Back = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  margin-bottom: 1rem;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--f-impresso);
   font-weight: 600;
-  transition: all 0.2s;
-  font-size: 1rem;
-  min-height: 48px;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--grafica-escura);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
 
-  @media (max-width: 768px) {
-    padding: 0.75rem 0.5rem;
-    font-size: 0.9rem;
-    min-height: 44px;
-  }
-
-  @media (max-width: 480px) {
-    padding: 0.65rem 0.4rem;
-    font-size: 0.85rem;
-    min-height: 42px;
-    border-radius: 10px;
-  }
-
-  @media (max-width: 360px) {
-    padding: 0.5rem 0.3rem;
-    font-size: 0.8rem;
-    min-height: 40px;
-    border-radius: 8px;
-  }
-
-  &:hover:not(:disabled) {
-    border-color: var(--primary);
+  &:hover {
+    color: var(--nanquim);
   }
 `;
 
-const ServiceCard = styled.div`
-  border-radius: 16px;
-  border: 1px solid ${props => props.$selected ? 'var(--primary)' : 'var(--border)'};
-  background: ${props => props.$selected ? 'rgba(196, 32, 26, 0.05)' : 'var(--bg-primary)'};
-  cursor: pointer;
-  transition: all 0.2s;
+const PerfilGrid = styled.div`
+  display: grid;
+  gap: 1.25rem 2rem;
+  align-items: start;
+
+  @media (min-width: 640px) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+`;
+
+// Mesma moldura do cartão da busca, maior
+const Foto = styled.div`
+  width: clamp(96px, 22vw, 168px);
+  aspect-ratio: 1;
+  border: 2px solid var(--nanquim);
+  background: var(--papel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
+  font-family: var(--f-impresso);
+  font-weight: 800;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  box-shadow: 0 16px 28px -20px rgba(91, 74, 18, 0.6);
 
-  &:hover {
-    border-color: var(--primary);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 `;
 
-const ServiceCardContent = styled.div`
-  padding: 1rem;
+const Meta = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 1.25rem;
+  margin: -0.25rem 0 1rem;
+  font-size: 1rem;
+  color: var(--texto-2);
 
-  @media (max-width: 480px) {
-    padding: 0.85rem;
-  }
-`;
-
-const ServiceTitle = styled.p`
-  font-weight: 600;
-  margin: 0;
-  font-size: 0.95rem;
-  color: var(--text-primary);
-
-  @media (max-width: 480px) {
-    font-size: 0.9rem;
-  }
-`;
-
-const ServicePrice = styled.p`
-  font-weight: 700;
-  color: var(--primary);
-  margin: 0;
-  font-size: 1.1rem;
-
-  @media (max-width: 480px) {
-    font-size: 1rem;
-  }
-`;
-
-const ServiceDuration = styled.p`
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  margin: 0;
-
-  @media (max-width: 480px) {
-    font-size: 0.75rem;
-  }
-`;
-
-const BookingGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  max-width: 100%;
-
-  @media (max-width: 968px) {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
+  [data-cat] {
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.25rem;
+    letter-spacing: 0.02em;
+    color: var(--grafica-escura);
   }
 
-  > * {
-    max-width: 100%;
-    min-width: 0;
-  }
-`;
-
-const LoginSection = styled.div`
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
-  border: 2px solid #ef4444;
-  border-radius: 16px;
-  padding: 1.5rem;
-  margin-top: 2rem;
-  text-align: center;
-
-  @media (max-width: 480px) {
-    padding: 1.25rem;
-    border-radius: 12px;
-  }
-
-  @media (max-width: 360px) {
-    padding: 1rem;
-  }
-`;
-
-const LoginButton = styled.button`
-  padding: 0.875rem 2rem;
-  min-width: 200px;
-
-  @media (max-width: 480px) {
-    padding: 0.75rem 1.5rem;
-    min-width: 160px;
-  }
-
-  @media (max-width: 360px) {
-    padding: 0.65rem 1rem;
-    min-width: 0;
-    width: 100%;
-  }
-`;
-
-const RegisterButton = styled.button`
-  padding: 0.875rem 2rem;
-  min-width: 200px;
-  border-radius: 10px;
-  border: 2px solid var(--primary);
-  background: transparent;
-  color: var(--primary);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  @media (max-width: 480px) {
-    padding: 0.75rem 1.5rem;
-    min-width: 160px;
-  }
-
-  @media (max-width: 360px) {
-    padding: 0.65rem 1rem;
-    min-width: 0;
-    width: 100%;
-  }
-
-  &:hover {
-    background: var(--primary);
-    color: white;
-  }
-`;
-
-const SuccessContainer = styled(motion.div)`
-  text-align: center;
-  background: var(--bg-secondary);
-  padding: 3rem;
-  border-radius: 32px;
-  border: 1px solid var(--primary);
-  max-width: 600px;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    padding: 2.5rem;
-    border-radius: 24px;
-  }
-
-  @media (max-width: 480px) {
-    padding: 2rem;
-    border-radius: 16px;
-  }
-
-  @media (max-width: 360px) {
-    padding: 1.5rem;
-    border-radius: 12px;
-  }
-
-  .success-icon {
-    margin-bottom: 1.5rem;
-    width: 80px;
-    height: 80px;
-
-    @media (max-width: 768px) {
-      width: 64px;
-      height: 64px;
-      margin-bottom: 1.25rem;
-    }
-
-    @media (max-width: 480px) {
-      width: 56px;
-      height: 56px;
-      margin-bottom: 1rem;
-    }
-  }
-
-  h1 {
-    font-size: 2rem;
-    margin-bottom: 0.75rem;
-    color: var(--text-primary);
-
-    @media (max-width: 768px) {
-      font-size: 2rem;
-    }
-
-    @media (max-width: 480px) {
-      font-size: 1.75rem;
-    }
-
-    @media (max-width: 360px) {
-      font-size: 1.5rem;
-    }
-  }
-
-  p {
-    color: var(--text-secondary);
-    font-size: 1.1rem;
-    margin-bottom: 1.5rem;
-    line-height: 1.6;
-
-    @media (max-width: 768px) {
-      font-size: 1rem;
-      margin-bottom: 1.25rem;
-    }
-
-    @media (max-width: 480px) {
-      font-size: 0.95rem;
-      margin-bottom: 1rem;
-    }
-  }
-
-  .price-warning {
-    background: #FFF4E6;
-    border: 1px solid #FFB74D;
-    border-radius: 12px;
-    padding: 1rem;
-    margin: 1.5rem 0;
-    text-align: left;
-
-    @media (max-width: 480px) {
-      padding: 0.875rem;
-      margin: 1.25rem 0;
-      border-radius: 8px;
-    }
-
-    p {
-      color: #E65100;
-      font-size: 0.9rem;
-      margin: 0;
-      line-height: 1.5;
-
-      @media (max-width: 480px) {
-        font-size: 0.85rem;
-      }
-    }
-  }
-
-  .whatsapp-button {
-    background: #25D366;
-    color: white;
-    border: none;
-    border-radius: 12px;
-    padding: 1rem 2rem;
-    font-size: 1rem;
-    font-weight: 600;
+  span {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    margin-bottom: 1rem;
-    width: 100%;
-    max-width: 300px;
-
-    @media (max-width: 480px) {
-      padding: 0.875rem 1.5rem;
-      font-size: 0.95rem;
-      max-width: 100%;
-    }
-
-    &:hover {
-      background: #20BA5A;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
-    }
-
-    svg {
-      width: 20px;
-      height: 20px;
-      margin: 0;
-    }
+    gap: 0.3rem;
   }
 
-  .home-button {
-    background: transparent;
-    color: var(--primary);
-    border: 2px solid var(--primary);
-    border-radius: 12px;
-    padding: 1rem 2rem;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    width: 100%;
-    max-width: 300px;
-
-    @media (max-width: 480px) {
-      padding: 0.875rem 1.5rem;
-      font-size: 0.95rem;
-      max-width: 100%;
-    }
-
-    &:hover {
-      background: var(--primary);
-      color: white;
-      transform: translateY(-2px);
-    }
+  strong {
+    color: var(--nanquim);
+    font-variant-numeric: tabular-nums;
   }
 `;
 
-const CalendarWrapper = styled.div`
-  max-width: 100%;
-  overflow-x: hidden;
+// Selo do plano, carimbado como o da via
+const Stamp = styled.span`
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border: 2px solid var(--grafica-escura);
+  font-family: var(--f-impresso);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--grafica-escura);
+  transform: rotate(-3deg);
+`;
 
+const Description = styled(Lead)`
+  max-width: 62ch;
+  white-space: pre-line;
+`;
+
+const ContactRow = styled.div`
+  margin-top: 1.25rem;
+`;
+
+/* ------------------------------ Pedido: o talão ------------------------------ */
+
+const Pedido = styled.section`
+  padding: clamp(2.5rem, 6vw, 4.5rem) 0;
+`;
+
+const PedidoSheet = styled(TalaoSheet)`
+  max-width: 62rem;
+  margin: 0 auto;
+`;
+
+const Com = styled.p`
+  font-family: var(--f-impresso);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  color: var(--grafica-escura);
+`;
+
+// Cada bloco do pedido é uma linha do talão com rótulo impresso
+const Line = styled.fieldset`
+  border: none;
+  padding: 1rem 0 1.1rem;
+  border-bottom: 1.5px solid var(--pauta);
+  min-width: 0;
+
+  > legend,
+  > h2 {
+    float: left;
+    width: 100%;
+    margin-bottom: 0.6rem;
+    font-family: var(--f-impresso);
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--grafica);
+  }
+
+  > legend + *,
+  > h2 + * {
+    clear: both;
+  }
+`;
+
+const Services = styled.div`
+  display: grid;
+`;
+
+// Serviço como item de talão: bolinha impressa, título e o preço à direita
+const ServiceOption = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 52px;
+  padding: 0.5rem 0.5rem;
+  margin: 0 -0.5rem;
+  cursor: pointer;
+  border-top: 1px solid ${({ $first }) => ($first ? 'transparent' : 'var(--pauta)')};
+  background: ${({ $on }) => ($on ? 'rgba(207, 224, 245, 0.45)' : 'transparent')};
+  transition: background-color 160ms var(--ease-out);
+
+  input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &:focus-within ${PrintedCircle} {
+    outline: 2px solid var(--carbono);
+    outline-offset: 3px;
+  }
+
+  > span:nth-child(3) {
+    flex: 1;
+    min-width: 0;
+    font-weight: 500;
+    font-size: 1.05rem;
+    overflow-wrap: anywhere;
+  }
+
+  strong {
+    flex: none;
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.25rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--grafica-escura);
+
+    small {
+      font-family: var(--f-texto);
+      font-weight: 500;
+      font-size: 0.95rem;
+      color: var(--texto-2-papel);
+    }
+  }
+
+  &:hover > span:nth-child(3) {
+    color: var(--grafica);
+  }
+`;
+
+const When = styled.div`
+  display: grid;
+  gap: 1.25rem 2rem;
+
+  @media (min-width: 860px) {
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+    align-items: start;
+  }
+`;
+
+// react-calendar no traço do talão: dias em letra impressa, escolhido em tinta de gráfica
+const CalendarWrap = styled.div`
   .react-calendar {
     width: 100%;
-    border: none;
-    border-radius: 16px;
-    background: var(--bg-primary);
-    font-family: inherit;
-    padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    max-width: 100%;
-    box-sizing: border-box;
-
-    @media (max-width: 768px) {
-      padding: 1rem;
-    }
-
-    @media (max-width: 480px) {
-      padding: 0.75rem;
-    }
-
-    @media (max-width: 380px) {
-      padding: 0.5rem;
-    }
-
-    @media (max-width: 360px) {
-      padding: 0.4rem;
-    }
+    border: 1.5px solid var(--controle);
+    border-radius: 2px;
+    background: var(--papel);
+    font-family: var(--f-texto);
   }
 
   .react-calendar__navigation {
-    display: flex;
-    margin-bottom: 1.5rem;
-    height: auto;
-    gap: 0.5rem;
-  }
+    margin-bottom: 0;
+    border-bottom: 1.5px solid var(--pauta);
 
-  .react-calendar__navigation button {
-    color: var(--text-primary);
-    min-width: 44px;
-    background: var(--bg-secondary);
-    font-size: 1rem;
-    font-weight: 700;
-    border: 1px solid var(--border);
-    padding: 0.75rem;
-    border-radius: 12px;
-    transition: all 0.2s;
+    button {
+      min-width: 44px;
+      font-family: var(--f-impresso);
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--nanquim);
+      border-radius: 0;
 
-    &:enabled:hover,
-    &:enabled:focus {
-      background-color: rgba(196, 32, 26, 0.1);
-      color: var(--primary);
-      border-color: var(--primary);
-    }
+      &:enabled:hover,
+      &:enabled:focus {
+        background: var(--papel-2);
+      }
 
-    &:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-  }
-
-  .react-calendar__navigation__label {
-    flex-grow: 1 !important;
-    font-size: 1.1rem;
-
-    @media (max-width: 480px) {
-      font-size: 0.95rem;
-    }
-  }
-
-  .react-calendar__month-view__weekdays {
-    text-align: center;
-    text-transform: uppercase;
-    font-weight: 700;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.75rem;
-
-    @media (max-width: 480px) {
-      font-size: 0.6rem;
-      margin-bottom: 0.5rem;
-    }
-
-    @media (max-width: 380px) {
-      font-size: 0.55rem;
+      &:disabled {
+        background: transparent;
+        color: var(--controle);
+      }
     }
   }
 
   .react-calendar__month-view__weekdays__weekday {
-    padding: 0.75rem 0.5rem;
-
-    @media (max-width: 480px) {
-      padding: 0.5rem 0.25rem;
-    }
-
-    @media (max-width: 380px) {
-      padding: 0.4rem 0.15rem;
-    }
+    padding: 0.5rem 0;
+    font-family: var(--f-impresso);
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--grafica-escura);
 
     abbr {
       text-decoration: none;
@@ -714,764 +346,999 @@ const CalendarWrapper = styled.div`
   }
 
   .react-calendar__tile {
-    max-width: 100%;
-    aspect-ratio: 1;
-    padding: 0.5rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    color: var(--text-primary);
-    font-weight: 600;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.95rem;
-
-    @media (max-width: 768px) {
-      padding: 0.45rem;
-      font-size: 0.9rem;
-      border-radius: 8px;
-    }
-
-    @media (max-width: 480px) {
-      padding: 0.4rem;
-      font-size: 0.85rem;
-      min-height: 38px;
-    }
-
-    @media (max-width: 380px) {
-      padding: 0.35rem;
-      font-size: 0.8rem;
-      min-height: 36px;
-    }
+    min-height: 44px;
+    padding: 0.6rem 0;
+    border-radius: 0;
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--nanquim);
 
     &:enabled:hover,
     &:enabled:focus {
-      background-color: rgba(196, 32, 26, 0.1);
-      border-color: var(--primary);
-      color: var(--primary);
-      transform: scale(1.05);
+      background: var(--papel-2);
     }
 
-    &.react-calendar__tile--now {
-      background: rgba(196, 32, 26, 0.05);
-      border-color: var(--primary);
-      color: var(--primary);
-      font-weight: 800;
-      position: relative;
-
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: 4px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 4px;
-        height: 4px;
-        background: var(--primary);
-        border-radius: 50%;
-      }
-    }
-
-    &.react-calendar__tile--active {
-      background: var(--primary) !important;
-      color: white !important;
-      border-color: var(--primary) !important;
-      font-weight: 800;
-      box-shadow: 0 4px 12px rgba(196, 32, 26, 0.3);
-      transform: scale(1.05);
-    }
-
-    &.react-calendar__tile--hasActive {
-      background: var(--primary);
-      color: white;
+    &:focus-visible {
+      outline: 2px solid var(--carbono);
+      outline-offset: -2px;
     }
 
     &:disabled {
-      background: var(--bg-secondary);
-      opacity: 0.3;
-      cursor: not-allowed;
-
-      &:hover {
-        transform: none;
-      }
-    }
-
-    &.react-calendar__month-view__days__day--neighboringMonth {
-      opacity: 0.4;
-      color: var(--text-secondary);
-    }
-
-    &.react-calendar__month-view__days__day--weekend:not(.react-calendar__tile--active) {
-      color: #ef4444;
+      background: transparent;
+      color: var(--controle);
+      text-decoration: line-through;
     }
   }
 
-  .react-calendar__month-view__days {
-    display: grid !important;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
-    max-width: 100%;
-    box-sizing: border-box;
-
-    @media (max-width: 480px) {
-      gap: 4px;
-    }
-
-    @media (max-width: 360px) {
-      gap: 3px;
-    }
+  .react-calendar__month-view__days__day--neighboringMonth {
+    color: var(--controle);
   }
 
-  .react-calendar__year-view .react-calendar__tile,
-  .react-calendar__decade-view .react-calendar__tile,
-  .react-calendar__century-view .react-calendar__tile {
-    padding: 1.5rem 1rem;
-    aspect-ratio: auto;
-    border-radius: 12px;
+  .react-calendar__tile--now {
+    background: transparent;
+    font-weight: 700;
+    box-shadow: inset 0 -2px 0 var(--amarela);
+  }
+
+  .react-calendar__tile--active,
+  .react-calendar__tile--active:enabled:hover,
+  .react-calendar__tile--active:enabled:focus {
+    background: var(--grafica);
+    color: var(--papel);
+    font-weight: 700;
+    text-decoration: none;
+  }
+`;
+
+const DayTitle = styled.p`
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+
+  &::first-letter {
+    text-transform: uppercase;
+  }
+`;
+
+const Slots = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.25rem, 1fr));
+  gap: 0.5rem;
+`;
+
+// Horário como quadradinho impresso; escolhido fica preenchido à mão
+const Slot = styled.button`
+  min-height: 48px;
+  border: 1.5px solid ${({ $on }) => ($on ? 'var(--carbono)' : 'var(--controle)')};
+  border-radius: 2px;
+  background: ${({ $on }) => ($on ? 'rgba(207, 224, 245, 0.55)' : 'var(--papel)')};
+  font-family: ${({ $on }) => ($on ? 'var(--f-mao)' : 'var(--f-impresso)')};
+  font-weight: 700;
+  font-size: ${({ $on }) => ($on ? '1.5rem' : '1.15rem')};
+  font-variant-numeric: tabular-nums;
+  color: ${({ $on }) => ($on ? 'var(--carbono)' : 'var(--nanquim)')};
+  box-shadow: ${({ $on }) => ($on ? 'inset 0 -2.5px 0 var(--carbono)' : 'none')};
+  cursor: pointer;
+  transition: border-color 160ms var(--ease-out);
+
+  &:hover:not(:disabled) {
+    border-color: var(--grafica);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    color: var(--controle);
+    text-decoration: line-through;
+    background: var(--papel-2);
+  }
+`;
+
+const Muted = styled.p`
+  color: var(--texto-2-papel);
+  line-height: 1.5;
+`;
+
+const DailyPick = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 52px;
+  cursor: pointer;
+
+  input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &:focus-within ${PrintedCircle} {
+    outline: 2px solid var(--carbono);
+    outline-offset: 3px;
+  }
+`;
+
+// Aviso de região ou cadastro dentro do talão
+const Notice = styled.div`
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.9rem 0;
+  border-bottom: 1.5px solid var(--pauta);
+  line-height: 1.5;
+  color: ${({ $tone }) => ($tone === 'ok' ? 'var(--carbono)' : 'var(--nanquim)')};
+
+  svg {
+    flex: none;
+    margin-top: 0.15rem;
+    color: ${({ $tone }) => ($tone === 'ok' ? 'var(--carbono)' : 'var(--grafica)')};
+  }
+
+  a {
+    color: var(--grafica);
     font-weight: 600;
+    text-underline-offset: 3px;
+  }
+`;
 
-    &:enabled:hover,
-    &:enabled:focus {
-      background-color: rgba(196, 32, 26, 0.1);
-      color: var(--primary);
-      border-color: var(--primary);
+// O pedido escrito à mão antes de enviar
+const Resumo = styled.p`
+  padding: 0.9rem 0 0.25rem;
+  min-height: 3.5rem;
+  color: var(--texto-2-papel);
+
+  ${Hand} {
+    font-size: 1.6rem;
+    line-height: 1.25;
+  }
+`;
+
+const Signup = styled.p`
+  margin-top: 0.75rem;
+  text-align: center;
+  color: var(--texto-2-papel);
+
+  a {
+    color: var(--grafica);
+    font-weight: 600;
+    text-underline-offset: 3px;
+  }
+`;
+
+/* ------------------------------ Avaliações: via rosa ------------------------------ */
+
+const Mesa = styled.section`
+  ${paperSurface('rosa')}
+  padding: clamp(2.5rem, 6vw, 4.5rem) 0 clamp(3rem, 7vw, 5rem);
+`;
+
+const Reviews = styled.ul`
+  list-style: none;
+  max-width: 52rem;
+  border-top: 2px solid var(--grafica);
+`;
+
+const ReviewItem = styled.li`
+  padding: 1rem 0;
+  border-bottom: 1.5px solid var(--pauta);
+
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.25rem 1rem;
+  }
+
+  strong {
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.2rem;
+  }
+
+  p {
+    margin-top: 0.4rem;
+    line-height: 1.55;
+    max-width: 65ch;
+  }
+
+  time {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.95rem;
+    color: var(--texto-2);
+  }
+`;
+
+const Stars = styled.span`
+  display: inline-flex;
+  gap: 0.15rem;
+  color: var(--grafica);
+`;
+
+const Pager = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  font-variant-numeric: tabular-nums;
+
+  button {
+    min-height: 44px;
+  }
+`;
+
+const PagerButton = styled.button`
+  padding: 0 1rem;
+  background: var(--papel);
+  border: 2px solid var(--grafica);
+  border-radius: 2px;
+  font-family: var(--f-impresso);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--grafica);
+  cursor: pointer;
+
+  &:disabled {
+    border-color: var(--controle);
+    color: var(--controle);
+    cursor: not-allowed;
+  }
+`;
+
+/* ------------------------------ Estados de página ------------------------------ */
+
+const StateSheet = styled.div`
+  max-width: 40rem;
+  padding: 1.5rem clamp(1.25rem, 3vw, 1.75rem);
+  background: var(--papel);
+  border-bottom: 5px solid var(--grafica);
+  box-shadow: 0 16px 28px -18px rgba(91, 74, 18, 0.55), 0 1px 3px rgba(91, 74, 18, 0.18);
+
+  h1 {
+    font-family: var(--f-impresso);
+    font-weight: 800;
+    font-size: clamp(1.9rem, 4vw, 2.4rem);
+    line-height: 1.05;
+  }
+
+  p {
+    margin-top: 0.6rem;
+    line-height: 1.55;
+    color: var(--texto-2-papel);
+  }
+`;
+
+const StateActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+`;
+
+/* ------------------------------ Sucesso: a via do cliente ------------------------------ */
+
+const Via = styled.section`
+  ${paperSurface('azul')}
+  padding: clamp(2rem, 6vw, 4.5rem) 0;
+  min-height: 60vh;
+`;
+
+const ViaSheet = styled(TalaoSheet)`
+  max-width: 40rem;
+  margin: 0 auto;
+`;
+
+const Agendado = styled.span`
+  padding: 0.2rem 0.6rem;
+  border: 2.5px solid var(--sucesso);
+  font-family: var(--f-impresso);
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sucesso);
+  transform: rotate(-5deg);
+`;
+
+const ViaLines = styled.dl`
+  div {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: baseline;
+    padding: 0.7rem 0 0.35rem;
+    border-bottom: 1.5px solid var(--pauta);
+  }
+
+  dt {
+    font-family: var(--f-impresso);
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--grafica);
+  }
+
+  dd {
+    font-family: var(--f-mao);
+    font-weight: 700;
+    font-size: 1.6rem;
+    line-height: 1.2;
+    color: var(--carbono);
+    overflow-wrap: anywhere;
+
+    &::first-letter {
+      text-transform: uppercase;
     }
   }
 `;
 
-export default function Booking() {
-    // Suporta tanto /book/:id quanto /p/:slug
-    const { id, slug } = useParams();
-    const location = useLocation();
-    const navigate = useNavigate();
+const ViaText = styled.p`
+  margin-top: 1rem;
+  line-height: 1.55;
+`;
 
-    // Determinar se e ID numerico ou slug de texto
-    const identifier = slug || id;
-    const isSlug = slug || (identifier && isNaN(parseInt(identifier)));
+const ViaActions = styled.div`
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
 
-    const [pro, setPro] = useState(location.state?.pro || null);
-    const [proId, setProId] = useState(null); // ID real do profissional (para agendamentos)
-    const [services, setServices] = useState([]);
-    const [workingHours, setWorkingHours] = useState([]);
-    const [appointments, setAppointments] = useState([]);
-    const [selectedService, setSelectedService] = useState(null);
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    const [selectedSlot, setSelectedSlot] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [booking, setBooking] = useState(false);
-    const [success, setSuccess] = useState(false);
-    const [whatsappLink, setWhatsappLink] = useState('');
+  a {
+    width: 100%;
+  }
 
-    const [clientCep, setClientCep] = useState('');
-    const [clientCity, setClientCity] = useState('');
-    const [matching, setMatching] = useState(null); // null, true, false
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [reviews, setReviews] = useState([]);
-    const [reviewsPage, setReviewsPage] = useState(1);
-    const [reviewsPages, setReviewsPages] = useState(0);
+  @media (min-width: 560px) {
+    grid-template-columns: 1fr 1fr;
+  }
+`;
 
-    // Buscar dados do cliente logado (incluindo CEP)
-    useEffect(() => {
-        const fetchClientData = async () => {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                setIsLoggedIn(false);
-                return;
-            }
+const WhatsAppLink = styled.a`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0 1.2rem;
+  border: 2px solid var(--grafica);
+  border-radius: 2px;
+  background: var(--grafica);
+  font-family: var(--f-impresso);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--papel);
+  transition: background-color 160ms var(--ease-out);
 
-            setIsLoggedIn(true);
+  &:hover {
+    background: var(--grafica-escura);
+    border-color: var(--grafica-escura);
+  }
 
-            try {
-                const res = await fetch(`${API_URL}/auth/me`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+  &[data-stamp] {
+    background: var(--papel);
+    color: var(--grafica);
 
-                if (res.ok) {
-                    const userData = await res.json();
-                    if (userData.cep) {
-                        const cepDigits = userData.cep.replace(/\D/g, '');
-                        setClientCep(cepDigits);
-                        setClientCity(userData.city || '');
-                    }
-                }
-            } catch (e) {
-                console.error('Erro ao buscar dados do cliente:', e);
-            }
-        };
-
-        fetchClientData();
-    }, []);
-
-    useEffect(() => {
-        const fetchProData = async () => {
-            try {
-                // Usar endpoint de slug ou ID conforme o tipo do parametro
-                const endpoint = isSlug
-                    ? `/api/users/p/${identifier}`
-                    : `/api/users/${identifier}/public`;
-
-                const res = await fetch(endpoint);
-                if (res.ok) {
-                    const data = await res.json();
-                    setPro(data);
-                    setProId(data.id); // Guardar o ID real para usar nos agendamentos
-                    setServices(data.services);
-                    setWorkingHours(data.working_hours);
-
-                    // Buscar agendamentos usando o ID real do profissional
-                    const apptRes = await fetch(`/api/appointments/professional/${data.id}/week?start_date=${new Date().toISOString().split('T')[0]}`);
-                    if (apptRes.ok) {
-                        setAppointments(await apptRes.json());
-                    }
-
-                    // Buscar avaliacoes do profissional (pagina 1)
-                    const reviewRes = await fetch(`${API_URL}/reviews/providers/${data.id}/reviews?page=1&size=5`);
-                    if (reviewRes.ok) {
-                        const reviewData = await reviewRes.json();
-                        setReviews(reviewData.items || []);
-                        setReviewsPage(1);
-                        setReviewsPages(reviewData.pages || 0);
-                    }
-                }
-            } catch (e) { console.error(e); }
-            finally { setLoading(false); }
-        };
-        fetchProData();
-    }, [identifier, isSlug]);
-
-    // Carregar mais avaliacoes
-    const loadMoreReviews = async (page) => {
-        if (!proId) return;
-        try {
-            const res = await fetch(`${API_URL}/reviews/providers/${proId}/reviews?page=${page}&size=5`);
-            if (res.ok) {
-                const data = await res.json();
-                setReviews(data.items || []);
-                setReviewsPage(page);
-                setReviewsPages(data.pages || 0);
-            }
-        } catch (e) { console.error(e); }
-    };
-
-    useEffect(() => {
-        if (pro && clientCity) {
-            // Verificar se cliente e profissional estão na mesma cidade
-            if (clientCity.toLowerCase() === pro.city.toLowerCase()) {
-                setMatching(true);
-            } else {
-                setMatching(false);
-            }
-        }
-    }, [pro, clientCity]);
-
-    const formatDateToISO = (date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
-
-    const isDayAvailable = () => {
-        const now = new Date();
-        const todayStr = formatDateToISO(now);
-        const selectedDateStr = formatDateToISO(selectedDate);
-
-        // Não permite agendar dias passados
-        if (selectedDateStr < todayStr) return false;
-
-        const dayOfWeek = selectedDate.getDay() === 0 ? 6 : selectedDate.getDay() - 1;
-        const wh = workingHours.find(w => w.day_of_week === dayOfWeek);
-
-        // Se não tem horário de trabalho, o dia não está disponível
-        if (!wh) return false;
-
-        // Verifica se há QUALQUER agendamento neste dia
-        const hasAnyAppointment = appointments.some(a => a.date === selectedDateStr);
-
-        return !hasAnyAppointment;
-    };
-
-    const getAvailableSlots = () => {
-        const now = new Date();
-        const todayStr = formatDateToISO(now);
-        const currentHour = now.getHours();
-        const selectedDateStr = formatDateToISO(selectedDate);
-
-        const dayOfWeek = selectedDate.getDay() === 0 ? 6 : selectedDate.getDay() - 1; // 0=Mon, 6=Sun
-
-        const wh = workingHours.find(w => w.day_of_week === dayOfWeek);
-        if (!wh) return [];
-
-        const start = parseInt(wh.start_time.split(':')[0]);
-        const end = parseInt(wh.end_time.split(':')[0]);
-        const slots = [];
-
-        for (let h = start; h < end; h++) {
-            const time = `${String(h).padStart(2, '0')}:00`;
-            const isOccupied = appointments.some(a => a.date === selectedDateStr && a.start_time.startsWith(time));
-
-            let isPast = false;
-            if (selectedDateStr === todayStr && h <= currentHour) {
-                isPast = true;
-            }
-
-            slots.push({ time, isOccupied: isOccupied || isPast });
-        }
-        return slots;
-    };
-
-    const handleBook = async () => {
-        if (!selectedService) {
-            toast.error('Por favor, selecione um serviço primeiro.');
-            return;
-        }
-        if (!selectedSlot) {
-            toast.error(selectedService.duration_type === 'daily' ? 'Por favor, selecione o dia.' : 'Por favor, escolha um horário disponível.');
-            return;
-        }
-
-        const token = localStorage.getItem('token');
-        if (!token) {
-            toast.error('Você precisa estar logado para agendar.');
-            navigate('/login', { state: { from: location.pathname } });
-            return;
-        }
-
-        if (!clientCity) {
-            toast.error('Complete seu cadastro com CEP e endereço antes de agendar.');
-            return;
-        }
-
-        if (matching === false) {
-            toast.error(`Desculpe, este profissional atende apenas em ${pro.city}, ${pro.state}.`);
-            return;
-        }
-
-        setBooking(true);
-        try {
-            let requestBody;
-
-            if (selectedService.duration_type === 'daily') {
-                // Para serviços diários, enviar apenas a data
-                // O backend irá buscar o horário de trabalho completo do dia
-                requestBody = {
-                    professional_id: proId,
-                    service_id: selectedService.id,
-                    date: formatDateToISO(selectedDate)
-                    // Não envia start_time e end_time - backend preenche automaticamente
-                };
-            } else {
-                // Para serviços por hora, usar o slot selecionado
-                requestBody = {
-                    professional_id: proId,
-                    service_id: selectedService.id,
-                    date: formatDateToISO(selectedDate),
-                    start_time: selectedSlot + ':00',
-                    end_time: (parseInt(selectedSlot.split(':')[0]) + 1).toString().padStart(2, '0') + ':00:00'
-                };
-            }
-
-            const res = await fetch(`${API_URL}/appointments/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(requestBody)
-            });
-
-            if (res.ok) {
-                const appointmentData = await res.json();
-                // Armazenar o link do WhatsApp retornado pelo backend
-                if (appointmentData.whatsapp_link) {
-                    setWhatsappLink(appointmentData.whatsapp_link);
-                }
-                setSuccess(true);
-            } else {
-                const data = await res.json();
-                toast.error(data.detail || 'Erro ao agendar.');
-            }
-        } catch (e) { console.error(e); }
-        finally { setBooking(false); }
-    };
-
-    if (loading) return <BookingContainer>Carregando...</BookingContainer>;
-    if (!pro) return <BookingContainer>Profissional não encontrado.</BookingContainer>;
-
-    if (success) {
-        return (
-            <BookingContainer style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }}>
-                <SuccessContainer
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                >
-                    <CheckCircle className="success-icon" color="var(--primary)" />
-                    <h1>Agendamento Confirmado!</h1>
-                    <p>
-                        Seu horário com <strong>{pro.name}</strong> foi reservado com sucesso.
-                    </p>
-
-                    <div className="price-warning">
-                        <p>
-                            <strong>⚠️ Atenção:</strong> Os valores dos serviços podem sofrer alterações devido à execução, pois muitos serviços não são por tempo e sim por execução. Confirme com o prestador de serviços os valores e obtenha o orçamento diretamente com o mesmo.
-                        </p>
-                    </div>
-
-                    {whatsappLink && (
-                        <a
-                            href={whatsappLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="whatsapp-button"
-                        >
-                            <MessageCircle size={20} />
-                            Confirmar no WhatsApp
-                        </a>
-                    )}
-                    <button className="home-button" onClick={() => navigate('/')}>
-                        Voltar para o Início
-                    </button>
-                </SuccessContainer>
-            </BookingContainer>
-        );
+    &:hover {
+      background: var(--grafica);
+      color: var(--papel);
     }
+  }
+`;
 
+/* ------------------------------ Página ------------------------------ */
+
+export default function Booking() {
+  // Suporta tanto /book/:id quanto /p/:slug
+  const { id, slug } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const uid = useId();
+
+  // Determinar se é ID numérico ou slug de texto
+  const identifier = slug || id;
+  const isSlug = slug || (identifier && isNaN(parseInt(identifier)));
+
+  // Perfil: resposta guardada com a chave do pedido que a gerou
+  const [proAttempt, setProAttempt] = useState(0);
+  const proKey = `${identifier}|${proAttempt}`;
+  const [proResponse, setProResponse] = useState({ key: null, status: 'loading', data: null });
+  const proState = proResponse.key === proKey ? proResponse.status : 'loading'; // loading | ok | notfound | error
+  const pro = proResponse.key === proKey && proResponse.data ? proResponse.data : location.state?.pro || null;
+  const proId = proState === 'ok' ? pro?.id : null;
+  const services = proState === 'ok' ? pro?.services || [] : [];
+  const workingHours = proState === 'ok' ? pro?.working_hours || [] : [];
+
+  const [selectedService, setSelectedService] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [booking, setBooking] = useState(false);
+  const [bookError, setBookError] = useState('');
+  const [success, setSuccess] = useState(null);
+
+  const [clientCity, setClientCity] = useState('');
+  const [clientChecked, setClientChecked] = useState(false);
+  const [isLoggedIn] = useState(() => !!localStorage.getItem('token'));
+
+  const [reviews, setReviews] = useState([]);
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const [reviewsPages, setReviewsPages] = useState(0);
+
+  // Agendamentos da semana do dia escolhido (a API devolve 7 dias a partir da segunda)
+  const [apptAttempt, setApptAttempt] = useState(0);
+  const weekStartISO = formatDateToISO(weekStart(selectedDate));
+  const apptKey = `${proId}|${weekStartISO}|${apptAttempt}`;
+  const [apptResponse, setApptResponse] = useState({ key: null, items: [] });
+  const apptsReady = apptResponse.key === apptKey;
+  const appointments = apptsReady ? apptResponse.items : [];
+
+  // Dados do cliente logado (cidade, para conferir a região)
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((userData) => {
+        if (userData) setClientCity(userData.city || '');
+      })
+      .catch((e) => console.error('Erro ao buscar dados do cliente:', e))
+      .finally(() => setClientChecked(true));
+  }, []);
+
+  // Perfil do profissional
+  useEffect(() => {
+    let cancelled = false;
+    // Usar endpoint de slug ou ID conforme o tipo do parâmetro
+    const endpoint = isSlug ? `${API_URL}/users/p/${identifier}` : `${API_URL}/users/${identifier}/public`;
+    fetch(endpoint)
+      .then(async (res) => {
+        if (cancelled) return;
+        if (res.status === 404) {
+          setProResponse({ key: proKey, status: 'notfound', data: null });
+          return;
+        }
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        if (cancelled) return;
+        setProResponse({ key: proKey, status: 'ok', data });
+        // Começa no primeiro dia com horário ainda livre: hoje só se o expediente não acabou
+        const hours = data.working_hours || [];
+        if (hours.length) {
+          const now = new Date();
+          const opens = (d, isToday) => {
+            const wh = hours.find((w) => w.day_of_week === weekdayIndex(d));
+            if (!wh) return false;
+            return !isToday || parseInt(wh.end_time.split(':')[0]) - 1 > now.getHours();
+          };
+          const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          for (let i = 0; i < 60 && !opens(d, i === 0); i++) d.setDate(d.getDate() + 1);
+          setSelectedDate(d);
+        }
+      })
+      .catch((e) => {
+        console.error(e);
+        if (!cancelled) setProResponse({ key: proKey, status: 'error', data: null });
+      });
+    return () => { cancelled = true; };
+  }, [identifier, isSlug, proKey]);
+
+  // Semana de agendamentos: ocupados e bloqueios
+  useEffect(() => {
+    if (!proId) return undefined;
+    let cancelled = false;
+    fetch(`${API_URL}/appointments/professional/${proId}/week?start_date=${weekStartISO}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((items) => { if (!cancelled) setApptResponse({ key: apptKey, items: Array.isArray(items) ? items : [] }); })
+      .catch(() => { if (!cancelled) setApptResponse({ key: apptKey, items: [] }); });
+    return () => { cancelled = true; };
+  }, [proId, weekStartISO, apptKey]);
+
+  // Avaliações (página 1 quando o perfil chega)
+  const loadReviews = async (page) => {
+    if (!proId) return;
+    try {
+      const res = await fetch(`${API_URL}/reviews/providers/${proId}/reviews?page=${page}&size=5`);
+      if (res.ok) {
+        const data = await res.json();
+        setReviews(data.items || []);
+        setReviewsPage(page);
+        setReviewsPages(data.pages || 0);
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  useEffect(() => {
+    if (!proId) return;
+    let cancelled = false;
+    fetch(`${API_URL}/reviews/providers/${proId}/reviews?page=1&size=5`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setReviews(data.items || []);
+        setReviewsPage(1);
+        setReviewsPages(data.pages || 0);
+      })
+      .catch((e) => console.error(e));
+    return () => { cancelled = true; };
+  }, [proId]);
+
+  // Mesma cidade? Só com as duas cidades conhecidas
+  const matching = pro?.city && clientCity ? norm(clientCity) === norm(pro.city) : null;
+
+  const todayISO = formatDateToISO(new Date());
+  const selectedISO = formatDateToISO(selectedDate);
+  const worksOn = (date) => workingHours.some((w) => w.day_of_week === weekdayIndex(date));
+
+  // Ocupado se algum agendamento/bloqueio do dia cruza o intervalo [início, fim)
+  const overlaps = (dateISO, startMin, endMin) =>
+    appointments.some((a) => {
+      if (a.date !== dateISO) return false;
+      const aStart = toMinutes(a.start_time);
+      const aEnd = toMinutes(a.end_time);
+      if (aStart === null || aEnd === null) return true;
+      return aStart < endMin && startMin < aEnd;
+    });
+
+  const isDayAvailable = () => {
+    if (selectedISO < todayISO) return false;
+    if (!worksOn(selectedDate)) return false;
+    // Diária: o dia inteiro precisa estar livre
+    return !appointments.some((a) => a.date === selectedISO);
+  };
+
+  const getAvailableSlots = () => {
+    const wh = workingHours.find((w) => w.day_of_week === weekdayIndex(selectedDate));
+    if (!wh) return [];
+    const start = parseInt(wh.start_time.split(':')[0]);
+    const end = parseInt(wh.end_time.split(':')[0]);
+    const currentHour = new Date().getHours();
+    const slots = [];
+    for (let h = start; h < end; h++) {
+      const time = `${String(h).padStart(2, '0')}:00`;
+      const isPast = selectedISO === todayISO && h <= currentHour;
+      slots.push({ time, isOccupied: isPast || overlaps(selectedISO, h * 60, (h + 1) * 60) });
+    }
+    return slots;
+  };
+
+  const isDaily = selectedService?.duration_type === 'daily';
+
+  const goBack = () => {
+    // Quem chegou direto (Google, link compartilhado) volta para a busca, não para fora do site
+    if (location.key !== 'default') navigate(-1);
+    else navigate(pro?.category ? `/search?service=${encodeURIComponent(pro.category)}` : '/search');
+  };
+
+  const handleBook = async (e) => {
+    e.preventDefault();
+    setBookError('');
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login', { state: { from: location.pathname } });
+      return;
+    }
+    if (!selectedService) {
+      setBookError('Escolha o serviço.');
+      document.querySelector(`input[name="${uid}-servico"]`)?.focus();
+      return;
+    }
+    if (!selectedSlot) {
+      setBookError(isDaily ? 'Marque o dia da diária.' : 'Escolha um horário livre.');
+      return;
+    }
+    if (!clientCity || matching === false) return;
+
+    setBooking(true);
+    try {
+      let requestBody;
+
+      if (selectedService.duration_type === 'daily') {
+        // Para serviços diários, enviar apenas a data
+        // O backend irá buscar o horário de trabalho completo do dia
+        requestBody = {
+          professional_id: proId,
+          service_id: selectedService.id,
+          date: formatDateToISO(selectedDate)
+        };
+      } else {
+        // Para serviços por hora, usar o slot selecionado
+        requestBody = {
+          professional_id: proId,
+          service_id: selectedService.id,
+          date: formatDateToISO(selectedDate),
+          start_time: selectedSlot + ':00',
+          end_time: (parseInt(selectedSlot.split(':')[0]) + 1).toString().padStart(2, '0') + ':00:00'
+        };
+      }
+
+      const res = await fetch(`${API_URL}/appointments/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (res.ok) {
+        const appointmentData = await res.json();
+        setSuccess({
+          whatsappLink: appointmentData.whatsapp_link || '',
+          service: selectedService.title,
+          date: longDate(selectedDate),
+          time: isDaily ? 'O dia todo' : selectedSlot,
+        });
+        window.scrollTo(0, 0);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setBookError(translateError(data.detail, 'Não deu para agendar. Tente de novo.'));
+        // Horário tomado ou fora da agenda: some com a escolha e recarrega a semana
+        if (res.status === 400) {
+          setSelectedSlot(null);
+          setApptAttempt((n) => n + 1);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setBookError('Não deu para falar com o servidor. Confira sua conexão e tente de novo.');
+    } finally {
+      setBooking(false);
+    }
+  };
+
+  const firstName = (pro?.name || '').trim().split(/\s+/)[0] || 'o profissional';
+  const initial = (pro?.name || '?').trim().charAt(0).toUpperCase();
+  const rating = Number(pro?.average_rating);
+  const hasReviews = pro?.total_reviews > 0 && Number.isFinite(rating) && rating > 0;
+  const proWhatsapp = buildWhatsappLink(pro?.whatsapp, pro?.name, selectedService?.title || pro?.category);
+
+  /* ---------- Estados de página ---------- */
+
+  if (proState !== 'ok' && !(proState === 'loading' && pro)) {
+    const states = {
+      loading: { title: 'Abrindo o perfil…', text: '' },
+      notfound: { title: 'Não encontramos este perfil', text: 'O endereço pode ter mudado ou o profissional saiu do ContrataPro. Busque quem atende na sua região.' },
+      error: { title: 'O perfil não carregou agora', text: 'Pode ser a sua conexão ou uma instabilidade do nosso lado. Tente de novo.' },
+    }[proState];
     return (
-        <BookingContainer>
-            <Content>
-                <button className="back-button" onClick={() => navigate(-1)}>
-                    <ChevronLeft size={20} /> Voltar para busca
-                </button>
-
-                <ProHeader>
-                    <div className="pro-avatar">
-                        {pro.profile_picture ? (
-                            <img src={pro.profile_picture} alt={pro.name} />
-                        ) : (
-                            pro.name[0]
-                        )}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
-                            <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-                                <h1>{pro.name}</h1>
-                                <p className="pro-category">{pro.category}</p>
-                                {pro.subscription_plan?.badge_label && (
-                                    <span style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        marginTop: '0.375rem',
-                                        background: pro.subscription_plan.priority_in_search >= 2
-                                            ? 'rgba(245, 158, 11, 0.12)'
-                                            : 'rgba(196, 32, 26, 0.1)',
-                                        color: pro.subscription_plan.priority_in_search >= 2
-                                            ? '#d97706'
-                                            : 'var(--primary)',
-                                        padding: '0.25rem 0.625rem',
-                                        borderRadius: '20px',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 700,
-                                        border: `1px solid ${pro.subscription_plan.priority_in_search >= 2
-                                            ? 'rgba(245, 158, 11, 0.25)'
-                                            : 'rgba(196, 32, 26, 0.2)'}`,
-                                    }}>
-                                        {pro.subscription_plan.priority_in_search >= 2 ? '✨' : '⭐'} {pro.subscription_plan.badge_label}
-                                    </span>
-                                )}
-                            </div>
-                            {pro.total_reviews > 0 && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-primary)', padding: '0.5rem 0.75rem', borderRadius: '12px', border: '1px solid var(--border)', flexShrink: 0 }}>
-                                    <Star size={16} fill="var(--accent)" color="var(--accent)" />
-                                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{(pro.average_rating || 0).toFixed(1)}</span>
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({pro.total_reviews})</span>
-                                </div>
-                            )}
-                        </div>
-                        <p className="pro-description">{pro.description}</p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', marginTop: '1rem', fontSize: '0.9rem' }}>
-                            <MapPin size={14} />
-                            {pro.city}, {pro.state}
-                        </div>
-                    </div>
-                </ProHeader>
-
-                <BookingGrid>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                        <Section>
-                            <h2>
-                                <Briefcase size={20} color="var(--primary)" /> Selecione o Serviço
-                            </h2>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {services.map(s => (
-                                    <ServiceCard
-                                        key={s.id}
-                                        $selected={selectedService?.id === s.id}
-                                        onClick={() => {
-                                            setSelectedService(s);
-                                            setSelectedSlot(null); // Reset slot when service changes
-                                        }}
-                                    >
-                                        {s.image_url && (
-                                            <img
-                                                src={s.image_url}
-                                                alt={s.title}
-                                                style={{
-                                                    width: '100%',
-                                                    height: '180px',
-                                                    objectFit: 'cover'
-                                                }}
-                                            />
-                                        )}
-                                        <ServiceCardContent>
-                                            <ServiceTitle>{s.title}</ServiceTitle>
-                                            <ServicePrice>
-                                                {s.price ? `R$ ${s.price.toFixed(2).replace('.', ',')}` : 'Sob consulta'}
-                                            </ServicePrice>
-                                            <ServiceDuration>
-                                                {s.duration_type === 'daily' ? 'Diária' : 'Por hora'}
-                                            </ServiceDuration>
-                                        </ServiceCardContent>
-                                    </ServiceCard>
-                                ))}
-                            </div>
-                        </Section>
-
-                        {matching === false && (
-                            <Section style={{ border: '2px solid #dc2626', background: 'rgba(220, 38, 38, 0.03)', boxShadow: '0 10px 15px -3px rgba(220, 38, 38, 0.1)' }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', color: '#dc2626' }}>
-                                    <MapPin size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
-                                    <div>
-                                        <p style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0, lineHeight: 1.4 }}>
-                                            Este profissional atende apenas em {pro.city}, {pro.state}.
-                                        </p>
-                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem', marginBottom: 0, lineHeight: 1.4 }}>
-                                            Seu cadastro indica que você está em {clientCity}. Você não poderá agendar com este profissional.
-                                        </p>
-                                    </div>
-                                </div>
-                            </Section>
-                        )}
-
-                        {matching === true && (
-                            <Section style={{ border: '2px solid #059669', background: 'rgba(5, 150, 105, 0.03)', boxShadow: '0 10px 15px -3px rgba(5, 150, 105, 0.1)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#059669' }}>
-                                    <CheckCircle size={18} style={{ flexShrink: 0 }} />
-                                    <p style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0, lineHeight: 1.4 }}>
-                                        ✓ Este profissional atende sua região!
-                                    </p>
-                                </div>
-                            </Section>
-                        )}
-                    </div>
-
-                    <Section>
-                        <h2>
-                            <CalendarIcon size={20} color="var(--primary)" /> Escolha a Data e o Horário
-                        </h2>
-
-                        <CalendarWrapper style={{ marginBottom: '2rem' }}>
-                            <Calendar
-                                onChange={(date) => {
-                                    setSelectedDate(date);
-                                    setSelectedSlot(null); // Reset slot when date changes
-                                }}
-                                value={selectedDate}
-                                minDate={new Date()}
-                                locale="pt-BR"
-                                formatShortWeekday={(locale, date) => {
-                                    const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-                                    return days[date.getDay()];
-                                }}
-                                formatMonthYear={(locale, date) => {
-                                    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-                                    return `${months[date.getMonth()]} ${date.getFullYear()}`;
-                                }}
-                            />
-                        </CalendarWrapper>
-
-                        {selectedService?.duration_type === 'daily' ? (
-                            <>
-                                <h3>
-                                    Agendamento de diária para {selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-                                </h3>
-                                <div style={{ background: 'var(--bg-primary)', padding: '2rem', borderRadius: '16px', border: '2px solid var(--border)', textAlign: 'center' }}>
-                                    <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                                        Este serviço ocupa o dia completo de trabalho do profissional.
-                                    </p>
-                                    <button
-                                        className="btn-primary"
-                                        style={{ width: '100%', padding: '1.25rem', fontSize: '1.05rem' }}
-                                        onClick={() => setSelectedSlot('daily')}
-                                        disabled={!isDayAvailable()}
-                                    >
-                                        {selectedSlot === 'daily' ? '✓ Dia selecionado' : 'Agendar este dia'}
-                                    </button>
-                                    {!isDayAvailable() && (
-                                        <p style={{ marginTop: '1rem', color: '#ef4444', fontSize: '0.9rem' }}>
-                                            Este dia já está ocupado ou não está disponível.
-                                        </p>
-                                    )}
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <h3>
-                                    Horários disponíveis para {selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-                                </h3>
-                                <Grid>
-                                    {getAvailableSlots().map(slot => (
-                                        <SlotButton
-                                            key={slot.time}
-                                            $selected={selectedSlot === slot.time}
-                                            $disabled={slot.isOccupied}
-                                            disabled={slot.isOccupied}
-                                            onClick={() => setSelectedSlot(slot.time)}
-                                        >
-                                            {slot.time}
-                                        </SlotButton>
-                                    ))}
-                                    {getAvailableSlots().length === 0 && (
-                                        <p style={{ gridColumn: '1/-1', textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
-                                            Nenhum horário disponível para este dia.
-                                        </p>
-                                    )}
-                                </Grid>
-                            </>
-                        )}
-
-                        {!isLoggedIn && (
-                            <LoginSection>
-                                <p style={{ fontSize: '1rem', fontWeight: 600, color: '#ef4444', marginBottom: '0.75rem' }}>
-                                    🔒 Login Necessário
-                                </p>
-                                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                                    Você precisa estar logado para realizar um agendamento.
-                                </p>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'center' }}>
-                                    <LoginButton
-                                        className="btn-primary"
-                                        onClick={() => navigate('/login', { state: { from: location.pathname } })}
-                                    >
-                                        Fazer Login
-                                    </LoginButton>
-                                    <RegisterButton
-                                        onClick={() => navigate('/register-client', { state: { from: location.pathname } })}
-                                    >
-                                        Criar Conta
-                                    </RegisterButton>
-                                </div>
-                            </LoginSection>
-                        )}
-
-                        <button
-                            className="btn-primary"
-                            style={{
-                                width: '100%',
-                                marginTop: '3rem',
-                                padding: '1.25rem',
-                                fontSize: '1.1rem',
-                                opacity: isLoggedIn ? 1 : 0.5,
-                                cursor: isLoggedIn ? 'pointer' : 'not-allowed'
-                            }}
-                            disabled={booking || !isLoggedIn}
-                            onClick={handleBook}
-                        >
-                            {booking ? 'Processando...' : 'Confirmar Agendamento'}
-                        </button>
-                        {!selectedService && <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#ef4444', marginTop: '1rem' }}>Selecione um serviço primeiro</p>}
-                        {selectedService && !selectedSlot && <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#ef4444', marginTop: '1rem' }}>Escolha um horário disponível</p>}
-                        {selectedSlot && matching === false && <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#ef4444', marginTop: '1rem' }}>Profissional não atende sua região</p>}
-                    </Section>
-                </BookingGrid>
-
-                {reviews.length > 0 && (
-                    <Section style={{ marginTop: '2rem' }}>
-                        <h2>
-                            <Star size={20} color="var(--accent)" /> Avaliações
-                            <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>
-                                ({pro.total_reviews} {pro.total_reviews === 1 ? 'avaliação' : 'avaliações'})
-                            </span>
-                        </h2>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {reviews.map((review, idx) => (
-                                <div
-                                    key={`${reviewsPage}-${idx}`}
-                                    style={{
-                                        background: 'var(--bg-primary)',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: '12px',
-                                        padding: '1rem 1.25rem',
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{review.customer_name}</span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                            {[...Array(5)].map((_, i) => (
-                                                <Star
-                                                    key={i}
-                                                    size={14}
-                                                    fill={i < review.rating ? '#f59e0b' : 'transparent'}
-                                                    color={i < review.rating ? '#f59e0b' : 'var(--text-secondary)'}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-                                    {review.comment && (
-                                        <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                                            {review.comment}
-                                        </p>
-                                    )}
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', marginBottom: 0, opacity: 0.7 }}>
-                                        {new Date(review.created_at).toLocaleDateString('pt-BR')}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-
-                        {reviewsPages > 1 && (
-                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem' }}>
-                                <button
-                                    onClick={() => loadMoreReviews(reviewsPage - 1)}
-                                    disabled={reviewsPage <= 1}
-                                    style={{
-                                        padding: '0.5rem 1rem',
-                                        borderRadius: '8px',
-                                        border: '1px solid var(--border)',
-                                        background: reviewsPage <= 1 ? 'var(--bg-secondary)' : 'var(--bg-primary)',
-                                        color: reviewsPage <= 1 ? 'var(--text-secondary)' : 'var(--text-primary)',
-                                        cursor: reviewsPage <= 1 ? 'not-allowed' : 'pointer',
-                                        fontSize: '0.85rem',
-                                    }}
-                                >
-                                    Anterior
-                                </button>
-                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                    {reviewsPage} de {reviewsPages}
-                                </span>
-                                <button
-                                    onClick={() => loadMoreReviews(reviewsPage + 1)}
-                                    disabled={reviewsPage >= reviewsPages}
-                                    style={{
-                                        padding: '0.5rem 1rem',
-                                        borderRadius: '8px',
-                                        border: '1px solid var(--border)',
-                                        background: reviewsPage >= reviewsPages ? 'var(--bg-secondary)' : 'var(--bg-primary)',
-                                        color: reviewsPage >= reviewsPages ? 'var(--text-secondary)' : 'var(--text-primary)',
-                                        cursor: reviewsPage >= reviewsPages ? 'not-allowed' : 'pointer',
-                                        fontSize: '0.85rem',
-                                    }}
-                                >
-                                    Próxima
-                                </button>
-                            </div>
-                        )}
-                    </Section>
+      <TalaoPage>
+        <SiteHeader />
+        <main>
+          <Perfil>
+            <Wrap>
+              <StateSheet role="status">
+                <h1 data-display>{states.title}</h1>
+                {states.text && <p>{states.text}</p>}
+                {proState !== 'loading' && (
+                  <StateActions>
+                    {proState === 'error' && (
+                      <PrimaryButton type="button" onClick={() => setProAttempt((n) => n + 1)}>
+                        <RotateCw size={18} aria-hidden="true" /> Tentar de novo
+                      </PrimaryButton>
+                    )}
+                    <StampLink to="/search">Buscar profissionais</StampLink>
+                  </StateActions>
                 )}
-            </Content>
-        </BookingContainer >
+              </StateSheet>
+            </Wrap>
+          </Perfil>
+        </main>
+        <SiteFooter />
+      </TalaoPage>
     );
+  }
+
+  if (success) {
+    return (
+      <TalaoPage>
+        <SiteHeader />
+        <main>
+          <Via aria-labelledby={`${uid}-ok`}>
+            <Wrap>
+              <ViaSheet>
+                <Canhoto aria-hidden="true" />
+                <TalaoBody>
+                  <TalaoHead>
+                    <TalaoBrand>
+                      <strong>CONTRATAPRO</strong>
+                      <span>Via do cliente</span>
+                    </TalaoBrand>
+                    <Agendado>Agendado</Agendado>
+                  </TalaoHead>
+                  <h1 id={`${uid}-ok`} className="sr-only">Horário agendado</h1>
+                  <ViaLines>
+                    <div><dt>Com</dt><dd>{pro.name}</dd></div>
+                    <div><dt>Serviço</dt><dd>{success.service}</dd></div>
+                    <div><dt>Dia</dt><dd>{success.date}</dd></div>
+                    <div><dt>Horário</dt><dd>{success.time}</dd></div>
+                  </ViaLines>
+                  <ViaText>
+                    Você e {firstName} recebem um aviso por e-mail. O preço final depende do serviço feito:
+                    combine o orçamento direto com {firstName}.
+                  </ViaText>
+                  <ViaActions>
+                    {success.whatsappLink && (
+                      <WhatsAppLink href={success.whatsappLink} target="_blank" rel="noopener noreferrer">
+                        <MessageCircle size={20} aria-hidden="true" /> Avisar no WhatsApp
+                      </WhatsAppLink>
+                    )}
+                    <StampLink to="/my-appointments">Ver meus agendamentos</StampLink>
+                  </ViaActions>
+                  <Perforation>
+                    O pagamento é combinado entre você e {firstName}. O ContrataPro não cobra nada de quem contrata.
+                  </Perforation>
+                </TalaoBody>
+              </ViaSheet>
+            </Wrap>
+          </Via>
+        </main>
+        <SiteFooter />
+      </TalaoPage>
+    );
+  }
+
+  /* ---------- Perfil + pedido ---------- */
+
+  const slots = selectedService && !isDaily ? getAvailableSlots() : [];
+  const canBook = isLoggedIn && !!clientCity && matching !== false;
+
+  return (
+    <TalaoPage>
+      <SiteHeader />
+      <main>
+        <Perfil aria-labelledby={`${uid}-nome`}>
+          <Wrap>
+            <Back type="button" onClick={goBack}>
+              <ArrowLeft size={18} aria-hidden="true" /> Voltar para a busca
+            </Back>
+            <PerfilGrid>
+              <Foto>
+                {pro.profile_picture ? <img src={pro.profile_picture} alt={`Foto de ${pro.name}`} /> : <span aria-hidden="true">{initial}</span>}
+              </Foto>
+              <div>
+                <Display as="h1" id={`${uid}-nome`}>{pro.name}</Display>
+                <Meta>
+                  {pro.category && <span data-cat>{pro.category}</span>}
+                  {pro.city && <span><MapPin size={16} aria-hidden="true" /> {pro.city}{pro.state ? `, ${pro.state}` : ''}</span>}
+                  {hasReviews ? (
+                    <span>
+                      <Star size={16} fill="var(--grafica)" color="var(--grafica)" aria-hidden="true" />
+                      <strong>{rating.toFixed(1).replace('.', ',')}</strong>
+                      · {pro.total_reviews} {pro.total_reviews === 1 ? 'avaliação' : 'avaliações'}
+                    </span>
+                  ) : (
+                    <span>Ainda sem avaliações</span>
+                  )}
+                  {pro.subscription_plan?.badge_label && <Stamp>{pro.subscription_plan.badge_label}</Stamp>}
+                </Meta>
+                {pro.description && <Description>{pro.description}</Description>}
+                {proWhatsapp && (
+                  <ContactRow>
+                    <WhatsAppLink data-stamp href={proWhatsapp} target="_blank" rel="noopener noreferrer">
+                      <MessageCircle size={18} aria-hidden="true" /> Tirar dúvida no WhatsApp
+                    </WhatsAppLink>
+                  </ContactRow>
+                )}
+              </div>
+            </PerfilGrid>
+          </Wrap>
+        </Perfil>
+        <Seam $from="amarela" $to="papel" aria-hidden="true" />
+
+        <Pedido aria-labelledby={`${uid}-pedido`}>
+          <Wrap>
+            <PedidoSheet as="form" onSubmit={handleBook} noValidate>
+              <Canhoto aria-hidden="true" />
+              <TalaoBody>
+                <TalaoHead>
+                  <TalaoBrand>
+                    <strong>CONTRATAPRO</strong>
+                    <span id={`${uid}-pedido`}>Pedido de agendamento</span>
+                  </TalaoBrand>
+                  <Com>com {pro.name}</Com>
+                </TalaoHead>
+
+                {proState === 'loading' ? (
+                  <Line as="div"><Muted role="status">Carregando os serviços e a agenda…</Muted></Line>
+                ) : services.length === 0 ? (
+                  <Line as="div">
+                    <Muted>
+                      {firstName} ainda não cadastrou serviços para agendar.
+                      {proWhatsapp ? ' Dá para combinar direto pelo WhatsApp.' : ''}
+                    </Muted>
+                  </Line>
+                ) : (
+                  <>
+                    <Line>
+                      <legend>Serviço</legend>
+                      <Services>
+                        {services.map((s, i) => {
+                          const on = selectedService?.id === s.id;
+                          return (
+                            <ServiceOption key={s.id} $on={on} $first={i === 0}>
+                              <input
+                                type="radio"
+                                name={`${uid}-servico`}
+                                value={s.id}
+                                checked={on}
+                                onChange={() => { setSelectedService(s); setSelectedSlot(null); setBookError(''); }}
+                              />
+                              <PrintedCircle>{on && <HandCross />}</PrintedCircle>
+                              <span>{s.title}</span>
+                              <strong>
+                                {Number(s.price) > 0 ? formatPrice(s.price) : 'A combinar'}
+                                <small>{Number(s.price) > 0 ? (s.duration_type === 'daily' ? ' /dia' : ' /hora') : ''}</small>
+                              </strong>
+                            </ServiceOption>
+                          );
+                        })}
+                      </Services>
+                    </Line>
+
+                    <Line as="div">
+                      <h2 data-display>Dia e horário</h2>
+                      <When>
+                        <CalendarWrap>
+                          <Calendar
+                            onChange={(date) => { setSelectedDate(date); setSelectedSlot(null); setBookError(''); }}
+                            value={selectedDate}
+                            minDate={new Date()}
+                            tileDisabled={({ date, view }) => view === 'month' && (formatDateToISO(date) < todayISO || !worksOn(date))}
+                            locale="pt-BR"
+                            formatShortWeekday={(locale, date) => ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][date.getDay()]}
+                            formatMonthYear={(locale, date) => {
+                              const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+                              return `${months[date.getMonth()]} ${date.getFullYear()}`;
+                            }}
+                            prev2Label={null}
+                            next2Label={null}
+                          />
+                        </CalendarWrap>
+
+                        <div aria-live="polite">
+                          <DayTitle>{longDate(selectedDate)}</DayTitle>
+                          {!selectedService ? (
+                            <Muted>Escolha o serviço para ver os horários livres.</Muted>
+                          ) : !apptsReady ? (
+                            <Muted role="status">Conferindo a agenda deste dia…</Muted>
+                          ) : isDaily ? (
+                            isDayAvailable() ? (
+                              <DailyPick>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedSlot === 'daily'}
+                                  onChange={(e) => { setSelectedSlot(e.target.checked ? 'daily' : null); setBookError(''); }}
+                                />
+                                <PrintedCircle>{selectedSlot === 'daily' && <HandCross />}</PrintedCircle>
+                                <span>Quero a diária neste dia (ocupa o dia de trabalho inteiro de {firstName})</span>
+                              </DailyPick>
+                            ) : (
+                              <Muted>Este dia já está ocupado ou {firstName} não atende nele. Escolha outro dia no calendário.</Muted>
+                            )
+                          ) : slots.length === 0 ? (
+                            <Muted>{firstName} não atende neste dia. Escolha outro no calendário.</Muted>
+                          ) : slots.every((s) => s.isOccupied) ? (
+                            <Muted>Nenhum horário livre neste dia. Escolha outro no calendário.</Muted>
+                          ) : (
+                            <Slots role="group" aria-label="Horários">
+                              {slots.map((slot) => (
+                                <Slot
+                                  key={slot.time}
+                                  type="button"
+                                  $on={selectedSlot === slot.time}
+                                  aria-pressed={selectedSlot === slot.time}
+                                  disabled={slot.isOccupied}
+                                  aria-label={slot.isOccupied ? `${slot.time}, ocupado` : slot.time}
+                                  onClick={() => { setSelectedSlot(slot.time); setBookError(''); }}
+                                >
+                                  {slot.time}
+                                </Slot>
+                              ))}
+                            </Slots>
+                          )}
+                        </div>
+                      </When>
+                    </Line>
+
+                    {isLoggedIn && clientChecked && !clientCity && (
+                      <Notice>
+                        <AlertCircle size={20} aria-hidden="true" />
+                        <span>Falta o seu endereço no cadastro para agendar. Complete em <Link to="/my-appointments">Minha conta</Link> e volte aqui.</span>
+                      </Notice>
+                    )}
+                    {matching === false && (
+                      <Notice>
+                        <AlertCircle size={20} aria-hidden="true" />
+                        <span>{firstName} atende só em {pro.city}{pro.state ? `, ${pro.state}` : ''}. Seu cadastro diz {clientCity}, então não dá para agendar por aqui.</span>
+                      </Notice>
+                    )}
+                    {matching === true && (
+                      <Notice $tone="ok">
+                        <Check size={20} aria-hidden="true" />
+                        <span>Atende em {pro.city}, a sua cidade.</span>
+                      </Notice>
+                    )}
+
+                    <Resumo aria-live="polite">
+                      {selectedService && selectedSlot ? (
+                        <>Seu pedido: <Hand>{selectedService.title}, {longDate(selectedDate)}{isDaily ? ', o dia todo' : `, às ${selectedSlot}`}</Hand></>
+                      ) : (
+                        'Escolha o serviço, o dia e o horário.'
+                      )}
+                    </Resumo>
+
+                    {bookError && <FieldNote role="alert" $tone="erro">{bookError}</FieldNote>}
+
+                    <SubmitRow>
+                      {isLoggedIn ? (
+                        <PrimaryButton type="submit" disabled={booking || !canBook}>
+                          {booking ? 'Agendando…' : <>Agendar <ArrowRight size={20} aria-hidden="true" /></>}
+                        </PrimaryButton>
+                      ) : (
+                        <PrimaryButton type="submit">
+                          Entrar para agendar <ArrowRight size={20} aria-hidden="true" />
+                        </PrimaryButton>
+                      )}
+                    </SubmitRow>
+                    {!isLoggedIn && (
+                      <Signup>
+                        Ainda não tem conta?{' '}
+                        <Link to="/register-client" state={{ from: location.pathname }}>Criar conta grátis</Link>
+                      </Signup>
+                    )}
+                  </>
+                )}
+
+                <Perforation>
+                  Agendar não cobra nada. O preço final e o pagamento você combina direto com {firstName}.
+                </Perforation>
+              </TalaoBody>
+            </PedidoSheet>
+          </Wrap>
+        </Pedido>
+
+        <Seam $from="papel" $to="rosa" aria-hidden="true" />
+        <Mesa aria-labelledby={`${uid}-avaliacoes`}>
+          <Wrap>
+            <Display id={`${uid}-avaliacoes`}>O que dizem os clientes</Display>
+            {reviews.length > 0 ? (
+              <>
+                <Reviews>
+                  {reviews.map((review, idx) => (
+                    <ReviewItem key={`${reviewsPage}-${idx}`}>
+                      <header>
+                        <strong>{review.customer_name}</strong>
+                        <Stars aria-label={`${review.rating} de 5 estrelas`}>
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} size={16} fill={i < review.rating ? 'currentColor' : 'transparent'} aria-hidden="true" />
+                          ))}
+                        </Stars>
+                      </header>
+                      {review.comment && <p>{review.comment}</p>}
+                      <time dateTime={review.created_at}>{new Date(review.created_at).toLocaleDateString('pt-BR')}</time>
+                    </ReviewItem>
+                  ))}
+                </Reviews>
+                {reviewsPages > 1 && (
+                  <Pager>
+                    <PagerButton type="button" onClick={() => loadReviews(reviewsPage - 1)} disabled={reviewsPage <= 1}>Anteriores</PagerButton>
+                    <span>{reviewsPage} de {reviewsPages}</span>
+                    <PagerButton type="button" onClick={() => loadReviews(reviewsPage + 1)} disabled={reviewsPage >= reviewsPages}>Próximas</PagerButton>
+                  </Pager>
+                )}
+              </>
+            ) : (
+              <Lead>Ainda sem avaliações. Só quem agenda pelo ContrataPro pode avaliar, depois do serviço feito.</Lead>
+            )}
+            <TrustNote />
+          </Wrap>
+        </Mesa>
+        <Seam $from="rosa" $to="papel" aria-hidden="true" />
+      </main>
+      <SiteFooter />
+    </TalaoPage>
+  );
 }

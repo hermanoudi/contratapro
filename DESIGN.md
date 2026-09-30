@@ -259,6 +259,17 @@ Shared pieces live in `frontend/src/components/talao/`. Pages import them from t
   - **Eye toggle:** reachable by Tab.
   - **Generated password:** shown in a papel-2 box with a sucesso rule and a copy button, in monospace so l, I and 1 don't get confused.
 - **Plan choice:** each plan is a papel sheet holding a real radio. The chosen one gets a 2px gráfica frame; the others a 1.5px controle frame. Plan items come from the plan record (services, bookings/month, search priority, badge label), never hardcoded marketing ("mais popular", emoji).
+- **Profile and booking (`/p/:slug`, full talão):**
+  - **Amarela via:** the professional, with the photo in the ProCard frame (larger), name as h1 and a meta row. The row holds category, city, the real rating or "Ainda sem avaliações", and the plan badge as a stamp. The description keeps line breaks; WhatsApp is a stamp link.
+  - **"Pedido de agendamento" talão (straight):**
+    - Services as printed-circle radios with price on the right ("A combinar" when there is none).
+    - The calendar restyled in printed type. Days off and past days are struck through and disabled; the selected day is filled in gráfica.
+    - Hour slots as printed boxes that turn handwritten carbono when chosen.
+    - Region/address notices, and a handwritten "Seu pedido" summary.
+    - The red submit ("Entrar para agendar" when logged out), then the tear line: "Agendar não cobra nada…".
+  - **Rosa via:** the reviews, followed by `TrustNote`.
+  - **Success:** the "Via do cliente", an azul via with a talão stamped AGENDADO in sucesso and the details written by hand.
+- **Backend messages:** `components/apiErrors.js` (`translateError`) maps the English or unaccented messages from signup, reset and booking.
 - **Surface:** `TalaoPage` sets the font, ink, paper, `::selection` and focus ring, and holds `font-size: 1rem` against the mobile body shrink in `index.css`. `Wrap` is the 1200px column. `paperSurface('rosa')` paints a via and tints `--texto-2` for it. Every sheet of papel resting on a coloured via resets `--texto-2` via `cardSheet`.
 - **Components:**
   - Type: `Display` (always carries `data-display`, so the mobile `!important` heading rule never shrinks it), `Lead`, `Hand`.
@@ -274,7 +285,9 @@ Shared pieces live in `frontend/src/components/talao/`. Pages import them from t
   - `TrustNote`: the "O ContrataPro não verifica os profissionais…" line under any list of cards.
   - `whatsappLink`: the prefilled WhatsApp message for a card's contact action.
   - Page frame: `SiteHeader` (owns the `/auth/me` session and the mobile menu) and `SiteFooter`.
-- **Still local to the Home:** the talão form shell (canhoto, head, tear line), the printed checklist, the steps table, the combinado panel and the FAQ. Promote one to `components/talao/` the first time a second page needs it; don't copy it.
+- **Talão shell (promoted):** `components/talao/TalaoSheet.jsx` holds `TalaoSheet`, `Canhoto`, `TalaoBody`, `TalaoHead`, `TalaoBrand`, `SubmitRow` and `Perforation`, plus the printed single-choice circle `PrintedCircle` with its hand-drawn `HandCross`.
+  - `$tilt` rotates the sheet -1.2deg on desktop. Only the Home uses it; a sheet holding a form or a calendar stays straight.
+- **Still local to the Home:** the category-shortcut radiogroup behaviour (`CheckItem`), the steps table, the combinado panel and the FAQ. Promote one to `components/talao/` the first time a second page needs it; don't copy it.
 - **Search (`/search`):**
   - The request sits on the amarela via as an untilted sheet: Serviço, CEP and Buscar in one row from 900px.
   - The h1 restates the request ("Diarista em Uberlândia").

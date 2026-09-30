@@ -8,7 +8,8 @@ import PasswordInput from '../components/PasswordInput';
 import AuthLayout from '../components/AuthLayout';
 import { PrimaryButton, StampButton, FieldLabel, FieldNote, TextInput } from '../components/talao';
 import { StepHead, Group, Actions, FormError, FooterNote, TextField, AddressFields } from '../components/SignupParts';
-import { formatCpf, formatWhatsApp, translateError, validateAddress } from '../components/signupUtils';
+import { formatCpf, formatWhatsApp, validateAddress } from '../components/signupUtils';
+import { translateError } from '../components/apiErrors';
 
 // Só o que o ContrataPro faz de fato (PRODUCT.md): cadastro grátis, sem intermediar serviço nem pagamento
 const FACTS = [

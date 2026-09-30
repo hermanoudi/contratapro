@@ -7,7 +7,8 @@ import PasswordInput from '../components/PasswordInput';
 import AuthLayout from '../components/AuthLayout';
 import { PrimaryButton, StampButton, FieldLabel, FieldNote } from '../components/talao';
 import { StepHead, Group, Actions, FormError, FooterNote, TextField, AddressFields } from '../components/SignupParts';
-import { formatWhatsApp, translateError, validateAddress } from '../components/signupUtils';
+import { formatWhatsApp, validateAddress } from '../components/signupUtils';
+import { translateError } from '../components/apiErrors';
 
 // Só o que o ContrataPro faz de fato (PRODUCT.md)
 const FACTS = [

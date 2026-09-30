@@ -23,16 +23,6 @@ export const formatCepMask = (raw) => {
   return value.length > 5 ? `${value.slice(0, 5)}-${value.slice(5)}` : value;
 };
 
-// O backend responde algumas mensagens em inglês ou sem acento; aqui viram português de gente
-const KNOWN_ERRORS = {
-  'Email already registered': 'Já existe uma conta com este e-mail. Entre com ele ou use outro e-mail.',
-  'Token invalido ou expirado': 'Este link não vale mais. Peça um link novo em "Esqueci minha senha".',
-  'A senha nao atende aos criterios de seguranca': 'A senha não atende às regras de segurança.',
-  'Usuario nao encontrado': 'Não encontramos essa conta. Peça um link novo em "Esqueci minha senha".',
-};
-
-export const translateError = (detail, fallback) =>
-  (typeof detail === 'string' && (KNOWN_ERRORS[detail] || detail)) || fallback;
 
 // Validação do endereço: devolve { campo: mensagem } só com o que falta
 export const validateAddress = (formData) => {

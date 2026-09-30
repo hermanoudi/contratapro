@@ -7,7 +7,7 @@ import ForgotPasswordModal from '../components/ForgotPasswordModal';
 import AuthLayout, { AuthTitle, AuthLead } from '../components/AuthLayout';
 import { PrimaryButton, StampButton, FieldLabel, InputBox, TextInput, FieldNote } from '../components/talao';
 import { Group, Actions, FormError } from '../components/SignupParts';
-import { translateError } from '../components/signupUtils';
+import { translateError } from '../components/apiErrors';
 import { API_URL } from '../config';
 
 // Estado do link numa folha só: ícone, título e o que fazer agora
