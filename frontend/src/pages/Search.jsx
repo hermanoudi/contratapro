@@ -1,765 +1,513 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import styled from 'styled-components';
+import { useState, useEffect, useRef, useId } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import styled, { keyframes } from 'styled-components';
+import { ArrowRight, RotateCw } from 'lucide-react';
 import { API_URL } from '../config';
-import {
-  Search as SearchIcon,
-  MapPin,
-  Star,
-  ChevronLeft,
-  Briefcase,
-  Shield,
-  X,
-  MessageCircle,
-  Filter,
-  Calendar
-} from 'lucide-react';
-import { motion } from 'framer-motion';
 import SEOHead from '../components/SEO/SEOHead';
+import {
+  TalaoPage,
+  Wrap,
+  paperSurface,
+  Display,
+  Lead,
+  PrimaryButton,
+  StampButton,
+  Field,
+  FormError,
+  Seam,
+  ProCard,
+  CardsGrid,
+  BlankCard,
+  NoticeSheet,
+  NoticeActions,
+  CepField,
+  useCep,
+  readSavedLocation,
+  SiteHeader,
+  SiteFooter,
+} from '../components/talao';
 
-const Container = styled.div`
-  min-height: 100vh;
-  background: var(--bg-primary);
-  padding: 2rem;
+/* Busca no mundo "Talão de Orçamento": o pedido fica na via amarela, já preenchido
+   à mão e pronto para ser corrigido; os profissionais aparecem na via rosa, como na Home. */
 
-  @media (max-width: 768px) {
-    padding: 1rem;
-  }
+/* ------------------------------ Pedido: via amarela ------------------------------ */
 
-  @media (max-width: 360px) {
-    padding: 0.75rem;
-  }
+const Pedido = styled.section`
+  ${paperSurface('amarela')}
+  padding: clamp(1.5rem, 5vw, 3.5rem) 0 clamp(2rem, 5vw, 3.5rem);
 `;
 
-const Header = styled.div`
-  max-width: 1200px;
-  margin: 0 auto 2rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  @media (max-width: 360px) {
-    margin-bottom: 1rem;
-    gap: 0.5rem;
-  }
+const PedidoLead = styled(Lead)`
+  margin-bottom: clamp(1.25rem, 3vw, 2rem);
 `;
 
-const BackButton = styled(Link)`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.2s;
-
-  &:hover {
-    color: var(--primary);
-  }
-`;
-
-const SearchBar = styled.div`
-  flex: 1;
-  display: flex;
-  gap: 0.5rem;
-  background: white;
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  padding: 0.75rem;
-  transition: all 0.3s ease;
-  max-width: 100%;
-  box-sizing: border-box;
-
-  &:focus-within {
-    border-color: var(--primary);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
-  }
-
-  @media (max-width: 768px) {
-    width: 100%;
-  }
-
-  @media (max-width: 480px) {
-    padding: 0.5rem;
-    gap: 0.25rem;
-  }
-
-  @media (max-width: 360px) {
-    padding: 0.4rem;
-    gap: 0.2rem;
-  }
-`;
-
-const SearchInput = styled.input`
-  flex: 1;
-  border: none;
-  background: transparent;
-  padding: 0.5rem;
-  font-size: 1rem;
-  color: var(--text-primary);
-  outline: none;
-
-  &::placeholder {
-    color: var(--text-secondary);
-  }
-`;
-
-const CEPInput = styled.input`
-  width: 180px;
-  border: none;
-  border-left: 1px solid var(--border);
-  background: transparent;
-  padding: 0.5rem;
-  font-size: 1rem;
-  color: var(--text-primary);
-  outline: none;
-  min-width: 0;
-  flex-shrink: 1;
-
-  &::placeholder {
-    color: var(--text-secondary);
-  }
-
-  @media (max-width: 768px) {
-    width: 140px;
-  }
-
-  @media (max-width: 480px) {
-    width: 100px;
-    font-size: 0.85rem;
-    padding: 0.3rem 0.4rem;
-  }
-
-  @media (max-width: 360px) {
-    width: 80px;
-    font-size: 0.8rem;
-    padding: 0.2rem 0.3rem;
-  }
-`;
-
-const CityLabel = styled.span`
-  font-size: 0.85rem;
-  color: var(--primary);
-  font-weight: 700;
-  white-space: nowrap;
-
-  @media (max-width: 480px) {
-    display: none;
-  }
-`;
-
-const SearchButton = styled.button`
-  padding: 0.5rem 1.5rem;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  flex-shrink: 0;
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  @media (max-width: 480px) {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.85rem;
-  }
-
-  @media (max-width: 360px) {
-    padding: 0.3rem 0.6rem;
-    font-size: 0.75rem;
-  }
-`;
-
-const ResultsContainer = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
-`;
-
-const ResultsHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-`;
-
-const ResultsCount = styled.h2`
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: var(--text-primary);
-
-  @media (max-width: 768px) {
-    font-size: 1.5rem;
-  }
-`;
-
-const ClearButton = styled.button`
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  font-weight: 600;
-  transition: color 0.2s;
-
-  &:hover {
-    color: var(--primary);
-  }
-`;
-
-const Grid = styled.div`
+// O talão aberto na mesa: folha branca emoldurada, sem inclinação (aqui é para editar)
+const PedidoSheet = styled.form`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
-  gap: 2rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 1.75rem;
+  background: var(--papel);
+  border: 2px solid var(--grafica);
+  box-shadow: 0 22px 36px -18px rgba(23, 23, 27, 0.45), 0 2px 4px rgba(23, 23, 27, 0.12);
+  padding: 0.25rem clamp(1rem, 3vw, 1.75rem) 1.25rem;
 
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
-
-  @media (max-width: 480px) {
-    gap: 1rem;
-  }
-`;
-
-/* Filter chips */
-const FilterBar = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 0.25rem;
-  margin-bottom: 1.5rem;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
-`;
-
-const FilterChip = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.5rem 0.875rem;
-  border-radius: 20px;
-  border: 2px solid ${props => props.$active ? 'var(--primary)' : 'var(--border)'};
-  background: ${props => props.$active ? 'var(--primary)' : 'white'};
-  color: ${props => props.$active ? 'white' : 'var(--text-secondary)'};
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-  flex-shrink: 0;
-
-  &:hover {
-    border-color: var(--primary);
-    color: ${props => props.$active ? 'white' : 'var(--primary)'};
+  @media (min-width: 900px) {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) auto;
+    align-items: start;
   }
 `;
 
-/* Redesigned card */
-const ProCard = styled(motion.div)`
-  background: white;
-  border-radius: 20px;
-  border: 2px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-  overflow: hidden;
-
-  &:hover {
-    border-color: var(--primary);
-    box-shadow: 0 12px 30px rgba(99, 102, 241, 0.15);
-    transform: translateY(-4px);
-  }
-`;
-
-const PhotoWrapper = styled.div`
-  position: relative;
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-`;
-
-const HeroPhoto = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-`;
-
-const PhotoPlaceholder = styled.div`
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 3rem;
-  font-weight: 900;
-`;
-
-const PlanBadgeOverlay = styled.div`
-  position: absolute;
-  top: 0.625rem;
-  right: 0.625rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.3rem 0.625rem;
-  border-radius: 20px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  backdrop-filter: blur(4px);
-  background: ${props => props.$premium
-    ? 'rgba(245, 158, 11, 0.9)'
-    : 'rgba(99, 102, 241, 0.9)'};
-  color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-`;
-
-const CardBody = styled.div`
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-  flex: 1;
-`;
-
-const ProName = styled.h3`
-  font-size: 1.1rem;
-  font-weight: 800;
-  margin: 0;
-  color: var(--text-primary);
-`;
-
-const ProCategory = styled.p`
-  color: var(--primary);
-  font-weight: 700;
-  font-size: 0.85rem;
-  margin: 0;
-`;
-
-const RatingRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-`;
-
-const RatingScore = styled.span`
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #f59e0b;
-`;
-
-const RatingCount = styled.span`
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-`;
-
-const LocationRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  font-weight: 500;
-`;
-
-const ChipsRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-`;
-
-const ServiceChip = styled.span`
-  font-size: 0.72rem;
-  background: var(--bg-secondary);
-  padding: 0.3rem 0.625rem;
-  border-radius: 6px;
-  font-weight: 600;
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-`;
-
-const MoreChip = styled.span`
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-  align-self: center;
-`;
-
-const CTARow = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin-top: auto;
+const SubmitCell = styled.div`
   padding-top: 0.5rem;
 
-  @media (max-width: 480px) {
-    flex-direction: column;
-  }
-`;
-
-const BookButton = styled.button`
-  flex: 1;
-  padding: 0.75rem;
-  font-size: 0.9rem;
-
-  @media (max-width: 480px) {
+  button {
     width: 100%;
+    min-height: 54px;
+    font-size: 1.2rem;
+  }
+
+  @media (min-width: 900px) {
+    padding-top: 1.1rem;
+
+    button {
+      width: auto;
+    }
   }
 `;
 
-const WhatsAppButton = styled.a`
-  flex: 1;
-  padding: 0.75rem;
-  background: #25D366;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
+/* ------------------------------ Resultado: via rosa ------------------------------ */
+
+const Mesa = styled.section`
+  ${paperSurface('rosa')}
+  padding: clamp(2rem, 5vw, 3.5rem) 0 clamp(3.5rem, 8vw, 6rem);
+`;
+
+const Toolbar = styled.div`
   display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
+  gap: 0.75rem 1.5rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: clamp(1.5rem, 3vw, 2rem);
+  border-bottom: 2px solid var(--grafica);
+`;
 
-  &:hover {
-    background: #20BA5A;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
-  }
+const Count = styled.p`
+  font-family: var(--f-impresso);
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: 0.02em;
+  color: var(--nanquim);
 
-  @media (max-width: 480px) {
-    width: 100%;
+  strong {
+    font-variant-numeric: tabular-nums;
   }
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 5rem 2rem;
-  background: var(--bg-secondary);
-  border-radius: 32px;
-  border: 1px solid var(--border);
+const Filters = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
 `;
+
+const drawStroke = keyframes`
+  to { stroke-dashoffset: 0; }
+`;
+
+// Filtro de marcar: quadrado impresso (vários ao mesmo tempo), X à mão quando ligado
+const FilterToggle = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--f-texto);
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--nanquim);
+
+  &:hover > span:last-child {
+    color: var(--grafica-escura);
+  }
+`;
+
+const Box = styled.span`
+  flex: none;
+  position: relative;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: 2px solid var(--grafica-escura);
+
+  svg {
+    position: absolute;
+    inset: -5px;
+    width: calc(100% + 10px);
+    height: calc(100% + 10px);
+    overflow: visible;
+  }
+
+  path {
+    stroke: var(--carbono);
+    stroke-width: 3.2;
+    stroke-linecap: round;
+    fill: none;
+    stroke-dasharray: 30;
+    stroke-dashoffset: 30;
+    animation: ${drawStroke} 220ms var(--ease-out) forwards;
+  }
+
+  path + path {
+    animation-delay: 160ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    path {
+      animation: none;
+      stroke-dashoffset: 0;
+    }
+  }
+`;
+
+const Aviso = styled.p`
+  margin-top: 1.75rem;
+  color: var(--texto-2);
+  max-width: 62ch;
+  line-height: 1.55;
+`;
+
+function CheckMark() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 3 L21 21" />
+      <path d="M21 3 L3 21" />
+    </svg>
+  );
+}
+
+/* ------------------------------ Regras ------------------------------ */
+
+const FILTERS = [
+  { id: 'rating', label: '4 estrelas ou mais', test: (pro) => (pro.average_rating || 0) >= 4 },
+  { id: 'badge', label: 'Com selo', test: (pro) => !!pro.subscription_plan?.badge_label },
+];
+
+const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+
+// Link de WhatsApp com a mensagem já escrita para o profissional
+const whatsappLink = (whatsapp, profName, serviceName = '') => {
+  if (!whatsapp) return null;
+  const cleanPhone = whatsapp.replace(/\D/g, '');
+  if (!cleanPhone) return null;
+  const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+
+  let message = `Olá ${profName}! 👋\n\n`;
+  message += 'Encontrei seu perfil na plataforma *ContrataPro* e ';
+  message += serviceName
+    ? `tenho interesse no serviço: *${serviceName}*\n\n`
+    : 'gostaria de saber mais sobre seus serviços.\n\n';
+  message += 'Podemos conversar?\n\nObrigado!';
+
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+};
+
+/* ------------------------------ Página ------------------------------ */
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const formId = useId();
+  const serviceInputRef = useRef(null);
+  const cepInputRef = useRef(null);
 
-  const [service, setService] = useState(searchParams.get('service') || '');
-  const [cep, setCep] = useState(() => {
-    const cepFromUrl = searchParams.get('cep');
-    if (cepFromUrl) return cepFromUrl;
+  // Chegando direto em /search, sem pedido: usa a região salva na última visita
+  const hasQuery = searchParams.has('service') || searchParams.has('city');
+  const [savedLocation] = useState(readSavedLocation);
+  const query = {
+    service: (searchParams.get('service') || '').trim(),
+    city: hasQuery ? (searchParams.get('city') || '').trim() : savedLocation?.city || '',
+  };
 
-    // Tentar pegar do localStorage
-    const savedCep = localStorage.getItem('userCep');
-    return savedCep || '';
-  });
+  const [service, setService] = useState(query.service);
+  const [formError, setFormError] = useState('');
+  const cep = useCep(
+    hasQuery
+      ? { cep: searchParams.get('cep') || '', city: searchParams.get('city') || '' }
+      : savedLocation
+  );
 
-  const [city, setCity] = useState(() => {
-    const cityFromUrl = searchParams.get('city');
-    if (cityFromUrl) return cityFromUrl;
-
-    // Tentar pegar do localStorage
-    const savedCity = localStorage.getItem('userCity');
-    return savedCity || '';
-  });
-
-  const [professionals, setProfessionals] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  // Resposta guardada com a chave do pedido que a gerou: chave diferente = ainda carregando
+  const requestKey = `${query.service}|${query.city}|${attempt}`;
+  const [response, setResponse] = useState({ key: null, status: 'ok', items: [] });
   const [activeFilters, setActiveFilters] = useState([]);
 
-  const FILTERS = [
-    { id: 'rating', label: '⭐ 4+ estrelas' },
-    { id: 'bookable', label: '📅 Aceita agendamentos' },
-    { id: 'badge', label: '✨ Com badge' },
-  ];
+  // Voltar/avançar no navegador troca o pedido: o campo acompanha a URL
+  const [shownService, setShownService] = useState(query.service);
+  if (shownService !== query.service) {
+    setShownService(query.service);
+    setService(query.service);
+  }
+
+  // A URL é o pedido: toda mudança nela refaz a busca
+  useEffect(() => {
+    if (!query.service && !query.city) return undefined;
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    if (query.service) params.append('service', query.service);
+    if (query.city) params.append('city', query.city);
+
+    fetch(`${API_URL}/users/search-by-service?${params}`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((items) => setResponse({ key: requestKey, status: 'ok', items: Array.isArray(items) ? items : [] }))
+      .catch((err) => {
+        if (err.name !== 'AbortError') setResponse({ key: requestKey, status: 'error', items: [] });
+      });
+    return () => controller.abort();
+  }, [query.service, query.city, requestKey]);
+
+  const results = !query.service && !query.city
+    ? { status: 'idle', items: [] }
+    : response.key === requestKey
+      ? response
+      : { status: 'loading', items: [] };
 
   const toggleFilter = (id) => {
-    setActiveFilters(prev =>
-      prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
-    );
+    setActiveFilters((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
   };
 
-  const filteredProfessionals = professionals.filter(pro => {
-    if (activeFilters.includes('rating') && (pro.average_rating || 0) < 4) return false;
-    if (activeFilters.includes('bookable') && !pro.subscription_plan?.can_receive_bookings) return false;
-    if (activeFilters.includes('badge') && !pro.subscription_plan?.badge_label) return false;
-    return true;
-  });
+  const visible = results.items.filter((pro) =>
+    FILTERS.every((f) => !activeFilters.includes(f.id) || f.test(pro))
+  );
 
-  // Função helper para gerar link WhatsApp
-  const generateWhatsAppLink = (whatsapp, profName, serviceName = '') => {
-    if (!whatsapp) return '#';
-
-    const cleanPhone = whatsapp.replace(/\D/g, '');
-    const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-
-    let message = `Olá ${profName}! 👋\n\n`;
-    message += `Encontrei seu perfil na plataforma *ContrataPro* e `;
-    if (serviceName) {
-      message += `tenho interesse no serviço: *${serviceName}*\n\n`;
-    } else {
-      message += `gostaria de saber mais sobre seus serviços.\n\n`;
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // CEP começado e incompleto: avisa no próprio CEP em vez de buscar sem a região
+    if (cep.isIncomplete) {
+      cep.setCepIncomplete(true);
+      cepInputRef.current?.focus();
+      return;
     }
-    message += `Podemos conversar?\n\nObrigado!`;
-
-    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-  };
-
-  useEffect(() => {
-    // Se há parâmetros na URL, fazer busca automática
-    const serviceParam = searchParams.get('service');
-    const cityParam = searchParams.get('city') || localStorage.getItem('userCity');
-    const cepParam = searchParams.get('cep') || localStorage.getItem('userCep');
-
-    if (serviceParam || cityParam) {
-      performSearch(serviceParam, cityParam);
+    if (!service.trim() && !cep.city) {
+      setFormError('Escreva o serviço ou um CEP válido para buscar.');
+      serviceInputRef.current?.focus();
+      return;
     }
-  }, []); // Executar apenas uma vez ao montar
-
-  const handleCepChange = async (e) => {
-    const value = e.target.value.replace(/\D/g, '');
-    setCep(value);
-    if (value.length === 8) {
-      try {
-        const res = await fetch(`${API_URL}/cep/${value}`);
-        if (res.ok) {
-          const data = await res.json();
-          setCity(data.city);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    } else {
-      setCity('');
-    }
-  };
-
-  const performSearch = async (searchService, searchCity) => {
-    setLoading(true);
-
-    try {
-      const params = new URLSearchParams();
-      if (searchService) params.append('service', searchService);
-      if (searchCity) params.append('city', searchCity);
-
-      const res = await fetch(`${API_URL}/users/search-by-service?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setProfessionals(data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-      setHasSearched(true);  // Só marca como "buscou" DEPOIS de terminar
-    }
-  };
-
-  const handleSearch = () => {
-    performSearch(service, city);
-    // Atualizar URL
     const params = new URLSearchParams();
-    if (service) params.set('service', service);
-    if (city) params.set('city', city);
-    if (cep) params.set('cep', cep);
+    if (service.trim()) params.set('service', service.trim());
+    if (cep.city) params.set('city', cep.city);
+    if (cep.cepState === 'ok' && cep.cepDigits.length === 8) params.set('cep', cep.cepDigits);
     setSearchParams(params);
   };
 
-  const clearSearch = () => {
-    setService('');
-    setCep('');
-    setCity('');
-    setProfessionals([]);
-    setHasSearched(false);
-    setSearchParams({});
+  const searchAllCities = () => {
+    setSearchParams(query.service ? { service: query.service } : {});
+    cep.handleCepChange('');
   };
 
-  // SEO dinamico baseado na busca
-  const seoTitle = service
-    ? `${service}${city ? ` em ${city}` : ''} - Encontre Profissionais`
+  const editRequest = () => {
+    serviceInputRef.current?.focus();
+    serviceInputRef.current?.select();
+  };
+
+  const title = query.service && query.city
+    ? `${capitalize(query.service)} em ${query.city}`
+    : query.service
+      ? `${capitalize(query.service)}, em qualquer cidade`
+      : query.city
+        ? `Profissionais em ${query.city}`
+        : 'Quem você procura?';
+
+  // SEO dinâmico baseado na busca
+  const seoTitle = query.service
+    ? `${query.service}${query.city ? ` em ${query.city}` : ''} - Encontre Profissionais`
     : 'Buscar Profissionais';
-  const seoDescription = service
-    ? `Encontre profissionais de ${service}${city ? ` em ${city}` : ''} qualificados. Compare precos, veja avaliacoes e agende online.`
-    : 'Busque e encontre profissionais qualificados na sua regiao. Eletricista, encanador, manicure, diarista e muito mais.';
+  const seoDescription = query.service
+    ? `Encontre profissionais de ${query.service}${query.city ? ` em ${query.city}` : ''}. Compare preços, veja avaliações e agende online.`
+    : 'Busque profissionais da sua região. Eletricista, encanador, manicure, diarista e muito mais.';
+
+  const showResults = results.status !== 'idle';
 
   return (
-    <Container>
+    <TalaoPage>
       <SEOHead
         title={seoTitle}
         description={seoDescription}
-        category={service}
-        city={city}
-        url={`https://contratapro.com.br/search${service ? `?service=${encodeURIComponent(service)}` : ''}`}
+        category={query.service}
+        city={query.city}
+        url={`https://contratapro.com.br/search${query.service ? `?service=${encodeURIComponent(query.service)}` : ''}`}
       />
-      <Header>
-        <BackButton to="/">
-          <ChevronLeft size={20} />
-          Voltar
-        </BackButton>
-      </Header>
+      <SiteHeader />
 
-      {loading && (
-        <ResultsContainer>
-          <div style={{ textAlign: 'center', padding: '3rem' }}>
-            <SearchIcon size={48} style={{ opacity: 0.3, marginBottom: '1rem', animation: 'pulse 1.5s infinite' }} />
-            <p style={{ color: 'var(--text-secondary)' }}>Buscando profissionais...</p>
-          </div>
-        </ResultsContainer>
-      )}
+      <main>
+        <Pedido aria-labelledby="titulo-busca">
+          <Wrap>
+            <Display as="h1" id="titulo-busca">{title}</Display>
+            <PedidoLead>
+              {showResults
+                ? 'Quem se cadastrou no ContrataPro e oferece esse serviço. Os primeiros da lista assinam um plano de destaque; as avaliações só vêm de quem agendou.'
+                : 'Escreva o serviço e o seu CEP. Você vê quem atende no seu bairro e marca o horário direto na agenda da pessoa.'}
+            </PedidoLead>
 
-      {!loading && hasSearched && (
-        <ResultsContainer>
-          <ResultsHeader>
-            <ResultsCount>
-              {filteredProfessionals.length}{' '}
-              {filteredProfessionals.length === 1 ? 'Profissional encontrado' : 'Profissionais encontrados'}
-            </ResultsCount>
-          </ResultsHeader>
+            <PedidoSheet onSubmit={handleSubmit} noValidate aria-label="Pedido de serviço">
+              <div>
+                <Field>
+                  <span>Serviço:</span>
+                  <input
+                    ref={serviceInputRef}
+                    type="text"
+                    name="service"
+                    placeholder="ex.: eletricista, diarista"
+                    autoComplete="off"
+                    value={service}
+                    aria-invalid={formError ? true : undefined}
+                    aria-describedby={formError ? `${formId}-erro` : undefined}
+                    onChange={(e) => {
+                      setService(e.target.value);
+                      setFormError('');
+                    }}
+                  />
+                </Field>
+                {formError && <FormError id={`${formId}-erro`} role="alert">{formError}</FormError>}
+              </div>
+              <div>
+                <CepField
+                  cep={{ ...cep, handleCepChange: (value) => { setFormError(''); cep.handleCepChange(value); } }}
+                  id={`${formId}-cep`}
+                  inputRef={cepInputRef}
+                />
+              </div>
+              <SubmitCell>
+                <PrimaryButton type="submit">
+                  Buscar <ArrowRight size={20} aria-hidden="true" />
+                </PrimaryButton>
+              </SubmitCell>
+            </PedidoSheet>
+          </Wrap>
+        </Pedido>
 
-          {professionals.length > 0 && (
-            <FilterBar>
-              {FILTERS.map(f => (
-                <FilterChip
-                  key={f.id}
-                  $active={activeFilters.includes(f.id)}
-                  onClick={() => toggleFilter(f.id)}
-                >
-                  {f.label}
-                  {activeFilters.includes(f.id) && (
-                    <X size={12} style={{ marginLeft: '2px' }} />
-                  )}
-                </FilterChip>
-              ))}
-            </FilterBar>
-          )}
-
-          {filteredProfessionals.length > 0 ? (
-            <Grid>
-              {filteredProfessionals.map((pro) => {
-                const isPremium = (pro.subscription_plan?.priority_in_search || 0) >= 2;
-                const isPro = (pro.subscription_plan?.priority_in_search || 0) === 1;
-                const hasBadge = !!(pro.subscription_plan?.badge_label);
-
-                return (
-                  <ProCard
-                    key={pro.id}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <PhotoWrapper>
-                      {pro.profile_picture ? (
-                        <HeroPhoto src={pro.profile_picture} alt={pro.name} />
+        {showResults ? (
+          <>
+            <Seam $from="amarela" $to="rosa" aria-hidden="true" />
+            <Mesa aria-label="Profissionais encontrados" aria-busy={results.status === 'loading'}>
+              <Wrap>
+                {results.status === 'ok' && results.items.length > 0 && (
+                  <Toolbar>
+                    <Count role="status">
+                      {activeFilters.length > 0 ? (
+                        <><strong>{visible.length}</strong> de <strong>{results.items.length}</strong> profissionais</>
                       ) : (
-                        <PhotoPlaceholder>{pro.name.charAt(0).toUpperCase()}</PhotoPlaceholder>
+                        <>
+                          <strong>{results.items.length}</strong>{' '}
+                          {results.items.length === 1 ? 'profissional encontrado' : 'profissionais encontrados'}
+                        </>
                       )}
-                      {hasBadge && (
-                        <PlanBadgeOverlay $premium={isPremium}>
-                          {isPremium ? '✨' : '⭐'} {pro.subscription_plan.badge_label}
-                        </PlanBadgeOverlay>
-                      )}
-                    </PhotoWrapper>
+                    </Count>
+                    <Filters role="group" aria-label="Filtrar">
+                      {FILTERS.map((f) => {
+                        const on = activeFilters.includes(f.id);
+                        return (
+                          <FilterToggle key={f.id} type="button" aria-pressed={on} onClick={() => toggleFilter(f.id)}>
+                            <Box>{on && <CheckMark />}</Box>
+                            <span>{f.label}</span>
+                          </FilterToggle>
+                        );
+                      })}
+                    </Filters>
+                  </Toolbar>
+                )}
 
-                    <CardBody>
-                      <div>
-                        <ProName>{pro.name}</ProName>
-                        <ProCategory>{pro.category}</ProCategory>
-                      </div>
+                <CardsGrid>
+                  {results.status === 'loading' && [0, 1, 2].map((i) => <BlankCard key={i} aria-hidden="true" />)}
 
-                      {pro.total_reviews > 0 && (
-                        <RatingRow>
-                          <Star size={14} fill="#f59e0b" color="#f59e0b" />
-                          <RatingScore>{(pro.average_rating || 0).toFixed(1)}</RatingScore>
-                          <RatingCount>
-                            ({pro.total_reviews} {pro.total_reviews === 1 ? 'avaliação' : 'avaliações'})
-                          </RatingCount>
-                        </RatingRow>
-                      )}
+                  {results.status === 'error' && (
+                    <>
+                      <NoticeSheet>
+                        <div role="status">
+                          <h3>A busca não carregou agora.</h3>
+                          <p>Pode ser a sua conexão ou uma instabilidade do nosso lado. Seu pedido continua aí em cima; é só tentar de novo.</p>
+                        </div>
+                        <NoticeActions>
+                          <PrimaryButton type="button" onClick={() => setAttempt((n) => n + 1)}>
+                            <RotateCw size={18} aria-hidden="true" /> Tentar de novo
+                          </PrimaryButton>
+                        </NoticeActions>
+                      </NoticeSheet>
+                      <BlankCard aria-hidden="true" data-extra />
+                    </>
+                  )}
 
-                      <LocationRow>
-                        <MapPin size={14} color="var(--primary)" />
-                        {pro.city}, {pro.state}
-                      </LocationRow>
-
-                      {pro.services && pro.services.length > 0 && (
-                        <ChipsRow>
-                          {pro.services.slice(0, 3).map((s) => (
-                            <ServiceChip key={s.id}>{s.title}</ServiceChip>
-                          ))}
-                          {pro.services.length > 3 && (
-                            <MoreChip>+{pro.services.length - 3}</MoreChip>
+                  {results.status === 'ok' && results.items.length === 0 && (
+                    <>
+                      <NoticeSheet>
+                        <div role="status">
+                          <h3>
+                            {query.city
+                              ? `Ninguém encontrado em ${query.city} para esse pedido.`
+                              : 'Ninguém encontrado para esse pedido.'}
+                          </h3>
+                          <p>
+                            Tente outro nome para o serviço (por exemplo, “pintor” em vez de “pintura”)
+                            {query.city ? ' ou veja quem atende em outras cidades.' : '.'}
+                          </p>
+                        </div>
+                        <NoticeActions>
+                          {query.city && (
+                            <PrimaryButton type="button" onClick={searchAllCities}>
+                              Ver outras cidades <ArrowRight size={18} aria-hidden="true" />
+                            </PrimaryButton>
                           )}
-                        </ChipsRow>
-                      )}
+                          <StampButton type="button" onClick={editRequest}>Mudar o pedido</StampButton>
+                        </NoticeActions>
+                      </NoticeSheet>
+                      <BlankCard aria-hidden="true" data-extra />
+                    </>
+                  )}
 
-                      <CTARow>
-                        {pro.subscription_plan?.can_receive_bookings && (
-                          <BookButton
-                            className="btn-primary"
-                            onClick={() => navigate(pro.slug ? `/p/${pro.slug}` : `/book/${pro.id}`, { state: { pro, clientCep: cep } })}
-                          >
-                            Agendar
-                          </BookButton>
-                        )}
-                        {pro.whatsapp && (
-                          <WhatsAppButton
-                            href={generateWhatsAppLink(pro.whatsapp, pro.name, pro.services?.[0]?.title)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <MessageCircle size={16} />
-                            WhatsApp
-                          </WhatsAppButton>
-                        )}
-                      </CTARow>
-                    </CardBody>
-                  </ProCard>
-                );
-              })}
-            </Grid>
-          ) : (
-            <EmptyState>
-              <Briefcase size={48} color="var(--text-secondary)" style={{ marginBottom: '1.5rem', opacity: 0.5 }} />
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-                Nenhum profissional encontrado
-              </h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>
-                Tente buscar por outro serviço ou em uma região diferente.
-              </p>
-            </EmptyState>
-          )}
-        </ResultsContainer>
-      )}
-    </Container>
+                  {results.status === 'ok' && results.items.length > 0 && visible.length === 0 && (
+                    <>
+                      <NoticeSheet>
+                        <div role="status">
+                          <h3>Nenhum profissional com esses filtros.</h3>
+                          <p>Há {results.items.length} {results.items.length === 1 ? 'profissional' : 'profissionais'} para o seu pedido; os filtros marcados esconderam todos.</p>
+                        </div>
+                        <NoticeActions>
+                          <StampButton type="button" onClick={() => setActiveFilters([])}>Limpar filtros</StampButton>
+                        </NoticeActions>
+                      </NoticeSheet>
+                      <BlankCard aria-hidden="true" data-extra />
+                    </>
+                  )}
+
+                  {results.status === 'ok' && visible.map((pro) => (
+                    <ProCard
+                      key={pro.id}
+                      pro={pro}
+                      cep={cep.cepDigits}
+                      badge={pro.subscription_plan?.badge_label}
+                      contactHref={whatsappLink(pro.whatsapp, pro.name, pro.services?.[0]?.title)}
+                    />
+                  ))}
+                </CardsGrid>
+
+                {results.status === 'ok' && visible.length > 0 && (
+                  <Aviso>
+                    O ContrataPro não verifica os profissionais. Antes de marcar, leia as avaliações, confira os
+                    serviços e preços do perfil e converse com a pessoa.
+                  </Aviso>
+                )}
+              </Wrap>
+            </Mesa>
+            <Seam $from="rosa" $to="papel" aria-hidden="true" />
+          </>
+        ) : (
+          <Seam $from="amarela" $to="papel" aria-hidden="true" />
+        )}
+      </main>
+
+      <SiteFooter />
+    </TalaoPage>
   );
 }

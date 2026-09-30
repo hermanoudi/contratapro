@@ -220,6 +220,29 @@ Physical objects are placed by hand at a slight angle: the talão at -1.2deg (de
 
 ## Components
 
+### Where the code lives
+Shared pieces live in `frontend/src/components/talao/`. Pages import them from the barrel (`import { TalaoPage, Display, PrimaryButton } from '../components/talao'`).
+- **Tokens:** `tokens.js` is the single source. `TalaoTokens`, mounted once in `App.jsx`, writes every token to `:root` as a CSS variable (`--grafica`, `--carbono`, `--f-impresso`, `--texto-2-rosa`…). The `PAPER` hex map from the same file feeds SVGs, such as the seam, that can't read variables. Declaring the tokens changes nothing visually; a page joins the world only by wrapping itself in `TalaoPage`.
+- **Surface:** `TalaoPage` sets the font, ink, paper, `::selection` and focus ring, and holds `font-size: 1rem` against the mobile body shrink in `index.css`. `Wrap` is the 1200px column. `paperSurface('rosa')` paints a via and tints `--texto-2` for it. Every sheet of papel resting on a coloured via resets `--texto-2` via `cardSheet`.
+- **Components:**
+  - Type: `Display` (always carries `data-display`, so the mobile `!important` heading rule never shrinks it), `Lead`, `Hand`.
+  - Buttons: `PrimaryButton`/`PrimaryLink` and `StampButton`/`StampLink`, with a disabled state.
+  - Fields: `Field` + `FormError`.
+  - Seam: `Seam`.
+  - Cards: `ProCard` + `CardsGrid` + `BlankCard`, with the price rules in `pricing.js`. `ProCard` is an `article` whose name link stretches over the whole card (`::after`); keyboard focus outlines the card via `:has()`. Two opt-in props:
+    - `badge`: the plan's `badge_label`, stamped on the top edge like a via stamp. Only Search passes it.
+    - `contactHref`: an outlined WhatsApp action that sits above the stretched link.
+  - CEP: `useCep` (the lookup and its states, remembered in localStorage), with `CepField` for the field, its status line and the city written in by hand.
+  - `NoticeSheet` + `NoticeActions`: the sheet that takes the cards' place on error or empty, used by both Home and Search.
+  - Page frame: `SiteHeader` (owns the `/auth/me` session and the mobile menu) and `SiteFooter`.
+- **Still local to the Home:** the talão form shell (canhoto, head, tear line), the printed checklist, the steps table, the combinado panel and the FAQ. Promote one to `components/talao/` the first time a second page needs it; don't copy it.
+- **Search (`/search`):**
+  - The request sits on the amarela via as an untilted sheet: Serviço, CEP and Buscar in one row from 900px.
+  - The h1 restates the request ("Diarista em Uberlândia").
+  - Results sit on rosa, below a toolbar with the count ("X de Y" while filters are on) and multi-select filters.
+  - Multi-select filters are printed squares (`aria-pressed`), because the circle means single choice.
+  - The URL (`service`, `city`, `cep`) is the request.
+
 ### Buttons
 Printed and decisive, like the gráfica's red block.
 - **Shape:** near-square (2px), 2px border in the same ink as the fill.

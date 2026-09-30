@@ -26,11 +26,13 @@ import ProfessionalLayout from './components/ProfessionalLayout';
 import ClientLayout from './components/ClientLayout';
 import SharedLayout from './components/SharedLayout';
 import { TourProvider } from './contexts/TourContext';
+import { TalaoTokens } from './components/talao';
 
 function App() {
   return (
     <TourProvider>
     <Router>
+      <TalaoTokens />
       <Toaster
         position="top-right"
         expand={false}

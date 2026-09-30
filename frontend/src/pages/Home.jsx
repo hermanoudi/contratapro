@@ -1,291 +1,43 @@
 import { useState, useEffect, useRef, useId } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import styled, { css, keyframes } from 'styled-components';
-import { Menu, X, LogOut, RotateCw, Star, MapPin, ArrowRight, Check, Plus } from 'lucide-react';
+import styled, { keyframes } from 'styled-components';
+import { RotateCw, ArrowRight, Check, Plus } from 'lucide-react';
 import { API_URL } from '../config';
 import StructuredData from '../components/SEO/StructuredData';
 import SEOHead, { SEO_CONFIGS } from '../components/SEO/SEOHead';
-import logoImage from '../assets/contratapro-logo-grafica.png';
+import {
+  TalaoPage,
+  Wrap,
+  paperSurface,
+  Display,
+  Lead,
+  PrimaryButton,
+  PrimaryLink,
+  StampLink,
+  Field,
+  FormError,
+  Seam,
+  ProCard,
+  CardsGrid,
+  BlankCard,
+  SiteHeader,
+  SiteFooter,
+  NoticeSheet,
+  NoticeActions,
+  CepField,
+  useCep,
+  readSavedLocation,
+} from '../components/talao';
 
-/* ------------------------------------------------------------------
-   Mundo visual "Talão de Orçamento": vias de papel chapadas, impressão
-   em uma cor (vermelho de gráfica) e preenchimento à mão em azul-carbono.
-   ------------------------------------------------------------------ */
+/* Home no mundo "Talão de Orçamento". Tokens e peças compartilhadas vivem em
+   components/talao; aqui fica só o que é próprio da Home (hero, talão de pedido,
+   vias e perguntas). */
 
-const formatCep = (digits) => (digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5, 8)}` : digits);
-
-/* ------------------------------ Tokens ------------------------------ */
-
-const Page = styled.div`
-  --papel: #ffffff;
-  --amarela: #fce58a;
-  --rosa: #f9cfda;
-  --azul: #cfe0f5;
-  --grafica: #c4201a;
-  --grafica-escura: #9e1712;
-  --pauta: rgba(196, 32, 26, 0.55);
-  --carbono: #2e3a9e;
-  --nanquim: #17171b;
-  --texto-2: #4a4550;
-
-  --f-impresso: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-  --f-texto: 'Barlow', system-ui, sans-serif;
-  --f-mao: 'Caveat', 'Segoe Print', cursive;
-
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-
-  font-family: var(--f-texto);
-  font-size: 1rem;
-  color: var(--nanquim);
-  background: var(--papel);
-  min-height: 100vh;
-
-  ::selection {
-    background: var(--amarela);
-    color: var(--nanquim);
-  }
-
-  a, button, input, summary {
-    &:focus-visible {
-      outline: 2px solid var(--carbono);
-      outline-offset: 3px;
-    }
-  }
-`;
-
-const Wrap = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 clamp(1rem, 4vw, 2.5rem);
-`;
-
-const Display = styled.h2`
-  font-family: var(--f-impresso);
-  font-weight: 800;
-  font-size: clamp(2rem, 4.2vw, 3.25rem);
-  line-height: 1;
-  letter-spacing: -0.01em;
-  text-wrap: balance;
-  margin-bottom: 1rem;
-`;
-
-const Lead = styled.p`
-  font-size: clamp(1.05rem, 1.4vw, 1.2rem);
-  line-height: 1.55;
-  color: var(--texto-2);
-  max-width: 60ch;
-`;
-
-const Hand = styled.span`
-  font-family: var(--f-mao);
-  font-weight: 700;
-  color: var(--carbono);
-`;
-
-/* ------------------------------ Botões ------------------------------ */
-
-const buttonBase = css`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 48px;
-  padding: 0 1.4rem;
-  border-radius: 2px;
-  font-family: var(--f-impresso);
-  font-weight: 700;
-  font-size: 1.1rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out), transform 120ms var(--ease-out);
-
-  &:active {
-    transform: translateY(1px);
-  }
-`;
-
-const PrimaryButton = styled.button`
-  ${buttonBase}
-  background: var(--grafica);
-  color: var(--papel);
-  border: 2px solid var(--grafica);
-
-  &:hover {
-    background: var(--grafica-escura);
-    border-color: var(--grafica-escura);
-  }
-`;
-
-const PrimaryLink = styled(Link)`
-  ${buttonBase}
-  background: var(--grafica);
-  color: var(--papel);
-  border: 2px solid var(--grafica);
-
-  &:hover {
-    background: var(--grafica-escura);
-    border-color: var(--grafica-escura);
-  }
-`;
-
-const StampLink = styled(Link)`
-  ${buttonBase}
-  background: transparent;
-  color: var(--grafica);
-  border: 2px solid var(--grafica);
-
-  &:hover {
-    background: var(--grafica);
-    color: var(--papel);
-  }
-`;
-
-/* ------------------------------ Topo ------------------------------ */
-
-const Topbar = styled.header`
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: var(--papel);
-  border-bottom: 2px solid var(--grafica);
-`;
-
-const TopbarInner = styled(Wrap)`
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-`;
-
-const Logo = styled(Link)`
-  display: flex;
-  align-items: center;
-
-  img {
-    height: 34px;
-    width: auto;
-    display: block;
-  }
-`;
-
-const TopNav = styled.nav`
-  display: none;
-  align-items: center;
-  gap: 1.5rem;
-
-  @media (min-width: 860px) {
-    display: flex;
-  }
-`;
-
-const TopLink = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-family: var(--f-impresso);
-  font-weight: 600;
-  font-size: 1.1rem;
-  letter-spacing: 0.03em;
-  color: var(--nanquim);
-  text-decoration: none;
-  text-underline-offset: 5px;
-  text-decoration-thickness: 2px;
-
-  &:hover {
-    color: var(--grafica);
-    text-decoration-line: underline;
-  }
-`;
-
-const TopButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: var(--f-impresso);
-  font-weight: 600;
-  font-size: 1.1rem;
-  letter-spacing: 0.03em;
-  color: var(--nanquim);
-
-  &:hover {
-    color: var(--grafica);
-  }
-`;
-
-const TopStamp = styled(StampLink)`
-  min-height: 44px;
-  font-size: 1rem;
-  padding: 0 0.9rem;
-  white-space: nowrap;
-
-  @media (max-width: 380px) {
-    font-size: 0.95rem;
-    padding: 0 0.55rem;
-  }
-`;
-
-const MobileActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-
-  @media (min-width: 860px) {
-    display: none;
-  }
-`;
-
-const MenuToggle = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  background: none;
-  border: none;
-  color: var(--nanquim);
-  cursor: pointer;
-`;
-
-const MobilePanel = styled.nav`
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: var(--papel);
-  border-bottom: 2px solid var(--grafica);
-  padding: 0.5rem clamp(1rem, 4vw, 2.5rem) 1.25rem;
-  display: flex;
-  flex-direction: column;
-
-  a, button {
-    min-height: 48px;
-    border-bottom: 1px solid var(--pauta);
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  a:last-child {
-    border-bottom: 2px solid var(--grafica);
-    justify-content: center;
-    margin-top: 1rem;
-  }
-
-  @media (min-width: 860px) {
-    display: none;
-  }
-`;
 
 /* ------------------------------ Hero: via amarela ------------------------------ */
 
 const Hero = styled.section`
-  background: var(--amarela);
-  --texto-2: #5b4a12;
+  ${paperSurface('amarela')}
   padding: clamp(2rem, 6vw, 5rem) 0 clamp(3rem, 7vw, 6rem);
 
   /* Celular pequeno: o botão de busca precisa caber na primeira tela (360×640) */
@@ -459,97 +211,6 @@ const Contagem = styled.p`
   }
 `;
 
-const Field = styled.label`
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  padding: 0.9rem 0.5rem 0.2rem;
-  margin: 0 -0.5rem;
-  /* Única borda do campo em repouso: tinta cheia para passar 3:1 */
-  border-bottom: 1.5px solid var(--grafica);
-  /* Sombra interna no lugar de engrossar a borda: o foco não desloca o layout */
-  transition: background-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
-  cursor: text;
-
-  > span {
-    flex: none;
-    font-family: var(--f-impresso);
-    font-weight: 600;
-    font-size: 0.95rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--grafica);
-  }
-
-  input {
-    flex: 1;
-    min-width: 0;
-    border: none;
-    background: transparent;
-    font-family: var(--f-mao);
-    font-weight: 700;
-    font-size: 1.75rem;
-    line-height: 1.2;
-    color: var(--carbono);
-    caret-color: var(--carbono);
-    padding: 0;
-
-    /* Exemplo impresso, não escrito à mão: campo vazio não pode parecer preenchido */
-    &::placeholder {
-      font-family: var(--f-texto);
-      font-weight: 400;
-      font-size: 1.05rem;
-      color: var(--texto-2);
-      opacity: 1;
-    }
-
-    &:focus {
-      outline: none;
-    }
-
-    &::-webkit-calendar-picker-indicator {
-      display: none !important;
-    }
-  }
-
-  &:focus-within {
-    border-bottom-color: var(--carbono);
-    background: rgba(207, 224, 245, 0.55);
-    box-shadow: inset 0 -2.5px 0 var(--carbono);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-  }
-`;
-
-const writeIn = keyframes`
-  from { clip-path: inset(0 100% 0 0); }
-  to { clip-path: inset(0 0 0 0); }
-`;
-
-const CepStatus = styled.p`
-  min-height: 1.9rem;
-  padding-top: 0.35rem;
-  font-size: 0.95rem;
-  color: ${({ $tone }) => ($tone === 'erro' ? 'var(--grafica)' : 'var(--texto-2)')};
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-`;
-
-const CityWrite = styled(Hand)`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 1.5rem;
-  line-height: 1;
-  animation: ${writeIn} 700ms var(--ease-out) both;
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-`;
 
 const Checklist = styled.fieldset`
   border: none;
@@ -643,11 +304,6 @@ const Box = styled.span`
   }
 `;
 
-const FormError = styled.p`
-  margin-top: 0.75rem;
-  font-weight: 600;
-  color: var(--grafica);
-`;
 
 const SubmitRow = styled.div`
   margin: 0.5rem 0 0;
@@ -674,25 +330,6 @@ const Perforation = styled.div`
   color: var(--grafica-escura);
 `;
 
-/* ------------------------------ Picote entre as vias ------------------------------ */
-
-// Hex das vias: o SVG do picote não enxerga variáveis CSS
-const PAPER = { amarela: '#fce58a', papel: '#ffffff', rosa: '#f9cfda', azul: '#cfe0f5' };
-
-const perforationTile = (color) =>
-  `url("data:image/svg+xml,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' width='18' height='12'><circle cx='9' cy='0' r='5.5' fill='${color}'/></svg>`
-  )}")`;
-
-// A borda de baixo da folha de cima fica picotada, como um talão destacado
-const Seam = styled.div`
-  height: 12px;
-  background-color: ${({ $to }) => PAPER[$to]};
-  background-image: ${({ $from }) => perforationTile(PAPER[$from])};
-  background-repeat: repeat-x;
-  background-position: top center;
-`;
-
 /* ------------------------------ Duas vias ------------------------------ */
 
 const Section = styled.section`
@@ -709,8 +346,7 @@ const SectionHead = styled.div`
 `;
 
 const Via = styled.article`
-  background: ${({ $paper }) => `var(--${$paper})`};
-  --texto-2: ${({ $paper }) => ($paper === 'rosa' ? '#6b2638' : '#22385e')};
+  ${({ $paper }) => paperSurface($paper)}
   border-top: 6px solid var(--grafica);
   padding: clamp(1.25rem, 3vw, 2rem);
   display: flex;
@@ -815,222 +451,9 @@ const ViaAction = styled.div`
 /* ------------------------------ Profissionais: via rosa ------------------------------ */
 
 const Mesa = styled.section`
-  background: var(--rosa);
-  --texto-2: #6b2638;
+  ${paperSurface('rosa')}
   padding: clamp(3.5rem, 8vw, 6.5rem) 0;
 `;
-
-const CardsGrid = styled.div`
-  display: grid;
-  gap: 1.25rem;
-
-  @media (min-width: 640px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  @media (min-width: 1040px) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-`;
-
-const Cartao = styled(Link)`
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: 1fr auto;
-  gap: 0.9rem 1rem;
-  min-height: 11rem;
-  padding: 1.25rem;
-  background: var(--papel);
-  color: var(--nanquim);
-  text-decoration: none;
-  border-bottom: 5px solid var(--grafica);
-  box-shadow: 0 16px 28px -18px rgba(107, 38, 56, 0.55), 0 1px 3px rgba(107, 38, 56, 0.18);
-  transition: transform 200ms var(--ease-out);
-
-  &:hover {
-    transform: translateY(-3px) rotate(-0.4deg);
-  }
-
-  &:hover [data-ver] {
-    text-decoration: underline;
-    text-decoration-thickness: 2px;
-    text-underline-offset: 4px;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-
-    &:hover {
-      transform: none;
-    }
-  }
-`;
-
-const Foto = styled.div`
-  width: 64px;
-  height: 64px;
-  border: 2px solid var(--nanquim);
-  background: var(--amarela);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--f-impresso);
-  font-weight: 800;
-  font-size: 1.9rem;
-  overflow: hidden;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-`;
-
-const CartaoInfo = styled.div`
-  min-width: 0;
-
-  h3 {
-    font-family: var(--f-impresso);
-    font-weight: 700;
-    font-size: 1.45rem;
-    line-height: 1.05;
-    overflow-wrap: anywhere;
-  }
-
-  p {
-    margin-top: 0.25rem;
-    font-size: 0.95rem;
-    color: #4a4550;
-  }
-
-  [data-cat] {
-    color: var(--grafica);
-    font-weight: 600;
-  }
-`;
-
-// Uma linha de talão no cartão: o serviço e o preço que o profissional cadastrou
-const CartaoItem = styled.div`
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.75rem;
-  padding-top: 0.6rem;
-  border-top: 1.5px solid var(--pauta);
-
-  > span {
-    min-width: 0;
-    font-weight: 500;
-    overflow-wrap: anywhere;
-  }
-
-  strong {
-    flex: none;
-    font-family: var(--f-impresso);
-    font-weight: 700;
-    font-size: 1.2rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--grafica-escura);
-  }
-
-  small {
-    font-family: var(--f-texto);
-    font-weight: 500;
-    font-size: 0.95rem;
-    color: #4a4550;
-  }
-`;
-
-const CartaoFoot = styled.div`
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1.5px solid var(--pauta);
-  font-size: 0.95rem;
-
-  [data-nota] {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    color: #4a4550;
-  }
-
-  [data-ver] {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-family: var(--f-impresso);
-    font-weight: 700;
-    font-size: 1.05rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--grafica);
-    white-space: nowrap;
-  }
-`;
-
-const BlankCard = styled.div`
-  min-height: 11rem;
-  /* Cartão em branco com pautas enquanto a API responde */
-  background: repeating-linear-gradient(
-    to bottom,
-    #fbe3e9 0,
-    #fbe3e9 2.2rem,
-    #efb3c3 2.2rem,
-    #efb3c3 calc(2.2rem + 1.5px)
-  );
-  border-bottom: 5px solid #efb3c3;
-
-  /* Ao lado do aviso, só quando a grade tem três colunas */
-  &[data-extra] {
-    display: none;
-
-    @media (min-width: 1040px) {
-      display: block;
-    }
-  }
-`;
-
-// Folha em branco no lugar dos cartões: a seção nunca some, mesmo sem dados
-const MesaAviso = styled.div`
-  grid-column: 1 / -1;
-  padding: 1.5rem clamp(1.25rem, 3vw, 1.75rem) 1.5rem;
-  background: var(--papel);
-  border-bottom: 5px solid var(--grafica);
-  box-shadow: 0 16px 28px -18px rgba(107, 38, 56, 0.55), 0 1px 3px rgba(107, 38, 56, 0.18);
-
-  h3 {
-    font-family: var(--f-impresso);
-    font-weight: 700;
-    font-size: 1.5rem;
-    line-height: 1.05;
-    color: var(--nanquim);
-  }
-
-  p {
-    margin-top: 0.6rem;
-    max-width: 60ch;
-    line-height: 1.55;
-    color: #4a4550;
-  }
-
-  @media (min-width: 1040px) {
-    grid-column: span 2;
-  }
-`;
-
-const MesaAcoes = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
-`;
-
 const MesaNote = styled.p`
   margin-top: 1.75rem;
   color: var(--texto-2);
@@ -1142,65 +565,6 @@ const Perguntas = styled.div`
   }
 `;
 
-/* ------------------------------ Rodapé ------------------------------ */
-
-const Footer = styled.footer`
-  background: var(--papel);
-  color: var(--nanquim);
-  border-top: 2px solid var(--grafica);
-  padding: clamp(3rem, 6vw, 4.5rem) 0 2rem;
-
-  p {
-    color: var(--texto-2);
-    line-height: 1.6;
-    max-width: 68ch;
-  }
-`;
-
-const FooterGrid = styled.div`
-  display: grid;
-  gap: 2rem;
-  padding-bottom: 2rem;
-  border-bottom: 2px dashed var(--grafica);
-
-
-  strong {
-    display: block;
-    font-family: var(--f-impresso);
-    font-weight: 800;
-    font-size: 1.75rem;
-    margin-bottom: 0.75rem;
-  }
-`;
-
-const FooterLinks = styled.nav`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1.5rem;
-  margin-top: 1.5rem;
-
-  a {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    color: var(--nanquim);
-    font-family: var(--f-impresso);
-    font-weight: 600;
-    font-size: 1.1rem;
-    letter-spacing: 0.03em;
-    text-underline-offset: 5px;
-
-    &:hover {
-      color: var(--grafica);
-    }
-  }
-`;
-
-const Legal = styled.p`
-  margin-top: 1.5rem;
-  font-size: 0.95rem;
-`;
-
 /* ------------------------------ Componentes ------------------------------ */
 
 function CheckMark() {
@@ -1212,111 +576,20 @@ function CheckMark() {
   );
 }
 
-const formatPrice = (value) =>
-  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: Number.isInteger(value) ? 0 : 2 });
-
-// Serviço principal (o primeiro cadastrado) e o menor preço na mesma unidade dele: hora não se compara com dia
-const pickHighlight = (services = []) => {
-  const main = services[0];
-  if (!main) return null;
-  const unit = main.duration_type === 'daily' ? 'daily' : 'hourly';
-  const priced = services
-    .filter((s) => (s.duration_type === 'daily' ? 'daily' : 'hourly') === unit && Number(s.price) > 0)
-    .sort((a, b) => a.price - b.price);
-  const service = priced[0] || main;
-  return {
-    title: service.title,
-    price: priced[0] ? Number(priced[0].price) : null,
-    unit: unit === 'daily' ? 'dia' : 'hora',
-    fromPrice: priced.length > 1,
-  };
-};
-
-function ProCard({ pro, cep }) {
-  const name = pro.name?.trim() || 'Profissional';
-  const rating = Number(pro.average_rating);
-  const hasReviews = pro.total_reviews > 0 && Number.isFinite(rating) && rating > 0;
-  const highlight = pickHighlight(pro.services);
-  const target = pro.slug ? `/p/${pro.slug}` : `/book/${pro.id}`;
-  const joined = pro.created_at ? new Date(pro.created_at) : null;
-  const since = joined && !Number.isNaN(joined.getTime())
-    ? joined.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-    : null;
-
-  return (
-    <Cartao to={target} state={{ pro, clientCep: cep }}>
-      <Foto aria-hidden="true">
-        {pro.profile_picture ? (
-          <img src={pro.profile_picture} alt="" loading="lazy" width="64" height="64" />
-        ) : (
-          name.charAt(0).toUpperCase()
-        )}
-      </Foto>
-      <CartaoInfo>
-        <h3>{name}</h3>
-        {pro.category && <p data-cat>{pro.category}</p>}
-        {pro.city && (
-          <p>
-            <MapPin size={14} aria-hidden="true" style={{ verticalAlign: '-2px', marginRight: 4 }} />
-            {pro.city}{pro.state ? `, ${pro.state}` : ''}
-          </p>
-        )}
-        {since && <p>No ContrataPro desde {since}</p>}
-      </CartaoInfo>
-      {highlight && (
-        <CartaoItem>
-          <span>{highlight.title}</span>
-          {highlight.price !== null && (
-            <strong>
-              {highlight.fromPrice && <small>a partir de </small>}
-              {formatPrice(highlight.price)}
-              <small>/{highlight.unit}</small>
-            </strong>
-          )}
-        </CartaoItem>
-      )}
-      <CartaoFoot>
-        {hasReviews ? (
-          <span data-nota>
-            <Star size={16} fill="var(--grafica)" color="var(--grafica)" aria-hidden="true" />
-            <strong>{rating.toFixed(1).replace('.', ',')}</strong>
-            · {pro.total_reviews} {pro.total_reviews === 1 ? 'avaliação' : 'avaliações'}
-          </span>
-        ) : (
-          <span data-nota>Ainda sem avaliações</span>
-        )}
-        <span data-ver>
-          Ver perfil e avaliações <ArrowRight size={16} aria-hidden="true" />
-        </span>
-      </CartaoFoot>
-    </Cartao>
-  );
-}
-
 /* ------------------------------ Página ------------------------------ */
 
 export default function Home() {
   const navigate = useNavigate();
   const serviceInputRef = useRef(null);
-  const menuToggleRef = useRef(null);
   const formId = useId();
 
-  const [userInfo, setUserInfo] = useState(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  // CEP salvo em visitas anteriores
-  const [savedLocation] = useState(() => {
-    const savedCep = localStorage.getItem('userCep');
-    const savedCity = localStorage.getItem('userCity');
-    return savedCep && savedCity ? { cep: savedCep, city: savedCity } : null;
-  });
 
   const [service, setService] = useState('');
-  const [cepDigits, setCepDigits] = useState(savedLocation?.cep ?? '');
-  const [city, setCity] = useState(savedLocation?.city ?? '');
-  const [cepState, setCepState] = useState(savedLocation ? 'ok' : 'idle'); // idle | loading | ok | notfound | offline
   const [formError, setFormError] = useState('');
-  const [cepIncomplete, setCepIncomplete] = useState(false);
+  // CEP salvo em visitas anteriores
+  const [savedLocation] = useState(readSavedLocation);
+  const cep = useCep(savedLocation);
+  const { cepDigits, city } = cep;
   const cepInputRef = useRef(null);
 
   const [categories, setCategories] = useState([]);
@@ -1327,19 +600,6 @@ export default function Home() {
 
   const [pros, setPros] = useState({ status: 'loading', items: [], fromCity: null });
   const [prosAttempt, setProsAttempt] = useState(0);
-
-  // Usuário logado
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
-      .then(setUserInfo)
-      .catch(() => {
-        localStorage.removeItem('token');
-        setUserInfo(null);
-      });
-  }, []);
 
   // Categorias para o checklist e autocomplete (sem categorias, o campo livre continua funcionando)
   useEffect(() => {
@@ -1394,52 +654,6 @@ export default function Home() {
     return () => { cancelled = true; };
   }, [city, prosAttempt]);
 
-  // Esc fecha o menu mobile
-  useEffect(() => {
-    if (!menuOpen) return undefined;
-    const onKey = (e) => {
-      if (e.key === 'Escape') {
-        setMenuOpen(false);
-        menuToggleRef.current?.focus();
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [menuOpen]);
-
-  const handleCepChange = async (value) => {
-    const digits = value.replace(/\D/g, '').slice(0, 8);
-    setCepDigits(digits);
-    setFormError('');
-    setCepIncomplete(false);
-
-    if (digits.length < 8) {
-      setCity('');
-      setCepState('idle');
-      return;
-    }
-
-    setCepState('loading');
-    try {
-      const res = await fetch(`${API_URL}/cep/${digits}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.city) {
-          setCity(data.city);
-          setCepState('ok');
-          localStorage.setItem('userCep', digits);
-          localStorage.setItem('userCity', data.city);
-          return;
-        }
-      }
-      setCity('');
-      setCepState(res.status >= 500 ? 'offline' : 'notfound');
-    } catch {
-      setCity('');
-      setCepState('offline');
-    }
-  };
-
   const pickCategory = (name) => {
     setService((current) => {
       if (current === name) return typedServiceRef.current;
@@ -1462,8 +676,8 @@ export default function Home() {
   const handleSubmit = (e) => {
     e.preventDefault();
     // CEP começado e incompleto: avisa no próprio CEP em vez de buscar sem a região
-    if (cepDigits.length > 0 && cepDigits.length < 8) {
-      setCepIncomplete(true);
+    if (cep.isIncomplete) {
+      cep.setCepIncomplete(true);
       cepInputRef.current?.focus();
       return;
     }
@@ -1475,7 +689,7 @@ export default function Home() {
     const params = new URLSearchParams();
     if (service.trim()) params.append('service', service.trim());
     if (city) params.append('city', city);
-    if (cepState === 'ok' && cepDigits.length === 8) params.append('cep', cepDigits);
+    if (cep.cepState === 'ok' && cepDigits.length === 8) params.append('cep', cepDigits);
     navigate(`/search?${params}`);
   };
 
@@ -1489,82 +703,16 @@ export default function Home() {
     setProsAttempt((n) => n + 1);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    window.location.reload();
-  };
-
-  const closeMenu = () => setMenuOpen(false);
-
-  const accountLinks = (onClick) =>
-    userInfo ? (
-      <>
-        {!userInfo.is_professional && !userInfo.is_admin && (
-          <TopLink to="/my-appointments" onClick={onClick}>Meus agendamentos</TopLink>
-        )}
-        {userInfo.is_professional && <TopLink to="/dashboard" onClick={onClick}>Meu painel</TopLink>}
-        {userInfo.is_admin && <TopLink to="/admin" onClick={onClick}>Admin</TopLink>}
-        <TopButton type="button" onClick={handleLogout}>
-          <LogOut size={18} aria-hidden="true" /> Sair
-        </TopButton>
-      </>
-    ) : (
-      <>
-        <TopLink to="/login" onClick={onClick}>Entrar</TopLink>
-        <TopLink to="/register-client" onClick={onClick}>Criar conta</TopLink>
-        <TopStamp to="/register-pro" onClick={onClick}>Sou profissional</TopStamp>
-      </>
-    );
-
-  const cepStatus = {
-    idle: cepIncomplete
-      ? { text: `Faltam ${8 - cepDigits.length} números do CEP. Complete ou apague para buscar só pelo serviço.`, tone: 'erro' }
-      : cepDigits.length > 0
-        ? { text: `Faltam ${8 - cepDigits.length} números.` }
-        : { text: 'Com o CEP, mostramos quem atende perto de você.' },
-    loading: { text: 'Consultando o CEP…' },
-    notfound: { text: 'CEP não encontrado. Confira os números.', tone: 'erro' },
-    offline: { text: 'Não deu para consultar o CEP agora. Você pode buscar só pelo serviço.', tone: 'erro' },
-  }[cepState];
-
   const checklist = categories.slice(0, 4);
 
   return (
-    <Page>
+    <TalaoPage>
       <SEOHead {...SEO_CONFIGS.home} url="https://contratapro.com.br" />
       <StructuredData type="website" />
       <StructuredData type="organization" />
       <StructuredData type="service" />
 
-      <Topbar>
-        <TopbarInner>
-          <Logo to="/" aria-label="ContrataPro, página inicial">
-            <img src={logoImage} alt="" width="120" height="34" />
-          </Logo>
-
-          <TopNav aria-label="Conta">{accountLinks()}</TopNav>
-
-          <MobileActions>
-            {!userInfo && <TopStamp to="/register-pro">Sou profissional</TopStamp>}
-            <MenuToggle
-              ref={menuToggleRef}
-              type="button"
-              aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
-              aria-expanded={menuOpen}
-              aria-controls="menu-mobile"
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              {menuOpen ? <X size={26} aria-hidden="true" /> : <Menu size={26} aria-hidden="true" />}
-            </MenuToggle>
-          </MobileActions>
-        </TopbarInner>
-
-        {menuOpen && (
-          <MobilePanel id="menu-mobile" aria-label="Menu">
-            {accountLinks(closeMenu)}
-          </MobilePanel>
-        )}
-      </Topbar>
+      <SiteHeader />
 
       <main>
         <Hero aria-labelledby="titulo-home">
@@ -1650,31 +798,11 @@ export default function Home() {
                   </Checklist>
                 )}
 
-                <Field>
-                  <span>CEP:</span>
-                  <input
-                    type="text"
-                    ref={cepInputRef}
-                    name="cep"
-                    inputMode="numeric"
-                    autoComplete="postal-code"
-                    placeholder="00000-000"
-                    maxLength={9}
-                    value={formatCep(cepDigits)}
-                    onChange={(e) => handleCepChange(e.target.value)}
-                    aria-describedby={`${formId}-cep`}
-                    aria-invalid={cepState === 'notfound' || cepIncomplete || undefined}
-                  />
-                </Field>
-                <CepStatus id={`${formId}-cep`} aria-live="polite" $tone={cepStatus?.tone}>
-                  {cepState === 'ok' ? (
-                    <CityWrite key={city}>
-                      <Check size={20} aria-hidden="true" /> {city}
-                    </CityWrite>
-                  ) : (
-                    cepStatus?.text
-                  )}
-                </CepStatus>
+                <CepField
+                  cep={{ ...cep, handleCepChange: (value) => { setFormError(''); cep.handleCepChange(value); } }}
+                  id={`${formId}-cep`}
+                  inputRef={cepInputRef}
+                />
 
 
                 <SubmitRow>
@@ -1702,7 +830,7 @@ export default function Home() {
         <Mesa aria-labelledby="titulo-pros" aria-busy={pros.status === 'loading'}>
             <Wrap>
               <SectionHead>
-                <Display id="titulo-pros" data-display>
+                <Display id="titulo-pros">
                   {pros.fromCity ? `Quem atende em ${pros.fromCity}` : 'Gente que já está no ContrataPro'}
                 </Display>
                 <Lead>
@@ -1713,7 +841,7 @@ export default function Home() {
 
               {(pros.status === 'error' || (pros.status === 'ok' && pros.items.length === 0)) && (
                 <CardsGrid>
-                  <MesaAviso>
+                  <NoticeSheet>
                     {pros.status === 'error' ? (
                       <>
                         <div role="status">
@@ -1723,12 +851,12 @@ export default function Home() {
                             pedido lá em cima: a busca mostra quem atende perto de você.
                           </p>
                         </div>
-                        <MesaAcoes>
+                        <NoticeActions>
                           <PrimaryButton type="button" onClick={retryPros}>
                             <RotateCw size={18} aria-hidden="true" /> Tentar de novo
                           </PrimaryButton>
                           <StampLink as="button" type="button" onClick={focusTalao}>Preencher o pedido</StampLink>
-                        </MesaAcoes>
+                        </NoticeActions>
                       </>
                     ) : (
                       <>
@@ -1739,12 +867,12 @@ export default function Home() {
                             pessoa: o cadastro é grátis e sem cartão.
                           </p>
                         </div>
-                        <MesaAcoes>
+                        <NoticeActions>
                           <StampLink to="/register-pro">Sou profissional, quero me cadastrar</StampLink>
-                        </MesaAcoes>
+                        </NoticeActions>
                       </>
                     )}
-                  </MesaAviso>
+                  </NoticeSheet>
                   <BlankCard aria-hidden="true" data-extra />
                 </CardsGrid>
               )}
@@ -1770,7 +898,7 @@ export default function Home() {
         <Section aria-labelledby="titulo-combinado">
           <Wrap>
             <SectionHead>
-              <Display id="titulo-combinado" data-display>O combinado, preto no branco</Display>
+              <Display id="titulo-combinado">O combinado, preto no branco</Display>
               <Lead>Antes de chamar alguém na sua casa, é bom saber exatamente o que o ContrataPro faz e o que fica entre você e o profissional.</Lead>
             </SectionHead>
 
@@ -1840,22 +968,7 @@ export default function Home() {
         </Section>
       </main>
 
-      <Footer>
-        <Wrap>
-          <FooterGrid>
-            <div>
-              <strong>ContrataPro</strong>
-              <p>Encontre quem resolve, perto de casa, e marque o horário direto na agenda da pessoa.</p>
-            </div>
-          </FooterGrid>
-          <FooterLinks aria-label="Rodapé">
-            <Link to="/login">Entrar</Link>
-            <Link to="/register-client">Criar conta</Link>
-            <Link to="/register-pro">Sou profissional</Link>
-          </FooterLinks>
-          <Legal>© {new Date().getFullYear()} ContrataPro. Todos os direitos reservados.</Legal>
-        </Wrap>
-      </Footer>
-    </Page>
+      <SiteFooter />
+    </TalaoPage>
   );
 }
