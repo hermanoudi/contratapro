@@ -87,6 +87,9 @@ backend/uploads/
 !**/assets/**/*.jpeg
 !**/assets/**/*.gif
 !frontend/src/assets/**
+# Imagens públicas usadas pelas metas de compartilhamento e pelo Schema.org
+!frontend/public/og-image.jpg
+!frontend/public/logo.png
 
 # ===========================================
 # IDE / EDITOR

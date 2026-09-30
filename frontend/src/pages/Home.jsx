@@ -1,33 +1,16 @@
 import { useState, useEffect, useRef, useId } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled, { css, keyframes } from 'styled-components';
-import { Menu, X, LogOut, Scissors, Star, MapPin, ArrowRight, Check, Minus, Plus } from 'lucide-react';
+import { Menu, X, LogOut, RotateCw, Star, MapPin, ArrowRight, Check, Plus } from 'lucide-react';
 import { API_URL } from '../config';
 import StructuredData from '../components/SEO/StructuredData';
 import SEOHead, { SEO_CONFIGS } from '../components/SEO/SEOHead';
-import logoImage from '../assets/contratapro-logo.png';
+import logoImage from '../assets/contratapro-logo-grafica.png';
 
 /* ------------------------------------------------------------------
    Mundo visual "Talão de Orçamento": vias de papel chapadas, impressão
    em uma cor (vermelho de gráfica) e preenchimento à mão em azul-carbono.
    ------------------------------------------------------------------ */
-
-const PLANS = [
-  { id: 'free', name: 'Free', price: 'Grátis', period: 'para sempre', cta: 'Começar grátis', primary: true },
-  { id: 'pro', name: 'Pro', price: 'R$ 19,90', period: 'por mês', cta: 'Assinar o Pro' },
-  { id: 'premium', name: 'Premium', price: 'R$ 39,90', period: 'por mês', cta: 'Assinar o Premium' },
-];
-
-// Linhas da tabela de preços: um valor por plano (true = incluso, false = não incluso)
-const PLAN_ROWS = [
-  { label: 'Serviços cadastrados', values: ['1', 'Ilimitados', 'Ilimitados'] },
-  { label: 'Agendamentos por mês', values: ['Até 3', 'Ilimitados', 'Ilimitados'] },
-  { label: 'Perfil público e agenda online', values: [true, true, true] },
-  { label: 'Selo no perfil', values: [false, 'Profissional Ativo', 'Destaque'] },
-  { label: 'Posição na busca', values: ['Normal', 'Destaque intermediário', 'Topo da busca'] },
-  { label: 'Relatório de desempenho', values: [false, false, true] },
-  { label: 'Suporte prioritário', values: [false, false, true] },
-];
 
 const formatCep = (digits) => (digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5, 8)}` : digits);
 
@@ -42,7 +25,6 @@ const Page = styled.div`
   --grafica-escura: #9e1712;
   --pauta: rgba(196, 32, 26, 0.55);
   --carbono: #2e3a9e;
-  --carbono-claro: #5c64a8;
   --nanquim: #17171b;
   --texto-2: #4a4550;
 
@@ -237,14 +219,14 @@ const TopButton = styled.button`
 `;
 
 const TopStamp = styled(StampLink)`
-  min-height: 38px;
+  min-height: 44px;
   font-size: 1rem;
   padding: 0 0.9rem;
   white-space: nowrap;
 
   @media (max-width: 380px) {
-    font-size: 0.9rem;
-    padding: 0 0.6rem;
+    font-size: 0.95rem;
+    padding: 0 0.55rem;
   }
 `;
 
@@ -305,6 +287,11 @@ const Hero = styled.section`
   background: var(--amarela);
   --texto-2: #5b4a12;
   padding: clamp(2rem, 6vw, 5rem) 0 clamp(3rem, 7vw, 6rem);
+
+  /* Celular pequeno: o botão de busca precisa caber na primeira tela (360×640) */
+  @media (max-width: 559px) {
+    padding-top: 1rem;
+  }
 `;
 
 // Mobile: título, talão e só depois a chamada para profissionais
@@ -312,6 +299,10 @@ const HeroGrid = styled(Wrap)`
   display: grid;
   grid-template-areas: 'text' 'talao' 'foot';
   gap: 1.75rem;
+
+  @media (max-width: 559px) {
+    gap: 1rem;
+  }
 
   > div:first-child {
     grid-area: text;
@@ -336,7 +327,19 @@ const HeroTitle = styled.h1`
   line-height: 0.95;
   letter-spacing: -0.015em;
   text-wrap: balance;
-  margin-bottom: 1.25rem;
+
+  @media (max-width: 559px) {
+    font-size: 2.3rem;
+  }
+`;
+
+// No celular o talão já explica o pedido; o texto de apoio só aparece com espaço
+const HeroLead = styled(Lead)`
+  margin-top: 1.25rem;
+
+  @media (max-width: 559px) {
+    display: none;
+  }
 `;
 
 const HeroFoot = styled.p`
@@ -395,25 +398,19 @@ const Talao = styled.form`
 const Canhoto = styled.div`
   display: none;
   border-right: 2px dashed var(--grafica);
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  font-family: var(--f-impresso);
-  font-weight: 600;
-  font-size: 0.8rem;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--grafica);
-  align-items: center;
-  justify-content: center;
 
   @media (min-width: 560px) {
-    display: flex;
+    display: block;
   }
 `;
 
 const TalaoBody = styled.div`
   padding: 1.25rem clamp(1rem, 3vw, 1.75rem) 0;
   min-width: 0;
+
+  @media (max-width: 559px) {
+    padding-top: 0.9rem;
+  }
 `;
 
 const TalaoHead = styled.div`
@@ -421,7 +418,7 @@ const TalaoHead = styled.div`
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.35rem 1rem;
   padding-bottom: 0.75rem;
   border-bottom: 2px solid var(--grafica);
   color: var(--grafica);
@@ -446,31 +443,19 @@ const TalaoBrand = styled.div`
   }
 `;
 
-const Numeradora = styled.div`
+// Contagem real em letra miúda impressa, sob o nome do talão: nunca com cara de número de pedido
+const Contagem = styled.p`
+  flex-basis: 100%;
   font-family: var(--f-impresso);
-  font-weight: 700;
-  font-size: 1.35rem;
-  letter-spacing: 0.14em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  text-align: right;
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  color: var(--grafica-escura);
 
-  @media (max-width: 480px) {
-    font-size: 1.15rem;
-  }
-
-  small {
-    display: block;
-    max-width: 10rem;
-    margin-left: auto;
-    white-space: normal;
-    line-height: 1.2;
-    margin-top: 0.2rem;
-    font-weight: 500;
-    font-size: 0.8rem;
-    letter-spacing: 0.04em;
-    text-transform: none;
-    color: #8e1611;
+  strong {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
   }
 `;
 
@@ -478,9 +463,12 @@ const Field = styled.label`
   display: flex;
   align-items: baseline;
   gap: 0.6rem;
-  padding: 0.9rem 0 0.2rem;
+  padding: 0.9rem 0.5rem 0.2rem;
+  margin: 0 -0.5rem;
   /* Única borda do campo em repouso: tinta cheia para passar 3:1 */
   border-bottom: 1.5px solid var(--grafica);
+  /* Sombra interna no lugar de engrossar a borda: o foco não desloca o layout */
+  transition: background-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
   cursor: text;
 
   > span {
@@ -506,19 +494,32 @@ const Field = styled.label`
     caret-color: var(--carbono);
     padding: 0;
 
+    /* Exemplo impresso, não escrito à mão: campo vazio não pode parecer preenchido */
     &::placeholder {
-      color: var(--carbono-claro);
-      font-weight: 500;
+      font-family: var(--f-texto);
+      font-weight: 400;
+      font-size: 1.05rem;
+      color: var(--texto-2);
+      opacity: 1;
     }
 
     &:focus {
       outline: none;
     }
+
+    &::-webkit-calendar-picker-indicator {
+      display: none !important;
+    }
   }
 
   &:focus-within {
     border-bottom-color: var(--carbono);
-    border-bottom-width: 2px;
+    background: rgba(207, 224, 245, 0.55);
+    box-shadow: inset 0 -2.5px 0 var(--carbono);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 `;
 
@@ -552,7 +553,7 @@ const CityWrite = styled(Hand)`
 
 const Checklist = styled.fieldset`
   border: none;
-  margin-top: 1.25rem;
+  margin-top: 0.6rem;
 
   legend {
     font-family: var(--f-impresso);
@@ -569,6 +570,7 @@ const ChecklistGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: 1rem;
+
 `;
 
 const drawStroke = keyframes`
@@ -607,7 +609,9 @@ const Box = styled.span`
   position: relative;
   width: 1.3rem;
   height: 1.3rem;
+  /* Bolinha impressa: escolha única, como o "( )" de um formulário de papel */
   border: 2px solid var(--grafica);
+  border-radius: 50%;
 
   svg {
     position: absolute;
@@ -664,10 +668,10 @@ const Perforation = styled.div`
   border-top: 2px dashed var(--grafica);
   font-family: var(--f-impresso);
   font-weight: 600;
-  font-size: 0.8rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--grafica);
+  font-size: 1rem;
+  letter-spacing: 0.03em;
+  line-height: 1.3;
+  color: var(--grafica-escura);
 `;
 
 /* ------------------------------ Picote entre as vias ------------------------------ */
@@ -693,20 +697,15 @@ const Seam = styled.div`
 
 const Section = styled.section`
   padding: clamp(3.5rem, 8vw, 6.5rem) 0;
+
+  /* Duas seções no mesmo papel não somam o respiro */
+  & + & {
+    padding-top: 0;
+  }
 `;
 
 const SectionHead = styled.div`
   margin-bottom: clamp(2rem, 4vw, 3rem);
-`;
-
-const ViasGrid = styled.div`
-  display: grid;
-  gap: 1.5rem;
-
-  @media (min-width: 880px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2rem;
-  }
 `;
 
 const Via = styled.article`
@@ -757,8 +756,8 @@ const ItemsTable = styled.table`
   th {
     font-family: var(--f-impresso);
     font-weight: 600;
-    font-size: 0.8rem;
-    letter-spacing: 0.12em;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--grafica);
     text-align: left;
@@ -776,7 +775,7 @@ const ItemsTable = styled.table`
 
   td:first-child,
   th:first-child {
-    width: 3rem;
+    width: 4rem;
     font-family: var(--f-impresso);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
@@ -910,9 +909,43 @@ const CartaoInfo = styled.div`
   }
 `;
 
+// Uma linha de talão no cartão: o serviço e o preço que o profissional cadastrou
+const CartaoItem = styled.div`
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1.5px solid var(--pauta);
+
+  > span {
+    min-width: 0;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+
+  strong {
+    flex: none;
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.2rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--grafica-escura);
+  }
+
+  small {
+    font-family: var(--f-texto);
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: #4a4550;
+  }
+`;
+
 const CartaoFoot = styled.div`
   grid-column: 1 / -1;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 0.75rem;
@@ -952,6 +985,50 @@ const BlankCard = styled.div`
     #efb3c3 calc(2.2rem + 1.5px)
   );
   border-bottom: 5px solid #efb3c3;
+
+  /* Ao lado do aviso, só quando a grade tem três colunas */
+  &[data-extra] {
+    display: none;
+
+    @media (min-width: 1040px) {
+      display: block;
+    }
+  }
+`;
+
+// Folha em branco no lugar dos cartões: a seção nunca some, mesmo sem dados
+const MesaAviso = styled.div`
+  grid-column: 1 / -1;
+  padding: 1.5rem clamp(1.25rem, 3vw, 1.75rem) 1.5rem;
+  background: var(--papel);
+  border-bottom: 5px solid var(--grafica);
+  box-shadow: 0 16px 28px -18px rgba(107, 38, 56, 0.55), 0 1px 3px rgba(107, 38, 56, 0.18);
+
+  h3 {
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.5rem;
+    line-height: 1.05;
+    color: var(--nanquim);
+  }
+
+  p {
+    margin-top: 0.6rem;
+    max-width: 60ch;
+    line-height: 1.55;
+    color: #4a4550;
+  }
+
+  @media (min-width: 1040px) {
+    grid-column: span 2;
+  }
+`;
+
+const MesaAcoes = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
 `;
 
 const MesaNote = styled.p`
@@ -1008,10 +1085,9 @@ const RuledList = styled.ul`
 `;
 
 const Perguntas = styled.div`
-  margin-top: clamp(2.5rem, 5vw, 3.5rem);
   max-width: 52rem;
 
-  h3 {
+  h2 {
     font-family: var(--f-impresso);
     font-weight: 700;
     font-size: 1.5rem;
@@ -1066,136 +1142,12 @@ const Perguntas = styled.div`
   }
 `;
 
-/* ------------------------------ Tabela de preços: via azul ------------------------------ */
-
-const Precos = styled.section`
-  background: var(--azul);
-  --texto-2: #22385e;
-  padding: clamp(3.5rem, 8vw, 6.5rem) 0;
-`;
-
-const PriceTable = styled.table`
-  display: none;
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--papel);
-  border: 2px solid var(--grafica);
-
-  @media (min-width: 760px) {
-    display: table;
-  }
-
-  th, td {
-    padding: 0.9rem 1.1rem;
-    border-bottom: 1.5px solid var(--pauta);
-    text-align: left;
-    vertical-align: middle;
-  }
-
-  thead th {
-    border-bottom: 2px solid var(--grafica);
-    vertical-align: bottom;
-  }
-
-  tbody th {
-    font-weight: 500;
-    color: var(--texto-2);
-    width: 30%;
-  }
-
-  td + td, th + th, th + td {
-    border-left: 1.5px solid var(--pauta);
-  }
-
-  tfoot td {
-    border-bottom: none;
-    padding-top: 1.25rem;
-    padding-bottom: 1.25rem;
-  }
-`;
-
-const PlanHead = styled.div`
-  font-family: var(--f-impresso);
-  line-height: 1;
-
-  /* Nome do plano é o título da coluna; preço vem logo abaixo */
-  span {
-    display: block;
-    font-weight: 800;
-    font-size: 1.9rem;
-    color: var(--nanquim);
-    margin-bottom: 0.35rem;
-  }
-
-  strong {
-    font-weight: 700;
-    font-size: 1.45rem;
-    color: var(--grafica);
-    font-variant-numeric: tabular-nums;
-  }
-
-  small {
-    display: block;
-    margin-top: 0.3rem;
-    font-family: var(--f-texto);
-    font-size: 0.9rem;
-    color: var(--texto-2);
-  }
-`;
-
-const PlanStack = styled.div`
-  display: grid;
-  gap: 1.25rem;
-
-  @media (min-width: 760px) {
-    display: none;
-  }
-`;
-
-const PlanSheet = styled.div`
-  background: var(--papel);
-  border: 2px solid var(--grafica);
-  padding: 1.25rem;
-
-  dl {
-    margin: 1rem 0 1.25rem;
-  }
-
-  dl > div {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.65rem 0;
-    border-bottom: 1.5px solid var(--pauta);
-  }
-
-  dt {
-    color: var(--texto-2);
-  }
-
-  dd {
-    text-align: right;
-    font-weight: 600;
-  }
-
-  a {
-    width: 100%;
-  }
-`;
-
-const PrecosNote = styled.p`
-  margin-top: 1.5rem;
-  font-family: var(--f-mao);
-  font-weight: 700;
-  font-size: 1.45rem;
-  color: var(--carbono);
-`;
-
 /* ------------------------------ Rodapé ------------------------------ */
 
 const Footer = styled.footer`
   background: var(--papel);
   color: var(--nanquim);
+  border-top: 2px solid var(--grafica);
   padding: clamp(3rem, 6vw, 4.5rem) 0 2rem;
 
   p {
@@ -1211,9 +1163,6 @@ const FooterGrid = styled.div`
   padding-bottom: 2rem;
   border-bottom: 2px dashed var(--grafica);
 
-  @media (min-width: 860px) {
-    grid-template-columns: 1.4fr 1fr;
-  }
 
   strong {
     display: block;
@@ -1221,14 +1170,6 @@ const FooterGrid = styled.div`
     font-weight: 800;
     font-size: 1.75rem;
     margin-bottom: 0.75rem;
-  }
-
-  h3 {
-    font-family: var(--f-impresso);
-    font-weight: 700;
-    font-size: 1.15rem;
-    color: var(--grafica);
-    margin-bottom: 0.4rem;
   }
 `;
 
@@ -1257,7 +1198,7 @@ const FooterLinks = styled.nav`
 
 const Legal = styled.p`
   margin-top: 1.5rem;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 `;
 
 /* ------------------------------ Componentes ------------------------------ */
@@ -1271,9 +1212,36 @@ function CheckMark() {
   );
 }
 
+const formatPrice = (value) =>
+  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: Number.isInteger(value) ? 0 : 2 });
+
+// Serviço principal (o primeiro cadastrado) e o menor preço na mesma unidade dele: hora não se compara com dia
+const pickHighlight = (services = []) => {
+  const main = services[0];
+  if (!main) return null;
+  const unit = main.duration_type === 'daily' ? 'daily' : 'hourly';
+  const priced = services
+    .filter((s) => (s.duration_type === 'daily' ? 'daily' : 'hourly') === unit && Number(s.price) > 0)
+    .sort((a, b) => a.price - b.price);
+  const service = priced[0] || main;
+  return {
+    title: service.title,
+    price: priced[0] ? Number(priced[0].price) : null,
+    unit: unit === 'daily' ? 'dia' : 'hora',
+    fromPrice: priced.length > 1,
+  };
+};
+
 function ProCard({ pro, cep }) {
-  const hasReviews = pro.total_reviews > 0 && pro.average_rating;
+  const name = pro.name?.trim() || 'Profissional';
+  const rating = Number(pro.average_rating);
+  const hasReviews = pro.total_reviews > 0 && Number.isFinite(rating) && rating > 0;
+  const highlight = pickHighlight(pro.services);
   const target = pro.slug ? `/p/${pro.slug}` : `/book/${pro.id}`;
+  const joined = pro.created_at ? new Date(pro.created_at) : null;
+  const since = joined && !Number.isNaN(joined.getTime())
+    ? joined.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    : null;
 
   return (
     <Cartao to={target} state={{ pro, clientCep: cep }}>
@@ -1281,11 +1249,11 @@ function ProCard({ pro, cep }) {
         {pro.profile_picture ? (
           <img src={pro.profile_picture} alt="" loading="lazy" width="64" height="64" />
         ) : (
-          pro.name.charAt(0).toUpperCase()
+          name.charAt(0).toUpperCase()
         )}
       </Foto>
       <CartaoInfo>
-        <h3>{pro.name}</h3>
+        <h3>{name}</h3>
         {pro.category && <p data-cat>{pro.category}</p>}
         {pro.city && (
           <p>
@@ -1293,39 +1261,37 @@ function ProCard({ pro, cep }) {
             {pro.city}{pro.state ? `, ${pro.state}` : ''}
           </p>
         )}
+        {since && <p>No ContrataPro desde {since}</p>}
       </CartaoInfo>
+      {highlight && (
+        <CartaoItem>
+          <span>{highlight.title}</span>
+          {highlight.price !== null && (
+            <strong>
+              {highlight.fromPrice && <small>a partir de </small>}
+              {formatPrice(highlight.price)}
+              <small>/{highlight.unit}</small>
+            </strong>
+          )}
+        </CartaoItem>
+      )}
       <CartaoFoot>
         {hasReviews ? (
           <span data-nota>
             <Star size={16} fill="var(--grafica)" color="var(--grafica)" aria-hidden="true" />
-            <strong>{pro.average_rating.toFixed(1).replace('.', ',')}</strong>
+            <strong>{rating.toFixed(1).replace('.', ',')}</strong>
             · {pro.total_reviews} {pro.total_reviews === 1 ? 'avaliação' : 'avaliações'}
           </span>
         ) : (
           <span data-nota>Ainda sem avaliações</span>
         )}
         <span data-ver>
-          Ver agenda <ArrowRight size={16} aria-hidden="true" />
+          Ver perfil e avaliações <ArrowRight size={16} aria-hidden="true" />
         </span>
       </CartaoFoot>
     </Cartao>
   );
 }
-
-function PlanValue({ value }) {
-  if (value === true) return <><Check size={18} color="var(--carbono)" aria-hidden="true" /><SrOnly>Incluso</SrOnly></>;
-  if (value === false) return <><Minus size={18} color="var(--texto-2)" aria-hidden="true" /><SrOnly>Não incluso</SrOnly></>;
-  return value;
-}
-
-const SrOnly = styled.span`
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-`;
 
 /* ------------------------------ Página ------------------------------ */
 
@@ -1350,11 +1316,17 @@ export default function Home() {
   const [city, setCity] = useState(savedLocation?.city ?? '');
   const [cepState, setCepState] = useState(savedLocation ? 'ok' : 'idle'); // idle | loading | ok | notfound | offline
   const [formError, setFormError] = useState('');
+  const [cepIncomplete, setCepIncomplete] = useState(false);
+  const cepInputRef = useRef(null);
 
   const [categories, setCategories] = useState([]);
-  const [nextOrder, setNextOrder] = useState(null);
+  const [bookingsCount, setBookingsCount] = useState(null);
+  // Texto que a pessoa digitou antes de marcar um atalho, para desmarcar sem perder o que escreveu
+  const typedServiceRef = useRef('');
+  const checklistRefs = useRef([]);
 
   const [pros, setPros] = useState({ status: 'loading', items: [], fromCity: null });
+  const [prosAttempt, setProsAttempt] = useState(0);
 
   // Usuário logado
   useEffect(() => {
@@ -1387,7 +1359,7 @@ export default function Home() {
     fetch(`${API_URL}/users/stats/public`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data && Number.isFinite(data.appointments_count)) setNextOrder(data.appointments_count + 1);
+        if (data && Number.isFinite(data.appointments_count)) setBookingsCount(data.appointments_count);
       })
       .catch(() => {});
     return () => controller.abort();
@@ -1405,7 +1377,9 @@ export default function Home() {
         return res.json();
       };
       try {
-        let items = city ? await fetchPros(city) : [];
+        // A busca por cidade é parcial (ilike); só conta como "da cidade" quem é exatamente dela
+        const norm = (value) => (value || '').normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
+        let items = city ? (await fetchPros(city)).filter((pro) => norm(pro.city) === norm(city)) : [];
         let fromCity = city || null;
         if (!items.length) {
           items = await fetchPros(null);
@@ -1418,7 +1392,7 @@ export default function Home() {
     };
     load();
     return () => { cancelled = true; };
-  }, [city]);
+  }, [city, prosAttempt]);
 
   // Esc fecha o menu mobile
   useEffect(() => {
@@ -1437,6 +1411,7 @@ export default function Home() {
     const digits = value.replace(/\D/g, '').slice(0, 8);
     setCepDigits(digits);
     setFormError('');
+    setCepIncomplete(false);
 
     if (digits.length < 8) {
       setCity('');
@@ -1446,7 +1421,7 @@ export default function Home() {
 
     setCepState('loading');
     try {
-      const res = await fetch(`/api/cep/${digits}`);
+      const res = await fetch(`${API_URL}/cep/${digits}`);
       if (res.ok) {
         const data = await res.json();
         if (data.city) {
@@ -1466,12 +1441,32 @@ export default function Home() {
   };
 
   const pickCategory = (name) => {
-    setService((current) => (current === name ? '' : name));
+    setService((current) => {
+      if (current === name) return typedServiceRef.current;
+      if (!checklist.includes(current)) typedServiceRef.current = current;
+      return name;
+    });
     setFormError('');
+  };
+
+  // Setas só movem o foco entre os atalhos visíveis; Espaço/Enter escolhe, sem apagar o que foi digitado
+  const onChecklistKey = (e) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const items = checklistRefs.current.filter((el) => el && el.offsetParent !== null);
+    const next = items[(items.indexOf(e.currentTarget) + step + items.length) % items.length];
+    next.focus();
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // CEP começado e incompleto: avisa no próprio CEP em vez de buscar sem a região
+    if (cepDigits.length > 0 && cepDigits.length < 8) {
+      setCepIncomplete(true);
+      cepInputRef.current?.focus();
+      return;
+    }
     if (!service.trim() && !city) {
       setFormError('Escreva o serviço ou um CEP válido para começar.');
       serviceInputRef.current?.focus();
@@ -1487,6 +1482,11 @@ export default function Home() {
   const focusTalao = () => {
     document.getElementById(formId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     serviceInputRef.current?.focus({ preventScroll: true });
+  };
+
+  const retryPros = () => {
+    setPros({ status: 'loading', items: [], fromCity: null });
+    setProsAttempt((n) => n + 1);
   };
 
   const handleLogout = () => {
@@ -1517,13 +1517,17 @@ export default function Home() {
     );
 
   const cepStatus = {
-    idle: cepDigits.length > 0 ? { text: `Faltam ${8 - cepDigits.length} números.` } : { text: 'Com o CEP, mostramos quem atende perto de você.' },
+    idle: cepIncomplete
+      ? { text: `Faltam ${8 - cepDigits.length} números do CEP. Complete ou apague para buscar só pelo serviço.`, tone: 'erro' }
+      : cepDigits.length > 0
+        ? { text: `Faltam ${8 - cepDigits.length} números.` }
+        : { text: 'Com o CEP, mostramos quem atende perto de você.' },
     loading: { text: 'Consultando o CEP…' },
     notfound: { text: 'CEP não encontrado. Confira os números.', tone: 'erro' },
     offline: { text: 'Não deu para consultar o CEP agora. Você pode buscar só pelo serviço.', tone: 'erro' },
   }[cepState];
 
-  const checklist = categories.slice(0, 8);
+  const checklist = categories.slice(0, 4);
 
   return (
     <Page>
@@ -1535,7 +1539,7 @@ export default function Home() {
       <Topbar>
         <TopbarInner>
           <Logo to="/" aria-label="ContrataPro, página inicial">
-            <img src={logoImage} alt="ContrataPro" width="120" height="34" />
+            <img src={logoImage} alt="" width="120" height="34" />
           </Logo>
 
           <TopNav aria-label="Conta">{accountLinks()}</TopNav>
@@ -1569,37 +1573,27 @@ export default function Home() {
               <HeroTitle id="titulo-home" data-display>
                 Profissionais da sua região, com agenda aberta pra você.
               </HeroTitle>
-              <Lead>
+              <HeroLead>
                 Escreva o serviço e o seu CEP. Você vê quem atende no seu bairro, confere o perfil e marca
                 o horário direto na agenda da pessoa. Para quem contrata, é grátis.
-              </Lead>
+              </HeroLead>
             </div>
 
-            <HeroFoot>
-              É profissional autônomo?
-              <Link to="/register-pro">
-                Cadastre-se grátis, sem cartão <ArrowRight size={18} aria-hidden="true" />
-              </Link>
-            </HeroFoot>
-
             <Talao id={formId} onSubmit={handleSubmit} noValidate aria-label="Pedido de serviço">
-              <Canhoto aria-hidden="true">Canhoto · ContrataPro</Canhoto>
+              <Canhoto aria-hidden="true" />
               <TalaoBody>
                 <TalaoHead>
                   <TalaoBrand>
                     <strong>CONTRATAPRO</strong>
                     <span>Pedido de serviço</span>
                   </TalaoBrand>
-                  <Numeradora aria-hidden={nextOrder ? undefined : 'true'}>
-                    {nextOrder ? (
-                      <>
-                        Nº {String(nextOrder).padStart(6, '0')}
-                        <small>o próximo agendamento pode ser o seu</small>
-                      </>
-                    ) : (
-                      'Nº ______'
-                    )}
-                  </Numeradora>
+                  {/* Só a contagem real da API; sem ela, o talão sai sem número */}
+                  {bookingsCount > 0 && (
+                    <Contagem>
+                      <strong>{bookingsCount.toLocaleString('pt-BR')}</strong>{' '}
+                      {bookingsCount === 1 ? 'agendamento já feito' : 'agendamentos já feitos'} no ContrataPro
+                    </Contagem>
+                  )}
                 </TalaoHead>
 
                 <Field>
@@ -1607,27 +1601,60 @@ export default function Home() {
                   <input
                     ref={serviceInputRef}
                     type="text"
+                    aria-invalid={formError ? true : undefined}
+                    aria-describedby={formError ? `${formId}-erro` : undefined}
                     name="service"
                     list={categories.length ? `${formId}-servicos` : undefined}
-                    placeholder="eletricista, diarista…"
+                    placeholder="ex.: eletricista, diarista"
                     autoComplete="off"
                     value={service}
                     onChange={(e) => {
                       setService(e.target.value);
+                      typedServiceRef.current = e.target.value;
                       setFormError('');
                     }}
                   />
                 </Field>
+                {formError && <FormError id={`${formId}-erro`} role="alert">{formError}</FormError>}
                 {categories.length > 0 && (
                   <datalist id={`${formId}-servicos`}>
                     {categories.map((name) => <option key={name} value={name} />)}
                   </datalist>
                 )}
 
+                {checklist.length > 0 && (
+                  <Checklist>
+                    <legend id={`${formId}-mais`}>Mais pedidos (escolha um):</legend>
+                    <ChecklistGrid role="radiogroup" aria-labelledby={`${formId}-mais`}>
+                      {checklist.map((name, i) => {
+                        const checked = service === name;
+                        const focusable = checked || (!checklist.includes(service) && i === 0);
+                        return (
+                          <CheckItem
+                            key={name}
+                            type="button"
+                            role="radio"
+                            aria-checked={checked}
+                            tabIndex={focusable ? 0 : -1}
+                            data-name={name}
+                            ref={(el) => { checklistRefs.current[i] = el; }}
+                            onClick={() => pickCategory(name)}
+                            onKeyDown={onChecklistKey}
+                          >
+                            <Box>{checked && <CheckMark />}</Box>
+                            <span>{name}</span>
+                          </CheckItem>
+                        );
+                      })}
+                    </ChecklistGrid>
+                  </Checklist>
+                )}
+
                 <Field>
                   <span>CEP:</span>
                   <input
                     type="text"
+                    ref={cepInputRef}
                     name="cep"
                     inputMode="numeric"
                     autoComplete="postal-code"
@@ -1636,7 +1663,7 @@ export default function Home() {
                     value={formatCep(cepDigits)}
                     onChange={(e) => handleCepChange(e.target.value)}
                     aria-describedby={`${formId}-cep`}
-                    aria-invalid={cepState === 'notfound' || undefined}
+                    aria-invalid={cepState === 'notfound' || cepIncomplete || undefined}
                   />
                 </Field>
                 <CepStatus id={`${formId}-cep`} aria-live="polite" $tone={cepStatus?.tone}>
@@ -1649,7 +1676,6 @@ export default function Home() {
                   )}
                 </CepStatus>
 
-                {formError && <FormError role="alert">{formError}</FormError>}
 
                 <SubmitRow>
                   <PrimaryButton type="submit">
@@ -1657,108 +1683,79 @@ export default function Home() {
                   </PrimaryButton>
                 </SubmitRow>
 
-                {checklist.length > 0 && (
-                  <Checklist>
-                    <legend>Ou marque um dos mais pedidos:</legend>
-                    <ChecklistGrid>
-                      {checklist.map((name) => {
-                        const checked = service === name;
-                        return (
-                          <CheckItem key={name} type="button" aria-pressed={checked} onClick={() => pickCategory(name)}>
-                            <Box>{checked && <CheckMark />}</Box>
-                            <span>{name}</span>
-                          </CheckItem>
-                        );
-                      })}
-                    </ChecklistGrid>
-                  </Checklist>
-                )}
-
-                <Perforation aria-hidden="true">
-                  <Scissors size={14} /> Destaque aqui
+                <Perforation>
+                  Buscar não compromete nada: você só vê quem atende. Grátis para quem contrata, e o pagamento você
+                  combina direto com o profissional.
                 </Perforation>
               </TalaoBody>
             </Talao>
+
+            <HeroFoot>
+              É profissional autônomo?
+              <Link to="/register-pro">
+                Cadastre-se grátis, sem cartão <ArrowRight size={18} aria-hidden="true" />
+              </Link>
+            </HeroFoot>
           </HeroGrid>
         </Hero>
-        <Seam $from="amarela" $to="papel" aria-hidden="true" />
-
-        <Section aria-labelledby="titulo-vias">
-          <Wrap>
-            <SectionHead>
-              <Display id="titulo-vias" data-display>Uma via para cada lado do serviço</Display>
-              <Lead>Quem precisa de um serviço e quem oferece usam o mesmo talão. Cada um fica com a sua via.</Lead>
-            </SectionHead>
-
-            <ViasGrid>
-              <Via $paper="rosa" aria-labelledby="via-cliente">
-                <ViaHead>
-                  <ViaTitle id="via-cliente" data-display>Preciso de um serviço</ViaTitle>
-                  <ViaStamp aria-hidden="true">1ª via</ViaStamp>
-                </ViaHead>
-                <ItemsTable>
-                  <thead>
-                    <tr><th scope="col">Item</th><th scope="col">Descrição</th></tr>
-                  </thead>
-                  <tbody>
-                    <tr><td>01</td><td>Escreva o serviço e o seu CEP.</td></tr>
-                    <tr><td>02</td><td>Veja o perfil, os serviços, os preços e as avaliações de quem já agendou.</td></tr>
-                    <tr><td>03</td><td>Escolha um horário livre na agenda do profissional. Pronto, está marcado.</td></tr>
-                  </tbody>
-                </ItemsTable>
-                <ViaNote>Pagamento? Você combina direto com o profissional: Pix, dinheiro, como preferirem.</ViaNote>
-                <ViaAction>
-                  <PrimaryButton type="button" onClick={focusTalao}>
-                    Preencher o pedido <ArrowRight size={18} aria-hidden="true" />
-                  </PrimaryButton>
-                </ViaAction>
-              </Via>
-
-              <Via $paper="azul" aria-labelledby="via-profissional">
-                <ViaHead>
-                  <ViaTitle id="via-profissional" data-display>Ofereço serviços</ViaTitle>
-                  <ViaStamp aria-hidden="true">2ª via</ViaStamp>
-                </ViaHead>
-                <ItemsTable>
-                  <thead>
-                    <tr><th scope="col">Item</th><th scope="col">Descrição</th></tr>
-                  </thead>
-                  <tbody>
-                    <tr><td>01</td><td>Crie seu perfil de graça, em minutos, sem cartão de crédito.</td></tr>
-                    <tr><td>02</td><td>Cadastre seus serviços e preços e marque os horários em que você atende.</td></tr>
-                    <tr><td>03</td><td>Clientes da sua região encontram você e agendam direto na sua agenda.</td></tr>
-                  </tbody>
-                </ItemsTable>
-                <ViaNote>Sem intermediário: o cliente fala e paga direto com você.</ViaNote>
-                <ViaAction>
-                  <PrimaryLink to="/register-pro">
-                    Quero oferecer serviços <ArrowRight size={18} aria-hidden="true" />
-                  </PrimaryLink>
-                </ViaAction>
-              </Via>
-            </ViasGrid>
-          </Wrap>
-        </Section>
-
-        {pros.status !== 'error' && (pros.status === 'loading' || pros.items.length > 0) && (
-          <>
-          <Seam $from="papel" $to="rosa" aria-hidden="true" />
-          <Mesa aria-labelledby="titulo-pros" aria-busy={pros.status === 'loading'}>
+        <Seam $from="amarela" $to="rosa" aria-hidden="true" />
+        <Mesa aria-labelledby="titulo-pros" aria-busy={pros.status === 'loading'}>
             <Wrap>
               <SectionHead>
                 <Display id="titulo-pros" data-display>
                   {pros.fromCity ? `Quem atende em ${pros.fromCity}` : 'Gente que já está no ContrataPro'}
                 </Display>
                 <Lead>
-                  Perfis de verdade, com agenda online. As avaliações só vêm de clientes que agendaram pelo ContrataPro.
+                  Cada perfil é preenchido pelo próprio profissional, com os serviços, os preços e a agenda dele. As
+                  avaliações só vêm de clientes que agendaram pelo ContrataPro.
                 </Lead>
               </SectionHead>
 
-              <CardsGrid>
-                {pros.status === 'loading'
-                  ? [0, 1, 2].map((i) => <BlankCard key={i} aria-hidden="true" />)
-                  : pros.items.map((pro) => <ProCard key={pro.id} pro={pro} cep={cepDigits} />)}
-              </CardsGrid>
+              {(pros.status === 'error' || (pros.status === 'ok' && pros.items.length === 0)) && (
+                <CardsGrid>
+                  <MesaAviso>
+                    {pros.status === 'error' ? (
+                      <>
+                        <div role="status">
+                          <h3>Os perfis não carregaram agora.</h3>
+                          <p>
+                            Pode ser a sua conexão ou uma instabilidade do nosso lado. Tente de novo, ou preencha o
+                            pedido lá em cima: a busca mostra quem atende perto de você.
+                          </p>
+                        </div>
+                        <MesaAcoes>
+                          <PrimaryButton type="button" onClick={retryPros}>
+                            <RotateCw size={18} aria-hidden="true" /> Tentar de novo
+                          </PrimaryButton>
+                          <StampLink as="button" type="button" onClick={focusTalao}>Preencher o pedido</StampLink>
+                        </MesaAcoes>
+                      </>
+                    ) : (
+                      <>
+                        <div role="status">
+                          <h3>Ainda não há profissionais cadastrados.</h3>
+                          <p>
+                            O ContrataPro está começando. Conhece alguém bom de serviço? Mostre o ContrataPro para essa
+                            pessoa: o cadastro é grátis e sem cartão.
+                          </p>
+                        </div>
+                        <MesaAcoes>
+                          <StampLink to="/register-pro">Sou profissional, quero me cadastrar</StampLink>
+                        </MesaAcoes>
+                      </>
+                    )}
+                  </MesaAviso>
+                  <BlankCard aria-hidden="true" data-extra />
+                </CardsGrid>
+              )}
+
+              {(pros.status === 'loading' || pros.items.length > 0) && (
+                <CardsGrid>
+                  {pros.status === 'loading'
+                    ? [0, 1, 2].map((i) => <BlankCard key={i} aria-hidden="true" />)
+                    : pros.items.map((pro) => <ProCard key={pro.id} pro={pro} cep={cepDigits} />)}
+                </CardsGrid>
+              )}
 
               {pros.status === 'ok' && city && !pros.fromCity && (
                 <MesaNote>
@@ -1767,10 +1764,8 @@ export default function Home() {
                 </MesaNote>
               )}
             </Wrap>
-          </Mesa>
-          <Seam $from="rosa" $to="papel" aria-hidden="true" />
-          </>
-        )}
+        </Mesa>
+        <Seam $from="rosa" $to="papel" aria-hidden="true" />
 
         <Section aria-labelledby="titulo-combinado">
           <Wrap>
@@ -1794,28 +1789,47 @@ export default function Home() {
                 <RuledList $mark="grafica">
                   <li><ArrowRight size={20} aria-hidden="true" />O pagamento: Pix, dinheiro ou o que vocês combinarem. O ContrataPro não cobra nada de quem contrata.</li>
                   <li><ArrowRight size={20} aria-hidden="true" />O orçamento final e a execução do serviço.</li>
-                  <li><ArrowRight size={20} aria-hidden="true" />A conversa antes: o ContrataPro não checa antecedentes, então confira o perfil e as avaliações e tire suas dúvidas com a pessoa.</li>
+                  <li><ArrowRight size={20} aria-hidden="true" />A conversa antes: o ContrataPro não checa antecedentes. Antes de marcar, leia as avaliações de quem já agendou, confira os serviços e preços do perfil e converse com a pessoa.</li>
                 </RuledList>
               </div>
             </CombinadoGrid>
+          </Wrap>
+        </Section>
 
+        <Section aria-labelledby="via-profissional">
+          <Wrap>
+            <Via $paper="azul" aria-labelledby="via-profissional">
+              <ViaHead>
+                <ViaTitle as="h2" id="via-profissional" data-display>Você oferece serviços?</ViaTitle>
+                <ViaStamp>Sem cartão</ViaStamp>
+              </ViaHead>
+              <ItemsTable>
+                <thead>
+                  <tr><th scope="col">Passo</th><th scope="col">Como funciona</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>01</td><td>Crie seu perfil de graça, em minutos, sem cartão de crédito.</td></tr>
+                  <tr><td>02</td><td>Cadastre seus serviços e preços e marque os horários em que você atende.</td></tr>
+                  <tr><td>03</td><td>Clientes da sua região encontram você e agendam direto na sua agenda.</td></tr>
+                </tbody>
+              </ItemsTable>
+              <ViaNote>Sem intermediário: o cliente fala e paga direto com você.</ViaNote>
+              <ViaAction>
+                <PrimaryLink to="/register-pro">
+                  Quero oferecer serviços <ArrowRight size={18} aria-hidden="true" />
+                </PrimaryLink>
+              </ViaAction>
+            </Via>
+          </Wrap>
+        </Section>
+
+        <Section aria-labelledby="titulo-perguntas">
+          <Wrap>
             <Perguntas>
-              <h3>Perguntas que todo mundo faz</h3>
-              <details>
-                <summary>Quanto custa para contratar? <Plus size={22} aria-hidden="true" /></summary>
-                <p>Nada. Buscar, ver perfis e agendar é grátis para o cliente. O valor do serviço você combina com o profissional.</p>
-              </details>
+              <h2 id="titulo-perguntas">Perguntas que todo mundo faz</h2>
               <details>
                 <summary>O ContrataPro verifica os profissionais? <Plus size={22} aria-hidden="true" /></summary>
-                <p>Não. Mostramos o perfil que o profissional preencheu e as avaliações de clientes que agendaram pela plataforma. Leia as avaliações e converse com a pessoa antes de fechar.</p>
-              </details>
-              <details>
-                <summary>Como eu pago o profissional? <Plus size={22} aria-hidden="true" /></summary>
-                <p>Direto com ele, do jeito que vocês combinarem. O ContrataPro não intermedia pagamentos entre cliente e profissional.</p>
-              </details>
-              <details>
-                <summary>Quem pode deixar avaliação? <Plus size={22} aria-hidden="true" /></summary>
-                <p>Só quem agendou pelo ContrataPro. Depois que o serviço é concluído, o cliente recebe um link por e-mail para avaliar.</p>
+                <p>Não. Mostramos o perfil que o profissional preencheu e as avaliações de clientes que agendaram pela plataforma. Antes de fechar, leia essas avaliações, confira os serviços e preços do perfil e converse com a pessoa.</p>
               </details>
               <details>
                 <summary>Por que a busca é por região? <Plus size={22} aria-hidden="true" /></summary>
@@ -1824,86 +1838,6 @@ export default function Home() {
             </Perguntas>
           </Wrap>
         </Section>
-
-        <Seam $from="papel" $to="azul" aria-hidden="true" />
-        <Precos aria-labelledby="titulo-precos">
-          <Wrap>
-            <SectionHead>
-              <Display id="titulo-precos" data-display>Tabela de preços para profissionais</Display>
-              <Lead>Todo profissional começa no Free, sem cartão. Os planos pagos são para quem quer aparecer mais na busca e atender sem limite.</Lead>
-            </SectionHead>
-
-            <PriceTable>
-              <caption><SrOnly>Comparação dos planos Free, Pro e Premium</SrOnly></caption>
-              <thead>
-                <tr>
-                  <td />
-                  {PLANS.map((plan) => (
-                    <th key={plan.id} scope="col">
-                      <PlanHead>
-                        <span>{plan.name}</span>
-                        <strong>{plan.price}</strong>
-                        <small>{plan.period}</small>
-                      </PlanHead>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {PLAN_ROWS.map((row) => (
-                  <tr key={row.label}>
-                    <th scope="row">{row.label}</th>
-                    {row.values.map((value, i) => (
-                      <td key={PLANS[i].id}><PlanValue value={value} /></td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td />
-                  {PLANS.map((plan) => (
-                    <td key={plan.id}>
-                      {plan.primary ? (
-                        <PrimaryLink to="/register-pro">{plan.cta}</PrimaryLink>
-                      ) : (
-                        <StampLink to="/register-pro">{plan.cta}</StampLink>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              </tfoot>
-            </PriceTable>
-
-            <PlanStack>
-              {PLANS.map((plan, i) => (
-                <PlanSheet key={plan.id}>
-                  <PlanHead>
-                    <span>{plan.name}</span>
-                    <strong>{plan.price}</strong>
-                    <small>{plan.period}</small>
-                  </PlanHead>
-                  <dl>
-                    {PLAN_ROWS.map((row) => (
-                      <div key={row.label}>
-                        <dt>{row.label}</dt>
-                        <dd><PlanValue value={row.values[i]} /></dd>
-                      </div>
-                    ))}
-                  </dl>
-                  {plan.primary ? (
-                    <PrimaryLink to="/register-pro">{plan.cta}</PrimaryLink>
-                  ) : (
-                    <StampLink to="/register-pro">{plan.cta}</StampLink>
-                  )}
-                </PlanSheet>
-              ))}
-            </PlanStack>
-
-            <PrecosNote>Planos pagos pelo Mercado Pago. Dá para cancelar pelo seu painel.</PrecosNote>
-          </Wrap>
-        </Precos>
-        <Seam $from="azul" $to="papel" aria-hidden="true" />
       </main>
 
       <Footer>
@@ -1912,13 +1846,6 @@ export default function Home() {
             <div>
               <strong>ContrataPro</strong>
               <p>Encontre quem resolve, perto de casa, e marque o horário direto na agenda da pessoa.</p>
-            </div>
-            <div>
-              <h3>Sobre a plataforma</h3>
-              <p>
-                O ContrataPro conecta clientes e profissionais autônomos. A contratação, o pagamento e a execução
-                do serviço são combinados diretamente entre o cliente e o profissional.
-              </p>
             </div>
           </FooterGrid>
           <FooterLinks aria-label="Rodapé">

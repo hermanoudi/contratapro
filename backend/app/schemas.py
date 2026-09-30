@@ -125,6 +125,8 @@ class ProfessionalSearchResult(BaseModel):
     subscription_plan: Optional[SubscriptionPlanResponse] = None
     average_rating: Optional[float] = None
     total_reviews: int = 0
+    # Sinal real de confiança nos cards: "no ContrataPro desde"
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

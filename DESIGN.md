@@ -10,7 +10,6 @@ colors:
   grafica-escura: "#9e1712"
   pauta: "rgba(196, 32, 26, 0.55)"
   carbono: "#2e3a9e"
-  carbono-claro: "#5c64a8"
   nanquim: "#17171b"
   texto-2: "#4a4550"
   texto-2-amarela: "#5b4a12"
@@ -94,7 +93,7 @@ components:
     textColor: "{colors.carbono}"
     typography: "{typography.hand}"
     rounded: "{rounded.none}"
-    padding: "0.9rem 0 0.2rem"
+    padding: "0.9rem 0.5rem 0.2rem"
   topbar:
     backgroundColor: "{colors.papel}"
     textColor: "{colors.nanquim}"
@@ -121,7 +120,7 @@ components:
 
 The product is dressed as the carbon-copy order pad (talão de pedido/orçamento) that every Brazilian autônomo keeps in the van or the toolbox. Whole sections are flat sheets of colored paper, the "vias": yellow, white, pink, blue. Everything printed by the gráfica is in a single red ink: rules, labels, numbering, stamps, primary buttons. Everything filled in by a person is carbon blue in a handwriting face. Near-black nanquim carries headings and running text. The effect is warm and local, a thing from the neighbourhood rather than a SaaS product, which is the tone PRODUCT.md commits to.
 
-Density is that of a paper form: generous section padding, ruled lines instead of boxes, and tables and lists that read as printed rows. Sheets meet at a perforated seam (a scalloped tear edge) rather than a straight divider. State is carried by the stroke, not by fills: a solid rule is printed, a dashed rule is the tear line, a hand-drawn X marks a choice, and focus thickens the rule to carbon blue.
+Density is that of a paper form: generous section padding, ruled lines instead of boxes, and tables and lists that read as printed rows. Sheets meet at a perforated seam (a scalloped tear edge) rather than a straight divider. State is carried by the stroke, not by fills: a solid rule is printed, a dashed rule is the tear line, a hand-drawn X marks a choice, and focus re-inks the rule in carbon blue over a faint blue wash on the line being written.
 
 Motion is small and physical: the city from the CEP writes itself in by a left-to-right clip reveal (700ms), a checkbox's X draws in two strokes (220ms, second delayed 160ms), a professional card lifts and tilts slightly on hover, and buttons press 1px down. All of it is disabled under `prefers-reduced-motion`.
 
@@ -138,19 +137,19 @@ Motion is small and physical: the city from the CEP writes itself in by a left-t
 A four-paper stock (yellow, white, pink, blue) printed in one red and written in one blue, with near-black ink for reading.
 
 ### Primary
-- **Vermelho de Gráfica** (grafica): the single printing ink. Primary buttons, stamp buttons, every structural rule (2px solid under headers, 6px top rule on a via, 5px foot on a card), form labels, item numerals, prices, the Nº numbering, links, the star rating fill. Its hover/pressed ink is **Gráfica Escura** (grafica-escura).
+- **Vermelho de Gráfica** (grafica): the single printing ink. Primary buttons, stamp buttons, every structural rule (2px solid under headers, 6px top rule on a via, 5px foot on a card), form labels, item numerals, prices, the appointment count on the talão, links, the star rating fill, and the logo (the Home uses a one-ink gráfica version, `contratapro-logo-grafica.png`; other surfaces still use the legacy blue file). Its hover/pressed ink is **Gráfica Escura** (grafica-escura).
 - **Pauta** (pauta): the same red at 55% alpha, used only for decorative ruled lines: table row rules, list rules, FAQ dividers, card-foot rules. Never text, and never the only boundary of a control (it measures 2.7:1 on white); a field's resting underline uses full gráfica.
 
 ### Secondary
-- **Azul-Carbono** (carbono): the handwriting ink. Input values and caret, the resolved city, the drawn X in a checkbox, marginal notes (ViaNote, PrecosNote), "included" check marks, and the focus ring. **Carbono Claro** (carbono-claro) is for placeholders only.
+- **Azul-Carbono** (carbono): the handwriting ink. Input values and caret, the resolved city, the drawn X in a checkbox, marginal notes (ViaNote), check marks in the "O combinado" list, the focus ring, and the focused field's underline. Placeholders are not handwriting: they are printed in texto-2 (see Inputs).
 
 ### Tertiary (the paper stock)
 - **Via Amarela** (amarela): the hero sheet and text selection highlight; also the monogram fill on a card without a photo.
 - **Via Rosa** (rosa): the client via and the professionals section (Mesa).
-- **Via Azul** (azul): the professional via and the pricing section.
+- **Via Azul** (azul): the professional via; at 55% alpha, the wash behind a focused field on the talão.
 
 ### Neutral
-- **Papel** (papel): the white sheet; page background, the talão, cards, price sheets, topbar.
+- **Papel** (papel): the white sheet; page background, the talão, cards, the blank notice sheet, topbar, footer.
 - **Nanquim** (nanquim): headings, body text, icons in the topbar, photo frame.
 - **Texto Secundário** (texto-2 and its per-paper variants): secondary text is re-inked per sheet so it stays in family and legible: default on white, **texto-2-amarela** on the hero, **texto-2-rosa** on pink, **texto-2-azul** on blue. Set it by overriding `--texto-2` on the section or via, never by hardcoding.
 
@@ -174,12 +173,13 @@ A four-paper stock (yellow, white, pink, blue) printed in one red and written in
 ### Hierarchy
 - **Display** (800, clamp(2.6rem, 6.4vw, 5.25rem), 0.95, -0.015em, balanced): the single page title (hero h1).
 - **Headline** (800, clamp(2rem, 4.2vw, 3.25rem), 1, -0.01em, balanced): section titles.
-- **Title** (700–800, 1.45–2.2rem, ~1.05): via titles (800, clamp(1.7rem, 3vw, 2.2rem)), list titles and FAQ heading (700, 1.5rem), card names (700, 1.45rem), plan names (800, 1.9rem).
+- **Title** (700–800, 1.2–2.2rem, ~1.05): via titles (800, clamp(1.7rem, 3vw, 2.2rem)), list titles, FAQ heading and notice-sheet headings (700, 1.5rem), card names (700, 1.45rem), plan names in the via's plan table (700, 1.2rem).
 - **Lead** (400, clamp(1.05rem, 1.4vw, 1.2rem), 1.55, max 60ch): the one supporting paragraph under a heading, in texto-2.
 - **Body** (400, 1rem, 1.5–1.6, 62–68ch): running text, table cells, FAQ answers.
-- **Label** (Barlow Condensed 600, 0.8–0.95rem, 0.08–0.16em, uppercase, gráfica): printed form labels on the talão and vias only: field labels ("SERVIÇO:"), fieldset legend, table column heads, the canhoto, the tear line, via stamps.
+- **Label** (Barlow Condensed 600, 0.95rem, 0.08em, uppercase, gráfica): printed form labels on the talão and vias only: field labels ("SERVIÇO:"), fieldset legend ("MAIS PEDIDOS (ESCOLHA UM):"), table column heads ("PASSO / COMO FUNCIONA"), via stamps.
+- **Fine print** (Barlow Condensed 500–600, 0.95–1rem, 0.02–0.03em, sentence case): printed lines that must be read, not scanned: the appointment-count caption and the reassurance line on the talão's tear line (gráfica-escura). Kept at 0.95rem or larger; nothing on the page is set below that.
 - **Action** (Barlow Condensed 700, 1.1rem, 0.05em, uppercase): button text; nav links use 600, 1.1rem, 0.03em, sentence case.
-- **Hand** (Caveat 700, 1.45–1.75rem, 1.2): input values (1.75rem), resolved city (1.5rem), marginal notes (1.45rem).
+- **Hand** (Caveat 700, 1.45–1.75rem, 1.2): input values (1.75rem), resolved city (1.5rem), marginal notes (1.45rem). Never placeholders.
 
 ### Named Rules
 **The Printed vs. Written Rule.** If the gráfica would have printed it, it is Barlow Condensed; if a person would have written it, it is Caveat in carbon blue. Caveat never sets headings, buttons, or labels.
@@ -190,7 +190,9 @@ A four-paper stock (yellow, white, pink, blue) printed in one red and written in
 
 Content sits in a 1200px max-width column with a fluid side gutter (clamp(1rem, 4vw, 2.5rem)); section color runs full-bleed behind it. Sections breathe at clamp(3.5rem, 8vw, 6.5rem) vertical padding, with clamp(2rem, 4vw, 3rem) between a section head and its content. A section head is a Headline plus one Lead, nothing above the headline.
 
-Breakpoints are content-driven, not a fixed scale: topbar nav switches at 860px; the hero goes two-column (text left, talão right in a 32rem column) at 960px; the canhoto stub appears at 560px; the two vias sit side by side at 880px; professional cards go 2-up at 640px and 3-up at 1040px; the pricing table replaces stacked price sheets at 760px. Mobile order in the hero is title, talão, then the professional call.
+Breakpoints are content-driven, not a fixed scale: topbar nav switches at 860px; the hero goes two-column (text left, talão right in a 32rem column) at 960px; the canhoto stub appears at 560px; professional cards go 2-up at 640px and 3-up at 1040px; the talão's checklist shows 4 shortcuts at every width so the submit stays in the first viewport. Below 560px the hero drops its Lead paragraph and tightens its top padding and gaps: the talão explains the task itself, and the submit must end inside a 360×640 screen (it measures 634px with count and checklist showing). Mobile order in the hero, in the DOM and in tab order alike, is title, talão, then the professional call.
+
+The Home's page order puts proof before explanation: hero with talão, the professionals (Mesa), "O combinado", the professional via ("Você oferece serviços?"), a short FAQ, footer. There is no client via: the hero and "O combinado" already cover the client. The FAQ keeps only questions "O combinado" does not answer. Two consecutive sections on the same paper do not add their padding; the second starts at 0 top padding. The Mesa section always renders: cards when there are professionals, blank ruled cards while loading, a notice sheet on error or when there is nobody yet. Plan prices are not on the Home: the professional via stops at "grátis, sem cartão", and the signup flow presents the plans. The section's Lead (how profiles and reviews work) always shows, since it is true with or without data.
 
 The 56px topbar is the only sticky element. Touch targets are at least 44px (menu toggle, checklist items, footer links); primary buttons are 48px, the talão submit 54px.
 
@@ -203,16 +205,16 @@ Paper lies flat. Depth is reserved for the two objects that are physically separ
 
 ### Shadow Vocabulary
 - **Talão on the table** (`box-shadow: 0 22px 36px -18px rgba(23, 23, 27, 0.45), 0 2px 4px rgba(23, 23, 27, 0.12)`): the order pad in the hero.
-- **Card on pink paper** (`box-shadow: 0 16px 28px -18px rgba(107, 38, 56, 0.55), 0 1px 3px rgba(107, 38, 56, 0.18)`): professional cards; the shadow is tinted with the paper's own ink (texto-2-rosa), not grey.
+- **Card on pink paper** (`box-shadow: 0 16px 28px -18px rgba(107, 38, 56, 0.55), 0 1px 3px rgba(107, 38, 56, 0.18)`): professional cards and the notice sheet that replaces them; the shadow is tinted with the paper's own ink (texto-2-rosa), not grey.
 
 ### Named Rules
 **The Loose Sheet Rule.** Only a loose sheet on top of another sheet casts a shadow, and its shadow is tinted by the paper under it. Vias, tables, and printed boxes stay flat.
 
 ## Shapes
 
-Geometry is square paper. Every container, sheet, card, via, table, checkbox, and photo frame has square corners (0px). The only rounding is 2px on buttons, the slight softness of a pressed rubber stamp.
+Geometry is square paper. Every container, sheet, card, via, table, and photo frame has square corners (0px). The only rounding is 2px on buttons, the slight softness of a pressed rubber stamp, and the full circle of a single-choice mark, the printed "( )" of a paper form.
 
-Borders are printing: 2px solid gráfica for frames and header rules, 1.5px pauta for ruled rows, 2px dashed gráfica for tear lines (the canhoto edge, the "destaque aqui" line, the footer). Weight carries meaning: a 6px top rule opens a via, a 5px bottom rule closes a card.
+Borders are printing: 2px solid gráfica for frames and header rules (including the rule that opens the footer, which holds only the brand line, links and legal line; it does not repeat "O combinado"), 1.5px pauta for ruled rows, 2px dashed gráfica for tear lines (the canhoto edge, the talão's tear line, the divider inside the footer). Weight carries meaning: a 6px top rule opens a via, a 5px bottom rule closes a card or notice sheet.
 
 Physical objects are placed by hand at a slight angle: the talão at -1.2deg (desktop only), via stamps at -4deg, marginal notes at -1deg, a card tilts -0.4deg as it lifts on hover.
 
@@ -222,27 +224,31 @@ Physical objects are placed by hand at a slight angle: the talão at -1.2deg (de
 Printed and decisive, like the gráfica's red block.
 - **Shape:** near-square (2px), 2px border in the same ink as the fill.
 - **Primary:** gráfica fill, papel text, uppercase Barlow Condensed 700, 48px min height, 0 1.4rem padding, optional trailing arrow icon. Use it for the one main action in a sheet.
-- **Stamp (secondary):** transparent with gráfica text and 2px gráfica border; inverts to a gráfica fill on hover. Used for "Sou profissional" in the topbar (38px compact) and for paid-plan CTAs.
+- **Stamp (secondary):** transparent with gráfica text and 2px gráfica border; inverts to a gráfica fill on hover. Used for "Sou profissional" in the topbar (compact padding, still 44px tall) and for the secondary action on a notice sheet ("Preencher o pedido", "Sou profissional, quero me cadastrar"). Rendered as a link or, when it triggers an in-page action, as a button with the same look.
 - **Hover / Focus / Active:** hover darkens to gráfica-escura (160ms, ease-out `cubic-bezier(0.22, 1, 0.36, 1)`); focus is a 2px carbono outline at 3px offset; active presses 1px down.
 
 ### Chips: Printed Checklist
-The "mais pedidos" choices are a printed checklist, not pills: a 1.3rem square box with a 2px gráfica border beside a Barlow 500 label, 44px row height, two columns. Selecting draws a carbon-blue X in two strokes (`aria-pressed`); hover turns the label red.
+The "mais pedidos" choices are a printed checklist, not pills: a 1.3rem printed circle with a 2px gráfica border beside a Barlow 500 label, 44px row height, two columns. It sits directly under the Serviço field it fills (before CEP and the submit), with at most 4 items, and only when real categories came back from the API. It is a single choice and says so in its legend ("escolha um"): semantically a `radiogroup` of `role="radio"` buttons with roving tabindex, one tab stop, arrow keys moving focus only among the visible items (Space/Enter chooses), so arrowing never overwrites what was typed. Selecting writes that service into the field and draws a carbon-blue X in two strokes inside the circle; selecting it again gives back whatever the person had typed. Hover turns the label red.
 
 ### Cards / Containers
-- **Cartão (professional card):** papel, square, 1.25rem padding, 5px gráfica bottom rule, tinted paper shadow; 64px square photo with a 2px nanquim frame (amarela monogram when no photo); foot row under a 1.5px pauta rule with the rating and an uppercase "Ver agenda" link. Hover lifts 3px and tilts -0.4deg (200ms). Loading state is a blank ruled card, never a grey shimmer.
-- **Via:** a whole paper sheet (rosa or azul) with a 6px gráfica top rule, a title over a 2px red rule, a rotated stamp ("1ª via") in the corner, a ruled item table with numbered rows, a handwritten note, and one action at the foot.
-- **Printed box:** 2px gráfica frame on the current paper, no fill, no shadow (the "O combinado" panel, price sheets, the pricing table).
+- **Cartão (professional card):** papel, square, 1.25rem padding, 5px gráfica bottom rule, tinted paper shadow; 64px square photo with a 2px nanquim frame (amarela monogram when no photo); a "No ContrataPro desde {mês de ano}" line from the professional's real `created_at` (omitted when missing or invalid; no other trust signal is invented), then one talão line under a 1.5px pauta rule with the service the professional registered and its price (the professional's first service defines the unit (hora or dia) and the line shows the lowest price among services in that same unit, "a partir de" when there are several, R$ in Barlow Condensed 700 tabular gráfica-escura, "/hora" or "/dia" in texto-2; title only when there is no price; no line when there are no services); foot row under another pauta rule with the rating and an uppercase "Ver perfil e avaliações" link (the next step is checking the person out, not booking). Missing name falls back to "Profissional"; a rating that is not a positive number shows "Ainda sem avaliações". Hover lifts 3px and tilts -0.4deg (200ms). Loading state is a blank ruled card, never a grey shimmer.
+- **Notice sheet (MesaAviso):** what the professionals section shows instead of cards when the API fails or there is nobody yet, so the section never disappears. It sits inside the cards grid, spanning the full row (two columns at 1040px+, with one blank ruled card beside it so the row reads as empty slots, not a void). A papel sheet card shadow and 5px gráfica foot, a Title-sized heading that states the fact plainly ("Os perfis não carregaram agora."), one short paragraph in texto-2 that names the recovery, and actions: primary for the fix ("Tentar de novo" with a rotate icon), stamp for the alternative. Only the heading and paragraph sit inside `role="status"`; the actions stay outside it. The heading says "Quem atende em {cidade}" only for professionals whose city matches the visitor's exactly.
+- **Via:** a whole paper sheet (rosa or azul) with a 6px gráfica top rule, a title over a 2px red rule, and a rotated stamp in the corner that states a fact, never paperwork jargon ("Grátis", "Sem cartão"; not "1ª via"). The Home now uses only the professional via, full width, with its title as the section's h2. It carries a ruled steps table (Passo | Como funciona, numbered rows), a handwritten note and one action ("Quero oferecer serviços"). It stops at free: no plan table on the Home.
+- **Printed box:** 2px gráfica frame on the current paper, no fill, no shadow (the "O combinado" panel).
 
 ### Inputs / Fields
-- **Style:** a ruled line, not a box. A Barlow Condensed uppercase red label ("SERVIÇO:") sits on the same baseline as a borderless transparent input; the value is Caveat 700 1.75rem in carbono; placeholder in carbono-claro. The field's only boundary is a 1.5px full-gráfica underline (pauta would fail 3:1 for a control boundary).
-- **Focus:** the underline turns carbono and thickens to 2px.
+- **Style:** a ruled line, not a box. A Barlow Condensed uppercase red label ("SERVIÇO:") sits on the same baseline as a borderless transparent input; the value is Caveat 700 1.75rem in carbono. The placeholder is printed, not written: Barlow 400 1.05rem in texto-2, phrased as an example ("ex.: eletricista, diarista"), so an empty field never looks filled in. The field's only boundary is a 1.5px full-gráfica underline (pauta would fail 3:1 for a control boundary). The field row bleeds 0.5rem past the text on each side so the focus wash has room.
+- **Focus:** the row takes an azul wash at 55% alpha and the underline turns carbono with an inset 2.5px shadow (`box-shadow: inset 0 -2.5px 0 carbono`), so focus is unmistakable without shifting layout; 160ms ease-out, off under reduced motion. The input itself has no outline.
 - **Status / Error:** helper and status text below in Barlow 0.95rem texto-2; errors in gráfica ink; a confirmed city writes itself in by hand with a check.
 
 ### Navigation
 Papel topbar, 56px, sticky, closed by a 2px gráfica bottom rule. Links are Barlow Condensed 600 1.1rem nanquim; hover turns them red and draws a 2px underline at 5px offset. The stamp button sits at the end. Below 860px the links collapse into a full-width panel of 48px rows separated by pauta rules, closed by Esc; the stamp stays visible beside the menu toggle.
 
 ### Talão (signature component)
-The primary search form is the order pad itself: a papel sheet with a 2px gráfica frame, rotated -1.2deg on desktop, carrying the table shadow. A dashed-edge canhoto stub runs down the left (vertical uppercase label, from 560px). The head prints the brand and "Pedido de serviço" left and a Nº numbering right, in tabular Barlow Condensed 700, fed only by the real appointment count (a blank "Nº ______" until the API answers). Ruled fields, the red submit, the printed checklist, and a dashed "destaque aqui" tear line with scissors close the sheet.
+The primary search form is the order pad itself: a papel sheet with a 2px gráfica frame, rotated -1.2deg on desktop, carrying the table shadow. A blank canhoto stub, marked only by its dashed edge, runs down the left from 560px; it carries no text, because printed words on it read as something to act on. The head prints the brand and "Pedido de serviço" left and, only when the API returns a real appointment count above zero, one line of fine print under "Pedido de serviço", full width, in gráfica-escura, with only the number in bold tabular figures ("**1.234** agendamentos já feitos no ContrataPro"). It is never dressed as an order number: no big red figure in the corner, no "Nº", no zero padding, no count-plus-one. With no real count, the head carries no number at all. Order down the sheet: Serviço field, printed checklist, CEP field with its status line, the red submit, then a dashed tear line that prints the reassurance that matters at the moment of submitting: that it is only a search, it is free, and payment is direct ("Buscar não compromete nada: você só vê quem atende. Grátis para quem contrata, e o pagamento você combina direto com o profissional."). The sheet keeps its "Pedido de serviço" name; the tear line removes the fear of committing. An incomplete CEP on submit does not search without the region: the CEP status line turns into an error ("Faltam N números do CEP. Complete ou apague para buscar só pelo serviço.") and focus moves to the CEP.
+
+### Share Image
+`frontend/public/og-image.jpg` (1200×630) is the talão world as a social preview: amarela paper, the one-ink logo, the hero title in Barlow Condensed 800, a tilted talão filled in by hand ("eletricista", "seu bairro") with the red submit and the "Grátis para quem contrata." tear line, and a perforated seam at the foot. `og:image` and `twitter:image` both point to it. `public/logo.png` is the official logo file for Schema.org. Its source is `frontend/design/og-image.html` (the talão drawn in HTML with the real fonts; the CEP field shows a numeric example); regenerate the JPEG from it when the hero copy changes.
 
 ### Perforated Seam (signature component)
 See the Perforated Seam Rule. It is the only divider between sections of different paper.
@@ -256,7 +262,9 @@ See the Perforated Seam Rule. It is the only divider between sections of differe
 - **Do** use ruled lines (1.5px pauta) for rows and fields, and let stroke carry state: solid printed, dashed tear, drawn X for chosen, carbono underline for focus.
 - **Do** keep corners square; buttons alone take 2px.
 - **Do** place physical objects (the talão, stamps, notes) at a slight hand angle, and keep all motion off under `prefers-reduced-motion`.
-- **Do** keep numbering and counts tied to real API data, and leave a printed blank when the data is missing.
+- **Do** keep numbering and counts tied to real API data, and omit them entirely when the data is missing.
+- **Do** keep a section in place when its data fails or is empty: show a notice sheet that says what happened and offers the next action.
+- **Do** print placeholders (Barlow, texto-2, "ex.: …"); handwriting is reserved for what the person actually wrote.
 
 ### Don't:
 - **Don't** use a gradient as a color fill or a fade between sections; the only gradient in the world is the repeating ruled-line pattern of a blank card.
@@ -266,3 +274,4 @@ See the Perforated Seam Rule. It is the only divider between sections of differe
 - **Don't** use Caveat for headings, buttons, or labels.
 - **Don't** give flat vias, tables, or printed boxes a shadow, and never use a hard offset shadow; only loose sheets cast a soft, paper-tinted one.
 - **Don't** round cards or containers.
+- **Don't** print decorative words that look like instructions or controls (a labelled canhoto, "destaque aqui", a blank "Nº ______", an invented order number, "1ª via"); every printed word on the talão either labels a field or tells the person something true.

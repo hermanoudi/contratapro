@@ -1,0 +1,63 @@
+<!doctype html>
+<!--
+  Fonte da imagem de compartilhamento (public/og-image.jpg, 1200×630).
+  Para regenerar: sirva a pasta frontend/ (ex.: python3 -m http.server na pasta frontend),
+  abra /design/og-image.html num navegador 1200×630 e salve um screenshot JPEG em public/og-image.jpg.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700;800&family=Caveat:wght@700&display=block" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body { background: #fce58a; font-family: Barlow, sans-serif; color: #17171b; position: relative; }
+  .seam {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
+    background-color: #ffffff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='12'%3E%3Ccircle cx='9' cy='0' r='5.5' fill='%23fce58a'/%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+  }
+  .wrap { position: absolute; inset: 56px 64px 60px; display: grid; grid-template-columns: 1fr 440px; gap: 56px; align-items: center; }
+  .logo { height: 72px; margin: -12px 0 24px -10px; display: block; }
+  h1 { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 76px; line-height: 0.95; letter-spacing: -0.015em; }
+  .sub { margin-top: 26px; font-size: 26px; line-height: 1.35; color: #5b4a12; max-width: 34ch; text-wrap: balance; }
+  .talao {
+    background: #fff; border: 3px solid #c4201a; transform: rotate(-2deg);
+    box-shadow: 0 30px 44px -22px rgba(23,23,27,.45), 0 2px 5px rgba(23,23,27,.12);
+    display: grid; grid-template-columns: 38px 1fr;
+  }
+  .canhoto { border-right: 3px dashed #c4201a; }
+  .body { padding: 26px 30px 0; }
+  .head { color: #c4201a; font-family: 'Barlow Condensed', sans-serif; line-height: 1; padding-bottom: 14px; border-bottom: 3px solid #c4201a; }
+  .head strong { display: block; font-size: 34px; font-weight: 800; letter-spacing: .02em; }
+  .head span { font-size: 19px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+  .field { display: flex; align-items: baseline; gap: 12px; padding: 22px 0 6px; border-bottom: 2px solid #c4201a; }
+  .field span { font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 19px; letter-spacing: .08em; text-transform: uppercase; color: #c4201a; }
+  .field b { font-family: Caveat, cursive; font-weight: 700; font-size: 40px; line-height: 1; color: #2e3a9e; }
+  .btn { margin: 26px 0 0; background: #c4201a; color: #fff; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 25px; letter-spacing: .05em; text-transform: uppercase; text-align: center; padding: 16px 0; border-radius: 2px; }
+  .tear { margin: 24px -30px 0; padding: 12px 30px 16px; border-top: 3px dashed #c4201a; font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 20px; color: #9e1712; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div>
+      <img class="logo" src="../src/assets/contratapro-logo-grafica.png" alt="">
+      <h1>Profissionais da sua região, com agenda aberta pra você.</h1>
+      <p class="sub">Escreva o serviço e o seu CEP e marque o horário direto na agenda do profissional.</p>
+    </div>
+    <div class="talao">
+      <div class="canhoto"></div>
+      <div class="body">
+        <div class="head"><strong>CONTRATAPRO</strong><span>Pedido de serviço</span></div>
+        <div class="field"><span>Serviço:</span><b>eletricista</b></div>
+        <div class="field"><span>CEP:</span><b>01310-100</b></div>
+        <div class="btn">Buscar profissionais →</div>
+        <div class="tear">Grátis para quem contrata.</div>
+      </div>
+    </div>
+  </div>
+  <div class="seam"></div>
+</body>
+</html>
