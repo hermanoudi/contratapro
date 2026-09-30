@@ -233,7 +233,10 @@ Shared pieces live in `frontend/src/components/talao/`. Pages import them from t
     - `badge`: the plan's `badge_label`, stamped on the top edge like a via stamp. Only Search passes it.
     - `contactHref`: an outlined WhatsApp action that sits above the stretched link.
   - CEP: `useCep` (the lookup and its states, remembered in localStorage), with `CepField` for the field, its status line and the city written in by hand.
-  - `NoticeSheet` + `NoticeActions`: the sheet that takes the cards' place on error or empty, used by both Home and Search.
+  - `NoticeSheet` + `NoticeActions`: the sheet that takes the cards' place on error or empty, used by Home, Search and ServiceCategory.
+  - `ResultsBar` + `ResultsCount`: the count row above a results grid, closed by a gráfica rule.
+  - `TrustNote`: the "O ContrataPro não verifica os profissionais…" line under any list of cards.
+  - `whatsappLink`: the prefilled WhatsApp message for a card's contact action.
   - Page frame: `SiteHeader` (owns the `/auth/me` session and the mobile menu) and `SiteFooter`.
 - **Still local to the Home:** the talão form shell (canhoto, head, tear line), the printed checklist, the steps table, the combinado panel and the FAQ. Promote one to `components/talao/` the first time a second page needs it; don't copy it.
 - **Search (`/search`):**
@@ -242,6 +245,11 @@ Shared pieces live in `frontend/src/components/talao/`. Pages import them from t
   - Results sit on rosa, below a toolbar with the count ("X de Y" while filters are on) and multi-select filters.
   - Multi-select filters are printed squares (`aria-pressed`), because the circle means single choice.
   - The URL (`service`, `city`, `cep`) is the request.
+- **Category (`/servicos/:categoria`):** the SEO entry page.
+  - Amarela intro: a printed breadcrumb, the h1 "{Categoria} em {cidade}", an honest lead and the region line. The region line offers "Ver todas as cidades" when a city is saved, and "Buscar perto de você" (to Search) when none is.
+  - Rosa cards, same states as Search.
+  - Papel "Outras categorias" as a ruled printed list: 2 columns, 3 from 760px.
+  - No stats row and no invented ratings: every number on the page comes from the API.
 
 ### Buttons
 Printed and decisive, like the gráfica's red block.

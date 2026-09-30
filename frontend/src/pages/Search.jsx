@@ -25,6 +25,10 @@ import {
   readSavedLocation,
   SiteHeader,
   SiteFooter,
+  whatsappLink,
+  ResultsBar,
+  ResultsCount,
+  TrustNote,
 } from '../components/talao';
 
 /* Busca no mundo "Talão de Orçamento": o pedido fica na via amarela, já preenchido
@@ -80,29 +84,6 @@ const SubmitCell = styled.div`
 const Mesa = styled.section`
   ${paperSurface('rosa')}
   padding: clamp(2rem, 5vw, 3.5rem) 0 clamp(3.5rem, 8vw, 6rem);
-`;
-
-const Toolbar = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem 1.5rem;
-  padding-bottom: 0.75rem;
-  margin-bottom: clamp(1.5rem, 3vw, 2rem);
-  border-bottom: 2px solid var(--grafica);
-`;
-
-const Count = styled.p`
-  font-family: var(--f-impresso);
-  font-weight: 700;
-  font-size: 1.35rem;
-  letter-spacing: 0.02em;
-  color: var(--nanquim);
-
-  strong {
-    font-variant-numeric: tabular-nums;
-  }
 `;
 
 const Filters = styled.div`
@@ -172,13 +153,6 @@ const Box = styled.span`
   }
 `;
 
-const Aviso = styled.p`
-  margin-top: 1.75rem;
-  color: var(--texto-2);
-  max-width: 62ch;
-  line-height: 1.55;
-`;
-
 function CheckMark() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -196,23 +170,6 @@ const FILTERS = [
 ];
 
 const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
-
-// Link de WhatsApp com a mensagem já escrita para o profissional
-const whatsappLink = (whatsapp, profName, serviceName = '') => {
-  if (!whatsapp) return null;
-  const cleanPhone = whatsapp.replace(/\D/g, '');
-  if (!cleanPhone) return null;
-  const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-
-  let message = `Olá ${profName}! 👋\n\n`;
-  message += 'Encontrei seu perfil na plataforma *ContrataPro* e ';
-  message += serviceName
-    ? `tenho interesse no serviço: *${serviceName}*\n\n`
-    : 'gostaria de saber mais sobre seus serviços.\n\n';
-  message += 'Podemos conversar?\n\nObrigado!';
-
-  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-};
 
 /* ------------------------------ Página ------------------------------ */
 
@@ -394,8 +351,8 @@ export default function Search() {
             <Mesa aria-label="Profissionais encontrados" aria-busy={results.status === 'loading'}>
               <Wrap>
                 {results.status === 'ok' && results.items.length > 0 && (
-                  <Toolbar>
-                    <Count role="status">
+                  <ResultsBar>
+                    <ResultsCount role="status">
                       {activeFilters.length > 0 ? (
                         <><strong>{visible.length}</strong> de <strong>{results.items.length}</strong> profissionais</>
                       ) : (
@@ -404,7 +361,7 @@ export default function Search() {
                           {results.items.length === 1 ? 'profissional encontrado' : 'profissionais encontrados'}
                         </>
                       )}
-                    </Count>
+                    </ResultsCount>
                     <Filters role="group" aria-label="Filtrar">
                       {FILTERS.map((f) => {
                         const on = activeFilters.includes(f.id);
@@ -416,7 +373,7 @@ export default function Search() {
                         );
                       })}
                     </Filters>
-                  </Toolbar>
+                  </ResultsBar>
                 )}
 
                 <CardsGrid>
@@ -493,10 +450,7 @@ export default function Search() {
                 </CardsGrid>
 
                 {results.status === 'ok' && visible.length > 0 && (
-                  <Aviso>
-                    O ContrataPro não verifica os profissionais. Antes de marcar, leia as avaliações, confira os
-                    serviços e preços do perfil e converse com a pessoa.
-                  </Aviso>
+                  <TrustNote />
                 )}
               </Wrap>
             </Mesa>
