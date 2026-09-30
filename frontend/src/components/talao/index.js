@@ -14,3 +14,4 @@ export { default as useCep, formatCep, readSavedLocation } from './useCep';
 export { default as CepField, FieldStatus } from './CepField';
 export { whatsappLink } from './contact';
 export { ResultsBar, ResultsCount, TrustNote } from './Results';
+export { FieldLabel, InputBox, TextInput, FieldNote } from './TextInput';

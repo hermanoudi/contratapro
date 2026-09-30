@@ -240,6 +240,13 @@ Shared pieces live in `frontend/src/components/talao/`. Pages import them from t
   - **Menu items:** Barlow Condensed 600 at 1.15rem, 48px rows, groups separated by pauta. The active item is gráfica, 700 and underlined 2px at 5px offset, the same underline as the Home's topbar links. No pills and no coloured side bars.
   - **Top bar:** sticky, 64px (56 on mobile), papel, closed by a 2px gráfica rule. On mobile it holds the menu toggle and the logo. The user shows as a 2px nanquim frame on amarela with the initial, the same frame as the ProCard photo.
   - **State colours:** "Suspender atendimentos" is in alerta and "Retomar" in sucesso, never in the action red. While a professional is suspended, the top bar shows "Atendimentos suspensos" ("Suspenso" on phones) in alerta on every page.
+- **Entry pages (contained register):** `components/AuthLayout.jsx` frames login, and later the signups and the new-password page.
+  - **Desktop aside:** papel-2 with the gráfica margin rule, the one-ink logo, a Barlow Condensed headline and a ruled list of true facts drawn from PRODUCT.md (carbono checks, pauta rules). Never feature claims like "verificados" or "tempo real".
+  - **Mobile:** the aside collapses to a logo over a gráfica rule.
+- **Contained fields:** `components/talao/TextInput.js` holds `FieldLabel` (printed gráfica-escura caps), `InputBox` (optional leading icon), `TextInput` and `FieldNote`.
+  - `TextInput` is a square box: 1.5px `--controle` border (3:1), 52px tall. Focus is the talão focus: an azul wash with a carbono inset rule.
+  - Errors are written under the form in gráfica with `role="alert"`, not only in a toast.
+- **Dialogs:** use native `<dialog>` with `showModal()`, so Esc and focus trapping come for free. The sheet is papel with a 4px gráfica top rule and square corners. Content renders only while open (see `ForgotPasswordModal`).
 - **Surface:** `TalaoPage` sets the font, ink, paper, `::selection` and focus ring, and holds `font-size: 1rem` against the mobile body shrink in `index.css`. `Wrap` is the 1200px column. `paperSurface('rosa')` paints a via and tints `--texto-2` for it. Every sheet of papel resting on a coloured via resets `--texto-2` via `cardSheet`.
 - **Components:**
   - Type: `Display` (always carries `data-display`, so the mobile `!important` heading rule never shrinks it), `Lead`, `Hand`.

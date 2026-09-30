@@ -35,6 +35,8 @@ export const INK = {
 export const SURFACE = {
   'papel-2': '#f6f4ef',
   regua: 'rgba(23, 23, 27, 0.14)',
+  // Borda de campo: a régua é fraca demais para os 3:1 de um controle
+  controle: '#8b8590',
 };
 
 // Status em tinta escura o bastante para texto (4.5:1 no papel); erro separado da ação pelo tom

@@ -1,340 +1,90 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Mail, Lock, ChevronRight, Calendar, Shield, Clock } from 'lucide-react';
+import { useState, useId } from 'react';
+import { Mail, Lock, ArrowRight } from 'lucide-react';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
-import logoImage from '../assets/contratapro-logo.png';
 import { API_URL } from '../config';
 import ForgotPasswordModal from '../components/ForgotPasswordModal';
+import AuthLayout, { AuthTitle, AuthLead } from '../components/AuthLayout';
+import { PrimaryButton, StampButton, FieldLabel, InputBox, TextInput, FieldNote } from '../components/talao';
 
-const PageContainer = styled.div`
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  overflow: hidden;
+// Só o que o ContrataPro faz de fato (PRODUCT.md): nada de "verificados"
+const FACTS = [
+  { strong: 'Para quem contrata:', text: 'busque pelo CEP, veja perfil, preços e avaliações e marque direto na agenda. É grátis.' },
+  { strong: 'Para quem trabalha:', text: 'receba agendamentos na sua agenda, sem intermediário. Cadastro grátis e sem cartão.' },
+  { strong: 'Pagamento:', text: 'combinado direto entre vocês, por Pix, dinheiro ou como preferirem.' },
+];
 
-  @media (max-width: 968px) {
-    grid-template-columns: 1fr;
+const Group = styled.div`
+  & + & {
+    margin-top: 1.25rem;
   }
 `;
 
-const LeftSection = styled.div`
+const PasswordHead = styled.div`
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  background: linear-gradient(135deg,
-    rgba(196, 32, 26, 0.05) 0%,
-    rgba(168, 85, 247, 0.05) 100%);
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(196, 32, 26, 0.1) 0%, transparent 70%);
-    animation: pulse 15s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { transform: scale(1) rotate(0deg); }
-    50% { transform: scale(1.1) rotate(180deg); }
-  }
-
-  @media (max-width: 968px) {
-    display: none;
-  }
-`;
-
-const BrandSection = styled.div`
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  max-width: 500px;
-`;
-
-const BrandTitle = styled.h1`
-  font-size: 3.5rem;
-  font-weight: 900;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 1.5rem;
-  letter-spacing: -0.02em;
-`;
-
-const BrandSubtitle = styled.p`
-  font-size: 1.25rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin-bottom: 2rem;
-`;
-
-const FeatureList = styled.div`
-  display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: baseline;
   gap: 1rem;
-  margin-top: 2rem;
 `;
 
-const FeatureItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  border: 1px solid rgba(196, 32, 26, 0.1);
-`;
-
-const FeatureIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-`;
-
-const FeatureText = styled.div`
-  flex: 1;
-
-  h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.25rem;
-  }
-
-  p {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    margin: 0;
-  }
-`;
-
-const RightSection = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  background: white;
-
-  @media (max-width: 768px) {
-    padding: 1.5rem;
-  }
-
-  @media (max-width: 480px) {
-    padding: 1rem;
-  }
-`;
-
-const LoginCard = styled(motion.div)`
-  width: 100%;
-  max-width: 440px;
-  padding: 2rem;
-
-  @media (max-width: 480px) {
-    padding: 1rem;
-  }
-`;
-
-const Title = styled.h2`
-  font-size: 2rem;
-  font-weight: 800;
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
-`;
-
-const Subtitle = styled.p`
-  color: var(--text-secondary);
-  margin-bottom: 2.5rem;
-  font-size: 1rem;
-  line-height: 1.5;
-`;
-
-const InputGroup = styled.div`
-  margin-bottom: 1.25rem;
-  position: relative;
-`;
-
-const Label = styled.label`
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-`;
-
-const IconWrapper = styled.div`
-  position: absolute;
-  left: 1rem;
-  bottom: 1rem;
-  color: var(--text-secondary);
-  transition: color 0.2s;
-  pointer-events: none;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  background: var(--bg-secondary);
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem 1rem 1rem 3rem;
-  color: var(--text-primary);
-  font-size: 1rem;
-  transition: all 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: var(--primary);
-    background: white;
-    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
-  }
-
-  &:focus + ${IconWrapper} {
-    color: var(--primary);
-  }
-
-  &::placeholder {
-    color: var(--text-secondary);
-    opacity: 0.6;
-  }
-`;
-
-const Button = styled.button`
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 1rem;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+// Link de texto no tom do papel; vira tinta de gráfica no hover
+const TextLink = styled.button`
+  background: none;
   border: none;
-  color: white;
-  margin-top: 1.5rem;
-  box-shadow: 0 4px 12px rgba(196, 32, 26, 0.25);
+  padding: 0;
+  min-height: 0;
+  min-width: 0;
+  font-size: 0.95rem;
+  color: var(--texto-2-papel);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(196, 32, 26, 0.35);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
+    color: var(--grafica);
   }
 `;
 
-const Divider = styled.div`
+const Submit = styled(PrimaryButton)`
+  width: 100%;
+  min-height: 54px;
+  margin-top: 1.75rem;
+  font-size: 1.2rem;
+`;
+
+const Divider = styled.p`
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin: 2rem 0;
+  margin: 2rem 0 1rem;
+  font-family: var(--f-impresso);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texto-2-papel);
 
   &::before,
   &::after {
     content: '';
     flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
-
-  span {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    font-weight: 500;
+    height: 1.5px;
+    background: var(--pauta);
   }
 `;
 
-const LinksContainer = styled.div`
-  display: flex;
-  flex-direction: column;
+const Secondary = styled.div`
+  display: grid;
   gap: 0.75rem;
-`;
 
-const LinkButton = styled.button`
-  background: var(--bg-secondary);
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  cursor: pointer;
-  text-align: center;
-  padding: 0.875rem;
-  transition: all 0.2s;
-  font-weight: 600;
-
-  &:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-    background: rgba(196, 32, 26, 0.05);
-  }
-`;
-
-const BrandLogo = styled.img`
-  height: 120px;
-  width: auto;
-  object-fit: contain;
-  margin-bottom: 1rem;
-
-  @media (min-width: 768px) {
-    height: 160px;
-  }
-`;
-
-const MobileLogo = styled.img`
-  height: 50px;
-  width: auto;
-  object-fit: contain;
-  margin: 0 auto 0.75rem;
-  display: block;
-
-  @media (min-width: 969px) {
-    display: none;
+  @media (min-width: 420px) {
+    grid-template-columns: 1fr 1fr;
   }
 
-  @media (max-width: 480px) {
-    height: 45px;
-    margin-bottom: 0.5rem;
-  }
-`;
-
-const ForgotPasswordLink = styled.button`
-  background: none;
-  border: none;
-  color: var(--primary);
-  font-size: 0.875rem;
-  cursor: pointer;
-  padding: 0;
-  margin-top: 0.5rem;
-  text-align: center;
-  display: block;
-  width: 100%;
-
-  &:hover {
-    text-decoration: underline;
+  button {
+    width: 100%;
+    padding: 0 0.75rem;
   }
 `;
 
@@ -342,13 +92,16 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const id = useId();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
 
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
@@ -357,7 +110,7 @@ export default function Login() {
         body: JSON.stringify({ email, password })
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (response.ok) {
         localStorage.setItem('token', data.access_token);
@@ -377,126 +130,90 @@ export default function Login() {
           navigate(from || '/');
         }
       } else {
-        toast.error(data.detail || 'Falha no login');
+        // O backend responde 401 em inglês; o resto já vem em português
+        setError(response.status === 401 || typeof data.detail !== 'string'
+          ? 'E-mail ou senha não conferem. Confira e tente de novo.'
+          : data.detail);
       }
-    } catch (error) {
-      console.error(error);
-      toast.error('Erro de conexão');
+    } catch (err) {
+      console.error(err);
+      setError('Não deu para falar com o servidor agora. Confira sua conexão e tente de novo.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <PageContainer>
-      <LeftSection>
-        <BrandSection>
-          <BrandLogo src={logoImage} alt="ContrataPro" />
-          <BrandSubtitle>
-            Encontre o profissional certo para cada serviço na sua região.
-          </BrandSubtitle>
+    <AuthLayout
+      asideTitle="Profissionais da sua região, com agenda aberta pra você."
+      facts={FACTS}
+    >
+      <AuthTitle>Entre na sua conta</AuthTitle>
+      <AuthLead>Use o e-mail e a senha do seu cadastro.</AuthLead>
 
-          <FeatureList>
-            <FeatureItem>
-              <FeatureIcon>
-                <Calendar size={24} />
-              </FeatureIcon>
-              <FeatureText>
-                <h3>Agendamento Simples</h3>
-                <p>Marque serviços em poucos cliques</p>
-              </FeatureText>
-            </FeatureItem>
+      <form onSubmit={handleLogin}>
+        <Group>
+          <FieldLabel htmlFor={`${id}-email`}>E-mail</FieldLabel>
+          <InputBox>
+            <Mail size={20} aria-hidden="true" />
+            <TextInput
+              id={`${id}-email`}
+              $icon
+              type="email"
+              name="email"
+              autoComplete="email"
+              placeholder="seu@email.com"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(''); }}
+              aria-invalid={error ? true : undefined}
+              required
+            />
+          </InputBox>
+        </Group>
 
-            <FeatureItem>
-              <FeatureIcon>
-                <Shield size={24} />
-              </FeatureIcon>
-              <FeatureText>
-                <h3>Profissionais Verificados</h3>
-                <p>Todos os prestadores são validados</p>
-              </FeatureText>
-            </FeatureItem>
-
-            <FeatureItem>
-              <FeatureIcon>
-                <Clock size={24} />
-              </FeatureIcon>
-              <FeatureText>
-                <h3>Atendimento Rápido</h3>
-                <p>Respostas em tempo real</p>
-              </FeatureText>
-            </FeatureItem>
-          </FeatureList>
-        </BrandSection>
-      </LeftSection>
-
-      <RightSection>
-        <LoginCard
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-        >
-          <MobileLogo src={logoImage} alt="ContrataPro" />
-          <Title>Bem-vindo de volta</Title>
-          <Subtitle>Entre com suas credenciais para acessar sua conta</Subtitle>
-
-          <form onSubmit={handleLogin}>
-            <InputGroup>
-              <Label>E-mail</Label>
-              <Input
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              <IconWrapper><Mail size={20} /></IconWrapper>
-            </InputGroup>
-
-            <InputGroup>
-              <Label>Senha</Label>
-              <Input
-                type="password"
-                placeholder="Digite sua senha"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <IconWrapper><Lock size={20} /></IconWrapper>
-            </InputGroup>
-
-            <ForgotPasswordLink
-              type="button"
-              onClick={() => setForgotPasswordOpen(true)}
-            >
+        <Group>
+          <PasswordHead>
+            <FieldLabel htmlFor={`${id}-senha`}>Senha</FieldLabel>
+            <TextLink type="button" onClick={() => setForgotPasswordOpen(true)}>
               Esqueci minha senha
-            </ForgotPasswordLink>
+            </TextLink>
+          </PasswordHead>
+          <InputBox>
+            <Lock size={20} aria-hidden="true" />
+            <TextInput
+              id={`${id}-senha`}
+              $icon
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              placeholder="Sua senha"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(''); }}
+              aria-invalid={error ? true : undefined}
+              required
+            />
+          </InputBox>
+        </Group>
 
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Entrando...' : 'Entrar'}
-              {!loading && <ChevronRight size={20} />}
-            </Button>
-          </form>
+        {error && <FieldNote id={`${id}-erro`} role="alert" $tone="erro">{error}</FieldNote>}
 
-          <Divider>
-            <span>Ainda não tem conta?</span>
-          </Divider>
+        <Submit type="submit" disabled={loading}>
+          {loading ? 'Entrando…' : <>Entrar <ArrowRight size={20} aria-hidden="true" /></>}
+        </Submit>
+      </form>
 
-          <LinksContainer>
-            <LinkButton onClick={() => navigate('/register-client')}>
-              Criar Conta
-            </LinkButton>
-            <LinkButton onClick={() => navigate('/register-pro')}>
-              Sou Profissional
-            </LinkButton>
-          </LinksContainer>
-        </LoginCard>
-      </RightSection>
+      <Divider>Ainda não tem conta?</Divider>
+
+      <Secondary>
+        <StampButton type="button" onClick={() => navigate('/register-client')}>Criar conta</StampButton>
+        <StampButton type="button" onClick={() => navigate('/register-pro')}>Sou profissional</StampButton>
+      </Secondary>
 
       <ForgotPasswordModal
         isOpen={forgotPasswordOpen}
         onClose={() => setForgotPasswordOpen(false)}
+        initialEmail={email}
       />
-    </PageContainer>
+    </AuthLayout>
   );
 }
