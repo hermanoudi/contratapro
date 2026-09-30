@@ -25,7 +25,7 @@ const LeftSection = styled.div`
   justify-content: center;
   padding: 3rem;
   background: linear-gradient(135deg,
-    rgba(99, 102, 241, 0.05) 0%,
+    rgba(196, 32, 26, 0.05) 0%,
     rgba(168, 85, 247, 0.05) 100%);
   position: relative;
   overflow: hidden;
@@ -37,7 +37,7 @@ const LeftSection = styled.div`
     right: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(196, 32, 26, 0.1) 0%, transparent 70%);
     animation: pulse 15s ease-in-out infinite;
   }
 
@@ -91,7 +91,7 @@ const FeatureItem = styled.div`
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px);
   border-radius: 12px;
-  border: 1px solid rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(196, 32, 26, 0.1);
 `;
 
 const FeatureIcon = styled.div`
@@ -224,7 +224,7 @@ const Input = styled.input`
     outline: none;
     border-color: var(--primary);
     background: white;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
   }
 
   &::placeholder {
@@ -257,7 +257,7 @@ const Select = styled.select`
     outline: none;
     border-color: var(--primary);
     background: white;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
   }
 `;
 
@@ -287,16 +287,16 @@ const Button = styled.button`
     &:hover {
       border-color: var(--primary);
       color: var(--primary);
-      background: rgba(99, 102, 241, 0.05);
+      background: rgba(196, 32, 26, 0.05);
     }
   ` : `
     background: linear-gradient(135deg, var(--primary), var(--accent));
     border: none;
     color: white;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    box-shadow: 0 4px 12px rgba(196, 32, 26, 0.25);
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+      box-shadow: 0 8px 20px rgba(196, 32, 26, 0.35);
     }
     &:active {
       transform: translateY(0);
@@ -700,7 +700,7 @@ export default function RegisterProfessional() {
                         >
                             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                                 <div style={{
-                                    background: 'rgba(99, 102, 241, 0.1)',
+                                    background: 'rgba(196, 32, 26, 0.1)',
                                     width: '64px', height: '64px',
                                     borderRadius: '50%',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -927,7 +927,7 @@ export default function RegisterProfessional() {
                         >
                             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                                 <div style={{
-                                    background: 'rgba(99, 102, 241, 0.1)',
+                                    background: 'rgba(196, 32, 26, 0.1)',
                                     width: '64px', height: '64px',
                                     borderRadius: '50%',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -995,7 +995,7 @@ export default function RegisterProfessional() {
                                         width: '200px',
                                         height: '200px',
                                         borderRadius: '50%',
-                                        background: 'rgba(99, 102, 241, 0.1)',
+                                        background: 'rgba(196, 32, 26, 0.1)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -1093,7 +1093,7 @@ export default function RegisterProfessional() {
                                                     borderRadius: '12px',
                                                     padding: '1.5rem',
                                                     cursor: 'pointer',
-                                                    background: isSelected ? 'rgba(99, 102, 241, 0.05)' : 'var(--bg)',
+                                                    background: isSelected ? 'rgba(196, 32, 26, 0.05)' : 'var(--bg)',
                                                     transition: 'all 0.2s',
                                                     position: 'relative'
                                                 }}

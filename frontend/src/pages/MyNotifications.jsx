@@ -123,7 +123,7 @@ const Button = styled.button`
         border: none;
 
         &:hover {
-            background: var(--primary-dark);
+            background: var(--grafica-escura);
         }
     ` : `
         background: transparent;

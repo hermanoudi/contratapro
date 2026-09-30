@@ -98,8 +98,8 @@ const NavItem = styled.button`
   gap: 0.75rem;
   width: 100%;
   padding: 1rem;
-  background: ${props => props.$active ? 'rgba(99, 102, 241, 0.1)' : 'transparent'};
-  border: 1px solid ${props => props.$active ? 'rgba(99, 102, 241, 0.2)' : 'transparent'};
+  background: ${props => props.$active ? 'rgba(196, 32, 26, 0.1)' : 'transparent'};
+  border: 1px solid ${props => props.$active ? 'rgba(196, 32, 26, 0.2)' : 'transparent'};
   border-radius: 12px;
   color: ${props => props.$active ? 'var(--primary)' : 'var(--text-secondary)'};
   font-weight: ${props => props.$active ? '600' : '400'};

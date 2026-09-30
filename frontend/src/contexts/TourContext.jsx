@@ -15,7 +15,7 @@ const TourContext = createContext(null);
 // Estilos personalizados do tooltip
 const customStyles = {
   options: {
-    primaryColor: '#6366f1',
+    primaryColor: '#c4201a',
     textColor: '#1f2937',
     backgroundColor: '#ffffff',
     overlayColor: 'rgba(0, 0, 0, 0.5)',
@@ -40,14 +40,14 @@ const customStyles = {
     color: '#4b5563',
   },
   buttonNext: {
-    backgroundColor: '#6366f1',
+    backgroundColor: '#c4201a',
     borderRadius: '10px',
     padding: '10px 20px',
     fontSize: '14px',
     fontWeight: '600',
   },
   buttonBack: {
-    color: '#6366f1',
+    color: '#c4201a',
     fontSize: '14px',
     fontWeight: '500',
   },

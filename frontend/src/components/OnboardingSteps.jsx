@@ -79,7 +79,7 @@ const Step = styled.div`
 
   &:hover:not([data-done="true"]) {
     border-color: var(--primary);
-    background: rgba(99, 102, 241, 0.04);
+    background: rgba(196, 32, 26, 0.04);
   }
 `;
 
@@ -87,7 +87,7 @@ const StepIcon = styled.div`
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: ${props => props.$done ? 'rgba(16, 185, 129, 0.15)' : 'rgba(99, 102, 241, 0.1)'};
+  background: ${props => props.$done ? 'rgba(16, 185, 129, 0.15)' : 'rgba(196, 32, 26, 0.1)'};
   display: flex;
   align-items: center;
   justify-content: center;

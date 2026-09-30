@@ -363,7 +363,7 @@ const SubmitButton = styled.button`
   gap: 0.5rem;
 
   &:hover {
-    background: var(--primary-dark, #2563eb);
+    background: var(--grafica-escura);
   }
 
   &:disabled {
@@ -472,7 +472,7 @@ const IconButton = styled.button`
   transition: all 0.2s;
 
   &.edit {
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(196, 32, 26, 0.1);
     color: var(--primary);
 
     &:hover {

@@ -88,7 +88,7 @@ const Input = styled.input`
 
   &:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
   }
 `;
 
@@ -106,7 +106,7 @@ const Button = styled.button`
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 8px 20px rgba(196, 32, 26, 0.35);
   }
 
   &:disabled {

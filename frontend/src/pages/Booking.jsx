@@ -268,7 +268,7 @@ const SlotButton = styled.button`
   padding: 1rem;
   border-radius: 12px;
   border: 1px solid ${props => props.$selected ? 'var(--primary)' : 'var(--border)'};
-  background: ${props => props.$selected ? 'rgba(37, 99, 235, 0.1)' : 'var(--bg-secondary)'};
+  background: ${props => props.$selected ? 'rgba(196, 32, 26, 0.1)' : 'var(--bg-secondary)'};
   color: ${props => props.$selected ? 'var(--primary)' : 'var(--text-primary)'};
   cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
   opacity: ${props => props.$disabled ? 0.3 : 1};
@@ -305,7 +305,7 @@ const SlotButton = styled.button`
 const ServiceCard = styled.div`
   border-radius: 16px;
   border: 1px solid ${props => props.$selected ? 'var(--primary)' : 'var(--border)'};
-  background: ${props => props.$selected ? 'rgba(37, 99, 235, 0.05)' : 'var(--bg-primary)'};
+  background: ${props => props.$selected ? 'rgba(196, 32, 26, 0.05)' : 'var(--bg-primary)'};
   cursor: pointer;
   transition: all 0.2s;
   overflow: hidden;
@@ -659,7 +659,7 @@ const CalendarWrapper = styled.div`
 
     &:enabled:hover,
     &:enabled:focus {
-      background-color: rgba(37, 99, 235, 0.1);
+      background-color: rgba(196, 32, 26, 0.1);
       color: var(--primary);
       border-color: var(--primary);
     }
@@ -748,14 +748,14 @@ const CalendarWrapper = styled.div`
 
     &:enabled:hover,
     &:enabled:focus {
-      background-color: rgba(37, 99, 235, 0.1);
+      background-color: rgba(196, 32, 26, 0.1);
       border-color: var(--primary);
       color: var(--primary);
       transform: scale(1.05);
     }
 
     &.react-calendar__tile--now {
-      background: rgba(37, 99, 235, 0.05);
+      background: rgba(196, 32, 26, 0.05);
       border-color: var(--primary);
       color: var(--primary);
       font-weight: 800;
@@ -779,7 +779,7 @@ const CalendarWrapper = styled.div`
       color: white !important;
       border-color: var(--primary) !important;
       font-weight: 800;
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      box-shadow: 0 4px 12px rgba(196, 32, 26, 0.3);
       transform: scale(1.05);
     }
 
@@ -834,7 +834,7 @@ const CalendarWrapper = styled.div`
 
     &:enabled:hover,
     &:enabled:focus {
-      background-color: rgba(37, 99, 235, 0.1);
+      background-color: rgba(196, 32, 26, 0.1);
       color: var(--primary);
       border-color: var(--primary);
     }
@@ -1166,7 +1166,7 @@ export default function Booking() {
                                         marginTop: '0.375rem',
                                         background: pro.subscription_plan.priority_in_search >= 2
                                             ? 'rgba(245, 158, 11, 0.12)'
-                                            : 'rgba(99, 102, 241, 0.1)',
+                                            : 'rgba(196, 32, 26, 0.1)',
                                         color: pro.subscription_plan.priority_in_search >= 2
                                             ? '#d97706'
                                             : 'var(--primary)',
@@ -1176,7 +1176,7 @@ export default function Booking() {
                                         fontWeight: 700,
                                         border: `1px solid ${pro.subscription_plan.priority_in_search >= 2
                                             ? 'rgba(245, 158, 11, 0.25)'
-                                            : 'rgba(99, 102, 241, 0.2)'}`,
+                                            : 'rgba(196, 32, 26, 0.2)'}`,
                                     }}>
                                         {pro.subscription_plan.priority_in_search >= 2 ? '✨' : '⭐'} {pro.subscription_plan.badge_label}
                                     </span>

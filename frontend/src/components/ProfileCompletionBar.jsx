@@ -4,7 +4,7 @@ import { CheckCircle, Circle, ChevronRight } from 'lucide-react';
 
 const Wrapper = styled.div`
   background: white;
-  border: 2px solid rgba(99, 102, 241, 0.2);
+  border: 2px solid rgba(196, 32, 26, 0.2);
   border-radius: 16px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.5rem;
@@ -69,7 +69,7 @@ const Item = styled.button`
   &:hover:not([disabled]) {
     border-color: var(--primary);
     color: var(--primary);
-    background: rgba(99, 102, 241, 0.06);
+    background: rgba(196, 32, 26, 0.06);
   }
 `;
 

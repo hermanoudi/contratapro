@@ -15,6 +15,11 @@ colors:
   texto-2-amarela: "#5b4a12"
   texto-2-rosa: "#6b2638"
   texto-2-azul: "#22385e"
+  papel-2: "#f6f4ef"
+  regua: "rgba(23, 23, 27, 0.14)"
+  sucesso: "#1d6b3a"
+  alerta: "#8a5300"
+  erro: "#9e1712"
 typography:
   display:
     fontFamily: "'Barlow Condensed', 'Arial Narrow', sans-serif"
@@ -223,6 +228,13 @@ Physical objects are placed by hand at a slight angle: the talão at -1.2deg (de
 ### Where the code lives
 Shared pieces live in `frontend/src/components/talao/`. Pages import them from the barrel (`import { TalaoPage, Display, PrimaryButton } from '../components/talao'`).
 - **Tokens:** `tokens.js` is the single source. `TalaoTokens`, mounted once in `App.jsx`, writes every token to `:root` as a CSS variable (`--grafica`, `--carbono`, `--f-impresso`, `--texto-2-rosa`…). The `PAPER` hex map from the same file feeds SVGs, such as the seam, that can't read variables. Declaring the tokens changes nothing visually; a page joins the world only by wrapping itself in `TalaoPage`.
+- **Legacy bridge (contained register):** pages not yet migrated still read the old names (`--primary`, `--text-secondary`, `--bg-secondary`, `--border`, `--font-sans`…). `index.css` now points them at talão tokens:
+  - `--primary` and `--accent` → gráfica. Keeping them equal flattens the old gradients.
+  - `--bg-secondary` → papel-2, `--border` → régua, `--success`/`--error` → sucesso/erro.
+  - Body text is Barlow; h1–h4 are Barlow Condensed.
+  - `.btn-primary` is the flat printed button.
+
+  New colours go in `tokens.js`, never in `index.css`. The contained register uses papel and papel-2 surfaces with neutral régua rules. It keeps gráfica for action and carbono for focus, and uses no vias, seams, tilt or handwriting.
 - **Surface:** `TalaoPage` sets the font, ink, paper, `::selection` and focus ring, and holds `font-size: 1rem` against the mobile body shrink in `index.css`. `Wrap` is the 1200px column. `paperSurface('rosa')` paints a via and tints `--texto-2` for it. Every sheet of papel resting on a coloured via resets `--texto-2` via `cardSheet`.
 - **Components:**
   - Type: `Display` (always carries `data-display`, so the mobile `!important` heading rule never shrinks it), `Lead`, `Hand`.

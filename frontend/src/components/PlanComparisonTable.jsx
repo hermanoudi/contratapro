@@ -50,7 +50,7 @@ const PlanCard = styled.div`
   border-radius: 20px;
   padding: 2rem;
   box-shadow: ${props => props.$featured
-    ? '0 12px 40px rgba(99, 102, 241, 0.2)'
+    ? '0 12px 40px rgba(196, 32, 26, 0.2)'
     : '0 4px 20px rgba(0, 0, 0, 0.08)'};
   border: 3px solid ${props =>
     props.$featured ? 'var(--primary)' :
@@ -64,7 +64,7 @@ const PlanCard = styled.div`
     &:hover {
       transform: translateY(-5px);
       box-shadow: ${props.$featured
-        ? '0 20px 50px rgba(99, 102, 241, 0.25)'
+        ? '0 20px 50px rgba(196, 32, 26, 0.25)'
         : '0 8px 30px rgba(0, 0, 0, 0.12)'};
     }
   `}
@@ -171,7 +171,7 @@ const ActionButton = styled.button`
   ${props => props.$variant === 'primary' && `
     background: var(--primary);
     color: white;
-    &:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3); }
+    &:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(196, 32, 26, 0.3); }
   `}
   ${props => props.$variant === 'current' && `
     background: #22c55e;
@@ -200,7 +200,7 @@ const PLANS_CONFIG = [
   },
   {
     slug: 'pro', name: 'Pro', price: 19.90,
-    icon: Star, iconColor: '#6366f1', iconBg: 'rgba(99, 102, 241, 0.1)',
+    icon: Star, iconColor: '#c4201a', iconBg: 'rgba(196, 32, 26, 0.1)',
     featured: true,
   },
   {

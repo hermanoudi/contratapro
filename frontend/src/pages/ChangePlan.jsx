@@ -9,7 +9,7 @@ import PlanComparisonTable from '../components/PlanComparisonTable';
 
 const PageContainer = styled.div`
   min-height: 100vh;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(196, 32, 26, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
   padding: 2rem;
 
   @media (max-width: 768px) {
@@ -78,7 +78,7 @@ const CurrentPlanName = styled.span`
 `;
 
 const CurrentPlanBadge = styled.span`
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(196, 32, 26, 0.1);
   color: var(--primary);
   padding: 0.5rem 1rem;
   border-radius: 20px;
@@ -209,7 +209,7 @@ const ActionButton = styled.button`
 
     &:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+      box-shadow: 0 8px 20px rgba(196, 32, 26, 0.3);
     }
   `}
 
@@ -375,7 +375,7 @@ const ServiceItem = styled.label`
   transition: all 0.2s;
 
   &:hover {
-    background: rgba(99, 102, 241, 0.05);
+    background: rgba(196, 32, 26, 0.05);
   }
 
   &:last-child {
@@ -424,8 +424,8 @@ const PLANS = [
     price: 19.90,
     max_services: null,
     icon: Star,
-    iconColor: '#6366f1',
-    bgColor: 'rgba(99, 102, 241, 0.1)',
+    iconColor: '#c4201a',
+    bgColor: 'rgba(196, 32, 26, 0.1)',
     features: [
       'Serviços ilimitados',
       'Agendamentos ilimitados',

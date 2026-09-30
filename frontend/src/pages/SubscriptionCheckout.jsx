@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { API_URL } from '../config';
 const PageContainer = styled.div`
   min-height: 100vh;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(196, 32, 26, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
   padding: 2rem;
 `;
 
@@ -117,7 +117,7 @@ const SubmitButton = styled.button`
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 12px 24px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 12px 24px rgba(196, 32, 26, 0.3);
   }
 
   &:disabled {

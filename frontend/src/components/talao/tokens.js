@@ -31,6 +31,19 @@ export const INK = {
   nanquim: '#17171b',
 };
 
+// Registro contido (páginas de uso): superfície neutra e régua neutra, sem vias coloridas
+export const SURFACE = {
+  'papel-2': '#f6f4ef',
+  regua: 'rgba(23, 23, 27, 0.14)',
+};
+
+// Status em tinta escura o bastante para texto (4.5:1 no papel); erro separado da ação pelo tom
+export const STATUS = {
+  sucesso: '#1d6b3a',
+  alerta: '#8a5300',
+  erro: '#9e1712',
+};
+
 export const FONTS = {
   'f-impresso': "'Barlow Condensed', 'Arial Narrow', sans-serif",
   'f-texto': "'Barlow', system-ui, sans-serif",
@@ -49,6 +62,8 @@ export const TalaoTokens = createGlobalStyle`
     ${Object.entries(PAPER_TEXT_2).map(([paper, value]) => `--texto-2-${paper}: ${value};`).join('\n')}
     --texto-2: var(--texto-2-papel);
     ${vars(INK)}
+    ${vars(SURFACE)}
+    ${vars(STATUS)}
     ${vars(FONTS)}
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   }

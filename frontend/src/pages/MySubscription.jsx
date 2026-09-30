@@ -19,7 +19,7 @@ const CANCELLATION_REASONS = [
 ];
 const PageContainer = styled.div`
   min-height: 100vh;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(196, 32, 26, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
   padding: 2rem;
 
   @media (max-width: 768px) {
@@ -173,7 +173,7 @@ const Button = styled.button`
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px ${props => props.$variant === 'danger' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(99, 102, 241, 0.3)'};
+    box-shadow: 0 8px 20px ${props => props.$variant === 'danger' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(196, 32, 26, 0.3)'};
   }
 
   &:disabled {
@@ -318,14 +318,14 @@ const ReasonOption = styled.label`
   align-items: flex-start;
   gap: 0.75rem;
   padding: 1rem;
-  background: ${props => props.$selected ? 'rgba(99, 102, 241, 0.08)' : 'var(--bg-secondary)'};
+  background: ${props => props.$selected ? 'rgba(196, 32, 26, 0.08)' : 'var(--bg-secondary)'};
   border: 2px solid ${props => props.$selected ? 'var(--primary)' : 'transparent'};
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: ${props => props.$selected ? 'rgba(99, 102, 241, 0.12)' : 'rgba(0, 0, 0, 0.04)'};
+    background: ${props => props.$selected ? 'rgba(196, 32, 26, 0.12)' : 'rgba(0, 0, 0, 0.04)'};
   }
 
   input {
@@ -605,7 +605,7 @@ export default function MySubscription() {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '0.35rem',
-                                background: 'rgba(99, 102, 241, 0.1)',
+                                background: 'rgba(196, 32, 26, 0.1)',
                                 color: 'var(--primary)',
                                 padding: '0.25rem 0.75rem',
                                 borderRadius: '20px',
@@ -794,7 +794,7 @@ export default function MySubscription() {
                         )}
                         <Button
                             onClick={handleCancelScheduledChange}
-                            style={{ background: '#6366f1', marginTop: '1rem' }}
+                            style={{ background: '#c4201a', marginTop: '1rem' }}
                         >
                             <XCircle size={20} />
                             Cancelar Mudanca Agendada
@@ -870,7 +870,7 @@ export default function MySubscription() {
                                 Faça upgrade para o plano Pro e tenha serviços ilimitados, agendamentos ilimitados e destaque na busca!
                             </AlertText>
                         </Alert>
-                        <Button onClick={() => navigate('/alterar-plano')} style={{ background: '#6366f1' }}>
+                        <Button onClick={() => navigate('/alterar-plano')} style={{ background: '#c4201a' }}>
                             <RefreshCw size={20} />
                             Ver Planos Pro e Premium
                         </Button>

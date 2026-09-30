@@ -12,7 +12,7 @@ const PageContainer = styled.div`
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg,
-    rgba(99, 102, 241, 0.05) 0%,
+    rgba(196, 32, 26, 0.05) 0%,
     rgba(168, 85, 247, 0.05) 100%);
   padding: 2rem;
 
@@ -94,7 +94,7 @@ const Input = styled.input`
   &:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
   }
 `;
 
@@ -114,7 +114,7 @@ const Textarea = styled.textarea`
   &:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
   }
 `;
 
@@ -133,7 +133,7 @@ const SubmitButton = styled.button`
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 12px rgba(196, 32, 26, 0.3);
   }
 
   &:disabled {

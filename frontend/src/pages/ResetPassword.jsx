@@ -14,7 +14,7 @@ const PageContainer = styled.div`
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg,
-    rgba(99, 102, 241, 0.05) 0%,
+    rgba(196, 32, 26, 0.05) 0%,
     rgba(168, 85, 247, 0.05) 100%);
   padding: 2rem;
 `;
@@ -109,7 +109,7 @@ const Button = styled.button`
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 8px 20px rgba(196, 32, 26, 0.35);
   }
 
   &:disabled {
@@ -167,7 +167,7 @@ const LinkButton = styled.button`
   &:hover {
     border-color: var(--primary);
     color: var(--primary);
-    background: rgba(99, 102, 241, 0.05);
+    background: rgba(196, 32, 26, 0.05);
   }
 `;
 

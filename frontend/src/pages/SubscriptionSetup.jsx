@@ -11,7 +11,7 @@ const isDev = import.meta.env.DEV;
 
 const PageContainer = styled.div`
   min-height: 100vh;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(196, 32, 26, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -75,7 +75,7 @@ const PlanCard = styled.div`
 
   ${props => props.$featured && `
     transform: scale(1.05);
-    box-shadow: 0 12px 40px rgba(99, 102, 241, 0.2);
+    box-shadow: 0 12px 40px rgba(196, 32, 26, 0.2);
 
     @media (max-width: 900px) {
       transform: none;
@@ -111,7 +111,7 @@ const PlanIcon = styled.div`
   align-items: center;
   justify-content: center;
   margin-bottom: 1.5rem;
-  background: ${props => props.$color || 'rgba(99, 102, 241, 0.1)'};
+  background: ${props => props.$color || 'rgba(196, 32, 26, 0.1)'};
   color: ${props => props.$iconColor || 'var(--primary)'};
 `;
 
@@ -190,7 +190,7 @@ const PlanButton = styled.button`
 
     &:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+      box-shadow: 0 8px 20px rgba(196, 32, 26, 0.3);
     }
   ` : `
     background: white;
@@ -320,7 +320,7 @@ const PLANS = [
     period: 'por mes',
     icon: Zap,
     iconColor: 'var(--primary)',
-    iconBg: 'rgba(99, 102, 241, 0.1)',
+    iconBg: 'rgba(196, 32, 26, 0.1)',
     features: [
       'Servicos ilimitados',
       'Agendamentos ilimitados',

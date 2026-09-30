@@ -133,7 +133,7 @@ const Select = styled.select`
     outline: none;
     border-color: var(--primary);
     background: white;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
   }
 
   @media (max-width: 480px) {
@@ -157,7 +157,7 @@ const Input = styled.input`
     outline: none;
     border-color: ${props => props.$invalid ? '#ef4444' : 'var(--primary)'};
     background: white;
-    box-shadow: 0 0 0 3px ${props => props.$invalid ? 'rgba(239, 68, 68, 0.1)' : 'rgba(99, 102, 241, 0.1)'};
+    box-shadow: 0 0 0 3px ${props => props.$invalid ? 'rgba(239, 68, 68, 0.1)' : 'rgba(196, 32, 26, 0.1)'};
   }
 
   &[type="text"] {
@@ -188,11 +188,11 @@ const FilterButton = styled.button`
   background: linear-gradient(135deg, var(--primary), var(--accent));
   border: none;
   color: white;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 4px 12px rgba(196, 32, 26, 0.25);
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 8px 20px rgba(196, 32, 26, 0.35);
   }
 
   &:active {
@@ -217,7 +217,7 @@ const ClearButton = styled.button`
   &:hover {
     border-color: var(--primary);
     color: var(--primary);
-    background: rgba(99, 102, 241, 0.05);
+    background: rgba(196, 32, 26, 0.05);
   }
 `;
 
@@ -292,7 +292,7 @@ const HistoryCard = styled.div`
   &:hover {
     transform: translateY(-6px);
     border-color: var(--primary);
-    box-shadow: 0 12px 30px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 12px 30px rgba(196, 32, 26, 0.15);
   }
 
   &:hover::before {
@@ -367,7 +367,7 @@ const PageButton = styled.button`
   font-weight: 600;
   font-size: 0.95rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: ${props => props.$active ? '0 4px 12px rgba(99, 102, 241, 0.25)' : 'none'};
+  box-shadow: ${props => props.$active ? '0 4px 12px rgba(196, 32, 26, 0.25)' : 'none'};
 
   &:disabled {
     opacity: 0.5;
@@ -378,7 +378,7 @@ const PageButton = styled.button`
     border-color: var(--primary);
     color: ${props => props.$active ? 'white' : 'var(--primary)'};
     transform: ${props => props.$active ? 'translateY(-2px)' : 'none'};
-    box-shadow: ${props => props.$active ? '0 8px 20px rgba(99, 102, 241, 0.35)' : 'none'};
+    box-shadow: ${props => props.$active ? '0 8px 20px rgba(196, 32, 26, 0.35)' : 'none'};
   }
 
   &:active:not(:disabled) {
@@ -486,9 +486,9 @@ const BackButton = styled.button`
   &:hover {
     border-color: var(--primary);
     color: var(--primary);
-    background: rgba(99, 102, 241, 0.05);
+    background: rgba(196, 32, 26, 0.05);
     transform: translateX(-4px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 4px 12px rgba(196, 32, 26, 0.15);
   }
 
   &:active {

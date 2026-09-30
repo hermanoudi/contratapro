@@ -38,30 +38,32 @@ function App() {
         expand={false}
         richColors={false}
         toastOptions={{
+          // Tira impressa: nanquim, canto reto, faixa de status no alto
           style: {
-            borderRadius: '12px',
+            borderRadius: '2px',
             padding: '16px',
-            fontSize: '14px',
-            fontWeight: '600',
-            background: '#0f172a',
-            color: '#ffffff',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
-            fontFamily: 'var(--font-sans)',
+            fontSize: '15px',
+            fontWeight: '500',
+            background: 'var(--nanquim)',
+            color: 'var(--papel)',
+            border: 'none',
+            borderTop: '3px solid var(--grafica)',
+            boxShadow: '0 16px 28px -18px rgba(23, 23, 27, 0.6), 0 2px 4px rgba(23, 23, 27, 0.2)',
+            fontFamily: 'var(--f-texto)',
           },
           success: {
             style: {
-              borderLeft: '4px solid #10b981',
+              borderTop: '3px solid #4caf73',
             },
           },
           error: {
             style: {
-              borderLeft: '4px solid #ef4444',
+              borderTop: '3px solid var(--grafica)',
             },
           },
           warning: {
             style: {
-              borderLeft: '4px solid #f59e0b',
+              borderTop: '3px solid var(--amarela)',
             },
           },
         }}

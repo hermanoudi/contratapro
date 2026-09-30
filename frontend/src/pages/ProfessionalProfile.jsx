@@ -167,7 +167,7 @@ const Input = styled.input`
   &:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
   }
 
   &:disabled {
@@ -190,7 +190,7 @@ const Textarea = styled.textarea`
   &:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
   }
 `;
 
@@ -206,7 +206,7 @@ const Select = styled.select`
   &:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
   }
 
   &:disabled {
@@ -234,7 +234,7 @@ const SaveButton = styled.button`
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 12px rgba(196, 32, 26, 0.3);
   }
 
   &:disabled {

@@ -1,27 +1,33 @@
+/* ------------------------------------------------------------------
+   Ponte do tema antigo para o talão (registro contido).
+   As páginas ainda usam estes nomes; aqui eles apontam para os tokens de
+   components/talao/tokens.js (TalaoTokens, montado no App). Não definir
+   valores novos aqui: cor nova entra em tokens.js.
+   ------------------------------------------------------------------ */
 :root {
-  /* Premium Light Palette */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-glass: rgba(255, 255, 255, 0.8);
+  --bg-primary: var(--papel);
+  --bg-secondary: var(--papel-2);
+  --bg-glass: var(--papel);
 
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
+  --text-primary: var(--nanquim);
+  /* Fixo no tom do papel branco: --texto-2 muda dentro de cada via */
+  --text-secondary: var(--texto-2-papel);
 
-  --primary: #2563eb;
-  /* Blue 600 */
-  --primary-glow: rgba(37, 99, 235, 0.2);
-  --accent: #4f46e5;
-  /* Indigo 600 */
+  /* Ação em tinta de gráfica; accent igual achata os gradientes antigos */
+  --primary: var(--grafica);
+  --accent: var(--grafica);
+  /* Halo colorido sai de cena */
+  --primary-glow: transparent;
 
-  --success: #10b981;
-  --error: #ef4444;
-  --border: rgba(0, 0, 0, 0.08);
+  --success: var(--sucesso);
+  --error: var(--erro);
+  --border: var(--regua);
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
 
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: var(--f-texto);
 }
 
 * {
@@ -39,22 +45,48 @@ body {
   line-height: 1.5;
 }
 
-/* Custom Scrollbar */
+/* Controles não herdam a fonte sozinhos */
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+/* Títulos na letra de impressão da gráfica */
+h1, h2, h3, h4 {
+  font-family: var(--f-impresso);
+}
+
+::selection {
+  background: var(--amarela);
+  color: var(--nanquim);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--carbono);
+  outline-offset: 3px;
+}
+
+/* Barra de rolagem */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: var(--papel-2);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-secondary);
-  border-radius: 4px;
+  background: rgba(23, 23, 27, 0.28);
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--grafica);
 }
 
 /* Utilities */
@@ -65,26 +97,39 @@ body {
 }
 
 .glass-panel {
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-md);
+  background: var(--papel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
 }
 
+/* Botão principal no padrão do talão: tinta cheia, canto reto, letra impressa */
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--primary);
+  color: var(--papel);
+  border: 2px solid var(--primary);
   padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
+  border-radius: 2px;
+  font-family: var(--f-impresso);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: background-color 160ms var(--ease-out), border-color 160ms var(--ease-out);
 }
 
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px var(--primary-glow);
+.btn-primary:hover:not(:disabled) {
+  background: var(--grafica-escura);
+  border-color: var(--grafica-escura);
+}
+
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* Input de Data e Hora - Padrão PT-BR */
@@ -117,8 +162,9 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
 
 /* Mobile Responsive Utilities */
 @media (max-width: 768px) {
+  /* Barlow tem olho menor que Inter: 15px mantém a leitura no celular */
   body {
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .container {
@@ -148,11 +194,5 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
   button, a {
     min-height: 44px;
     min-width: 44px;
-  }
-}
-
-@media (max-width: 480px) {
-  body {
-    font-size: 13px;
   }
 }
