@@ -22,7 +22,7 @@ export const tourStepsProfessional = {
     {
       target: '[data-tour="sidebar-nav"]',
       title: 'Menu de Navegacao',
-      content: 'Use o menu lateral para navegar entre Dashboard (agenda), Servicos e Horarios.',
+      content: 'Use o menu lateral para navegar entre Painel (agenda), Serviços e Horários.',
       placement: 'right',
     },
     {

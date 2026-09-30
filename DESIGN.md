@@ -235,6 +235,11 @@ Shared pieces live in `frontend/src/components/talao/`. Pages import them from t
   - `.btn-primary` is the flat printed button.
 
   New colours go in `tokens.js`, never in `index.css`. The contained register uses papel and papel-2 surfaces with neutral régua rules. It keeps gráfica for action and carbono for focus, and uses no vias, seams, tilt or handwriting.
+- **Logged-in shell (contained register):** `components/AppShell.jsx`, used by `ProfessionalLayout` and `ClientLayout`. `SharedLayout` picks one of the two.
+  - **Sidebar:** papel-2, closed on the right by a 2px gráfica rule, like the red margin of an order pad. It carries the one-ink logo.
+  - **Menu items:** Barlow Condensed 600 at 1.15rem, 48px rows, groups separated by pauta. The active item is gráfica, 700 and underlined 2px at 5px offset, the same underline as the Home's topbar links. No pills and no coloured side bars.
+  - **Top bar:** sticky, 64px (56 on mobile), papel, closed by a 2px gráfica rule. On mobile it holds the menu toggle and the logo. The user shows as a 2px nanquim frame on amarela with the initial, the same frame as the ProCard photo.
+  - **State colours:** "Suspender atendimentos" is in alerta and "Retomar" in sucesso, never in the action red. While a professional is suspended, the top bar shows "Atendimentos suspensos" ("Suspenso" on phones) in alerta on every page.
 - **Surface:** `TalaoPage` sets the font, ink, paper, `::selection` and focus ring, and holds `font-size: 1rem` against the mobile body shrink in `index.css`. `Wrap` is the 1200px column. `paperSurface('rosa')` paints a via and tints `--texto-2` for it. Every sheet of papel resting on a coloured via resets `--texto-2` via `cardSheet`.
 - **Components:**
   - Type: `Display` (always carries `data-display`, so the mobile `!important` heading rule never shrinks it), `Lead`, `Hand`.
