@@ -22,16 +22,22 @@ const TopbarInner = styled(Wrap)`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
+  /* A barra mede a si mesma: com texto ampliado no celular, o carimbo sai antes de apertar */
+  container-type: inline-size;
 `;
 
+// O logo encolhe para caber (até um mínimo legível) em vez de encostar no carimbo
 const Logo = styled(Link)`
   display: flex;
   align-items: center;
+  flex: 0 1 120px;
+  min-width: 84px;
 
   img {
-    height: 34px;
-    width: auto;
+    width: 100%;
+    max-width: 120px;
+    height: auto;
     display: block;
   }
 `;
@@ -89,19 +95,29 @@ const TopStamp = styled(StampLink)`
   padding: 0 0.9rem;
   white-space: nowrap;
 
-  @media (max-width: 380px) {
-    font-size: 0.95rem;
-    padding: 0 0.55rem;
+  @media (max-width: 420px) {
+    min-height: 40px;
+    font-size: 0.92rem;
+    letter-spacing: 0.03em;
+    padding: 0 0.65rem;
   }
 `;
 
 const MobileActions = styled.div`
   display: flex;
+  flex: none;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.35rem;
 
   @media (min-width: 860px) {
     display: none;
+  }
+
+  /* Barra estreita demais (tela pequena ou texto ampliado): "Sou profissional" fica só no menu */
+  @container (max-width: 16.5rem) {
+    > a {
+      display: none;
+    }
   }
 `;
 
