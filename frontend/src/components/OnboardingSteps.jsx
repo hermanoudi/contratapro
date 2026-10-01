@@ -1,249 +1,263 @@
-import { useState } from 'react';
+import { useEffect, useRef, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Briefcase, Clock, CheckCircle } from 'lucide-react';
+import { X, User, Briefcase, Clock, Check, ChevronRight } from 'lucide-react';
 
-const Overlay = styled(motion.div)`
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 500;
-  padding: 1rem;
-`;
+/* Boas-vindas do profissional: os três passos para começar a receber clientes,
+   num <dialog> nativo (Esc fecha, foco preso) no registro contido. */
 
-const Card = styled(motion.div)`
-  background: white;
-  border-radius: 24px;
-  padding: 2rem;
-  max-width: 480px;
-  width: 100%;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
-  position: relative;
-`;
-
-const CloseBtn = styled.button`
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: var(--bg-secondary);
+const Dialog = styled.dialog`
+  width: min(30rem, calc(100% - 2rem));
+  margin: auto;
+  padding: 1.5rem clamp(1.25rem, 4vw, 1.75rem) 1.5rem;
   border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition: all 0.2s;
+  border-top: 4px solid var(--grafica);
+  border-radius: 0;
+  background: var(--papel);
+  color: var(--nanquim);
+  box-shadow: 0 24px 48px -20px rgba(23, 23, 27, 0.55), 0 2px 6px rgba(23, 23, 27, 0.15);
 
-  &:hover { background: var(--border); color: var(--text-primary); }
-`;
-
-const Title = styled.h2`
-  font-size: 1.4rem;
-  font-weight: 900;
-  margin-bottom: 0.375rem;
-  color: var(--text-primary);
-  padding-right: 2rem;
-`;
-
-const Subtitle = styled.p`
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin-bottom: 1.5rem;
-  line-height: 1.5;
-`;
-
-const Steps = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-`;
-
-const Step = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.875rem 1rem;
-  border-radius: 12px;
-  border: 2px solid ${props => props.$done ? 'rgba(16, 185, 129, 0.3)' : 'var(--border)'};
-  background: ${props => props.$done ? 'rgba(16, 185, 129, 0.05)' : 'var(--bg-secondary)'};
-  cursor: ${props => props.$done ? 'default' : 'pointer'};
-  transition: all 0.2s;
-
-  &:hover:not([data-done="true"]) {
-    border-color: var(--primary);
-    background: rgba(196, 32, 26, 0.04);
+  &::backdrop {
+    background: rgba(23, 23, 27, 0.45);
   }
 `;
 
-const StepIcon = styled.div`
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: ${props => props.$done ? 'rgba(16, 185, 129, 0.15)' : 'rgba(196, 32, 26, 0.1)'};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-
-  svg { color: ${props => props.$done ? '#10b981' : 'var(--primary)'}; }
-`;
-
-const StepText = styled.div`
-  flex: 1;
-`;
-
-const StepTitle = styled.div`
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: ${props => props.$done ? '#059669' : 'var(--text-primary)'};
-`;
-
-const StepDesc = styled.div`
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-  margin-top: 0.125rem;
-`;
-
-const Footer = styled.div`
+const Head = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 1rem;
+
+  h2 {
+    font-family: var(--f-impresso);
+    font-weight: 800;
+    font-size: 1.85rem;
+    line-height: 1.05;
+  }
 `;
 
-const DismissBtn = styled.button`
+const Close = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: -0.5rem -0.5rem 0 0;
   background: none;
   border: none;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
+  color: var(--nanquim);
   cursor: pointer;
-  font-weight: 500;
-  padding: 0.5rem;
 
-  &:hover { color: var(--text-primary); }
+  &:hover {
+    color: var(--grafica);
+  }
 `;
 
-const Congrats = styled.div`
-  text-align: center;
-  padding: 1rem 0;
+const Lead = styled.p`
+  margin: 0.4rem 0 1.25rem;
+  line-height: 1.5;
+  color: var(--texto-2-papel);
+`;
 
-  svg { color: #10b981; margin-bottom: 0.75rem; }
-  h3 { font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem; }
-  p { color: var(--text-secondary); font-size: 0.9rem; }
+const Steps = styled.ol`
+  list-style: none;
+  border-top: 2px solid var(--grafica);
+`;
+
+const StepRow = styled.li`
+  border-bottom: 1.5px solid var(--pauta);
+`;
+
+const stepInner = `
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  min-height: 64px;
+  padding: 0.5rem 0.25rem;
+  text-align: left;
+`;
+
+const StepButton = styled.button`
+  ${stepInner}
+  background: none;
+  border: none;
+  font-family: var(--f-texto);
+  color: var(--nanquim);
+  cursor: pointer;
+
+  &:hover strong {
+    color: var(--grafica);
+  }
+`;
+
+const StepDone = styled.div`
+  ${stepInner}
+  color: var(--texto-2-papel);
+`;
+
+const Num = styled.span`
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid ${({ $done }) => ($done ? 'var(--sucesso)' : 'var(--grafica)')};
+  border-radius: 50%;
+  font-family: var(--f-impresso);
+  font-weight: 700;
+  color: ${({ $done }) => ($done ? 'var(--sucesso)' : 'var(--grafica)')};
+`;
+
+const StepText = styled.span`
+  flex: 1;
+  min-width: 0;
+
+  strong {
+    display: block;
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.2rem;
+  }
+
+  small {
+    display: block;
+    font-size: 0.95rem;
+    color: var(--texto-2-papel);
+  }
+`;
+
+const Later = styled.button`
+  margin-top: 1rem;
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--texto-2-papel);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--grafica);
+  }
+`;
+
+const Congrats = styled.p`
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin-top: 1rem;
+  line-height: 1.5;
+
+  svg {
+    flex: none;
+    color: var(--sucesso);
+  }
 `;
 
 function getSteps(user, services, workingHours) {
   return [
     {
       key: 'profile',
-      label: 'Completar perfil',
-      desc: 'Adicione foto, descrição e localização',
+      label: 'Completar o perfil',
+      desc: 'Foto, descrição e localização',
       icon: User,
       done: !!(user?.profile_picture && user?.description && user?.city),
-      tab: null,
+      to: '/profile',
     },
     {
       key: 'services',
-      label: 'Cadastrar serviços',
-      desc: 'Adicione os serviços que você oferece',
+      label: 'Cadastrar os serviços',
+      desc: 'O que você faz e quanto cobra',
       icon: Briefcase,
       done: (services?.length || 0) > 0,
-      tab: 'services',
+      to: '/dashboard?tab=services',
     },
     {
       key: 'schedule',
-      label: 'Definir disponibilidade',
-      desc: 'Configure seus horários de atendimento',
+      label: 'Marcar os horários',
+      desc: 'Os dias e horários em que você atende',
       icon: Clock,
       done: (workingHours?.length || 0) > 0,
-      tab: 'schedule',
+      to: '/dashboard?tab=schedule',
     },
   ];
 }
 
 export default function OnboardingSteps({ user, services, workingHours, onDismiss }) {
   const navigate = useNavigate();
+  const ref = useRef(null);
+  const id = useId();
   const steps = getSteps(user, services, workingHours);
-  const allDone = steps.every(s => s.done);
-  const [showCongrats, setShowCongrats] = useState(false);
+  // Parabéns é derivado: tudo feito
+  const allDone = steps.every((s) => s.done);
 
-  if (allDone && !showCongrats) {
-    setShowCongrats(true);
-    setTimeout(onDismiss, 3000);
-  }
+  useEffect(() => {
+    const dialog = ref.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
 
-  const handleStepClick = (step) => {
-    if (!step.done && step.tab) navigate(`/dashboard?tab=${step.tab}`);
+  // Com tudo feito, a mensagem fica 3 segundos e fecha sozinha
+  useEffect(() => {
+    if (!allDone) return undefined;
+    const timer = setTimeout(onDismiss, 3000);
+    return () => clearTimeout(timer);
+  }, [allDone, onDismiss]);
+
+  const go = (step) => {
+    navigate(step.to);
     onDismiss();
   };
 
   return (
-    <AnimatePresence>
-      <Overlay
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onDismiss}
-      >
-        <Card
-          initial={{ scale: 0.9, y: 20, opacity: 0 }}
-          animate={{ scale: 1, y: 0, opacity: 1 }}
-          exit={{ scale: 0.9, y: 20, opacity: 0 }}
-          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-          onClick={e => e.stopPropagation()}
-        >
-          <CloseBtn onClick={onDismiss}><X size={16} /></CloseBtn>
+    <Dialog
+      ref={ref}
+      aria-labelledby={`${id}-titulo`}
+      onClose={onDismiss}
+      onClick={(e) => { if (e.target === ref.current) onDismiss(); }}
+    >
+      <Head>
+        <h2 id={`${id}-titulo`}>{allDone ? 'Perfil pronto' : 'Boas-vindas ao ContrataPro'}</h2>
+        <Close type="button" aria-label="Fechar" onClick={onDismiss}>
+          <X size={24} aria-hidden="true" />
+        </Close>
+      </Head>
 
-          {showCongrats ? (
-            <Congrats>
-              <CheckCircle size={48} />
-              <h3>Perfil completo! 🎉</h3>
-              <p>Você está pronto para receber clientes na plataforma.</p>
-            </Congrats>
-          ) : (
-            <>
-              <Title>Boas-vindas ao ContrataPro!</Title>
-              <Subtitle>Complete estes 3 passos para começar a receber clientes.</Subtitle>
-
-              <Steps>
-                {steps.map((step, i) => {
-                  const Icon = step.icon;
-                  return (
-                    <Step
-                      key={step.key}
-                      $done={step.done}
-                      data-done={step.done}
-                      onClick={() => !step.done && handleStepClick(step)}
-                    >
-                      <StepIcon $done={step.done}>
-                        <Icon size={18} />
-                      </StepIcon>
-                      <StepText>
-                        <StepTitle $done={step.done}>
-                          {i + 1}. {step.label}
-                          {step.done && ' ✓'}
-                        </StepTitle>
-                        <StepDesc>{step.desc}</StepDesc>
-                      </StepText>
-                    </Step>
-                  );
-                })}
-              </Steps>
-
-              <Footer>
-                <DismissBtn onClick={onDismiss}>Agora não</DismissBtn>
-              </Footer>
-            </>
-          )}
-        </Card>
-      </Overlay>
-    </AnimatePresence>
+      {allDone ? (
+        <Congrats role="status">
+          <Check size={22} aria-hidden="true" />
+          Tudo certo: os clientes da sua região já podem encontrar você e agendar.
+        </Congrats>
+      ) : (
+        <>
+          <Lead>Três passos para começar a receber clientes.</Lead>
+          <Steps>
+            {steps.map((step, i) => {
+              const Icon = step.icon;
+              const inner = (
+                <>
+                  <Num $done={step.done} aria-hidden="true">{step.done ? <Check size={16} /> : i + 1}</Num>
+                  <StepText>
+                    <strong>{step.label}</strong>
+                    <small>{step.done ? 'Feito' : step.desc}</small>
+                  </StepText>
+                  {!step.done && <Icon size={20} aria-hidden="true" />}
+                  {!step.done && <ChevronRight size={18} aria-hidden="true" />}
+                </>
+              );
+              return (
+                <StepRow key={step.key}>
+                  {step.done ? <StepDone>{inner}</StepDone> : <StepButton type="button" onClick={() => go(step)}>{inner}</StepButton>}
+                </StepRow>
+              );
+            })}
+          </Steps>
+          <Later type="button" onClick={onDismiss}>Agora não</Later>
+        </>
+      )}
+    </Dialog>
   );
 }

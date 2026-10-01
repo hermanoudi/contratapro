@@ -269,6 +269,28 @@ Shared pieces live in `frontend/src/components/talao/`. Pages import them from t
     - The red submit ("Entrar para agendar" when logged out), then the tear line: "Agendar não cobra nada…".
   - **Rosa via:** the reviews, followed by `TrustNote`.
   - **Success:** the "Via do cliente", an azul via with a talão stamped AGENDADO in sucesso and the details written by hand.
+- **Review (`/avaliar/:token`, full talão):**
+  - **Sheet:** an amarela via holding an "Avaliação do serviço" talão.
+  - **Rating:** five printed gráfica stars, real radios that respond to the arrow keys, with the rating word written by hand.
+  - **Name:** the handwritten talão `Field`.
+  - **Comment:** a ruled textarea whose lines follow the 2.2rem line height of the handwriting.
+  - **Tear line:** "Cada serviço agendado recebe uma avaliação só…".
+- **Professional dashboard (`pages/Dashboard.jsx` + `components/dashboard/`, contained register):** one h1 per tab (Agenda da semana / Meus serviços / Horários de atendimento).
+  - **Panels:** papel with a régua border and a 2px gráfica top rule.
+  - **Weekly agenda:**
+    - Sunday-based, built from local dates.
+    - A grid on desktop and a per-day list on mobile.
+    - Cell states: Livre (papel), Agendado (azul wash, carbono name, a `<button>` to the appointment), Bloqueado (hatched papel-2 with a labelled X to remove), no service (papel-2).
+    - Today's column has an amarela underline, and a legend sits above the grid.
+    - Cancelled appointments never occupy a slot.
+  - **Lists and forms:** services as cards with a gráfica foot rule; working hours as a ruled list; block time in a native `<dialog>`.
+  - **Premium summary:** a ruled list, not icon stat cards.
+  - **Notices:** the inactive subscription shows as an inline alerta notice, never a fixed bar over the shell.
+- **E-mails (`backend/app/services/notifications/templates.py`):** the same single ink.
+  - Red logo image (`contratapro.com.br/logo.png`) on white over a 2px gráfica rule.
+  - 2px gráfica frame, papel-2 page, info box with a gráfica top rule, dashed tear line before the footer.
+  - Square gráfica button.
+  - Statuses in sucesso/alerta/erro. No gradients or indigo.
 - **Backend messages:** `components/apiErrors.js` (`translateError`) maps the English or unaccented messages from signup, reset and booking.
 - **Surface:** `TalaoPage` sets the font, ink, paper, `::selection` and focus ring, and holds `font-size: 1rem` against the mobile body shrink in `index.css`. `Wrap` is the 1200px column. `paperSurface('rosa')` paints a via and tints `--texto-2` for it. Every sheet of papel resting on a coloured via resets `--texto-2` via `cardSheet`.
 - **Components:**

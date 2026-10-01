@@ -19,36 +19,37 @@ class EmailTemplates:
             font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            background: #f5f5f5;
+            background: #f6f4ef;
+            color: #17171b;
         }}
         .container {{
             max-width: 600px;
             margin: 0 auto;
-            background: white;
-            border-radius: 12px;
+            background: #ffffff;
+            border: 2px solid #c4201a;
             overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }}
         .header {{
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            padding: 30px;
-            text-align: center;
+            background: #ffffff;
+            padding: 24px 30px 18px;
+            border-bottom: 2px solid #c4201a;
         }}
-        .header h1 {{
-            color: white;
-            margin: 0;
-            font-size: 24px;
+        .header img {{
+            display: block;
+            height: 40px;
+            width: auto;
+            border: 0;
         }}
         .content {{
             padding: 30px;
         }}
         .content h2 {{
-            color: #1e293b;
+            color: #17171b;
             margin-top: 0;
         }}
         .info-box {{
-            background: #f8fafc;
-            border-radius: 8px;
+            background: #f6f4ef;
+            border-top: 2px solid #c4201a;
             padding: 20px;
             margin: 20px 0;
         }}
@@ -57,44 +58,48 @@ class EmailTemplates:
         }}
         .info-label {{
             font-weight: 600;
-            color: #64748b;
+            color: #9e1712;
             display: inline-block;
             min-width: 100px;
         }}
         .info-value {{
-            color: #1e293b;
+            color: #17171b;
         }}
         .footer {{
-            background: #f8fafc;
+            background: #f6f4ef;
+            border-top: 2px dashed #c4201a;
             padding: 20px;
             text-align: center;
-            color: #64748b;
+            color: #4a4550;
             font-size: 14px;
         }}
         .button {{
             display: inline-block;
-            background: #6366f1;
+            background: #c4201a;
             color: #FFFFFF !important;
             padding: 12px 24px;
-            border-radius: 8px;
+            border-radius: 2px;
+            font-weight: bold;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
             text-decoration: none;
             margin-top: 20px;
         }}
         .status-cancelled {{
-            color: #ef4444;
+            color: #9e1712;
         }}
         .status-completed {{
-            color: #10b981;
+            color: #1d6b3a;
         }}
         .status-updated {{
-            color: #f59e0b;
+            color: #8a5300;
         }}
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>ContrataPro</h1>
+            <img src="https://contratapro.com.br/logo.png" alt="ContrataPro" width="129" height="40">
         </div>
         {content}
         <div class="footer">
@@ -131,9 +136,9 @@ class EmailTemplates:
             role_other = "Cliente"
             intro = "Você recebeu um novo agendamento!"
         else:
-            subject = f"Agendamento Confirmado - {service_title}"
+            subject = f"Horário agendado - {service_title}"
             role_other = "Profissional"
-            intro = "Seu agendamento foi confirmado!"
+            intro = "Seu horário está agendado. O preço final e o pagamento você combina direto com o profissional."
 
         plain_text = f"""
 Olá {recipient_name},
@@ -370,11 +375,11 @@ Equipe ContrataPro
 
             <a href="{reset_link}" class="button">Redefinir Senha</a>
 
-            <p style="margin-top: 1.5rem; font-size: 0.875rem; color: #64748b;">
+            <p style="margin-top: 1.5rem; font-size: 0.875rem; color: #4a4550;">
                 Este link expira em {expiration_hours} horas.
             </p>
 
-            <p style="margin-top: 1rem; font-size: 0.875rem; color: #64748b;">
+            <p style="margin-top: 1rem; font-size: 0.875rem; color: #4a4550;">
                 Se voce nao solicitou a redefinicao de senha, ignore este e-mail.
             </p>
         </div>
@@ -567,7 +572,7 @@ Equipe ContrataPro
                 </div>
                 <div class="info-item">
                     <span class="info-label">Novo plano:</span>
-                    <span class="info-value" style="font-weight: bold; color: #6366f1;">{new_plan_name}</span>
+                    <span class="info-value" style="font-weight: bold; color: #c4201a;">{new_plan_name}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Valor:</span>
@@ -618,7 +623,7 @@ Equipe ContrataPro
             <div class="info-box">
                 <div class="info-item">
                     <span class="info-label">Dias restantes:</span>
-                    <span class="info-value" style="font-weight: bold; color: #f59e0b;">{days_remaining} dias</span>
+                    <span class="info-value" style="font-weight: bold; color: #8a5300;">{days_remaining} dias</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Expira em:</span>
@@ -687,7 +692,7 @@ Equipe ContrataPro
                 </div>
                 <div class="info-item">
                     <span class="info-label">Data de renovacao:</span>
-                    <span class="info-value" style="font-weight: bold; color: #6366f1;">{renewal_date}</span>
+                    <span class="info-value" style="font-weight: bold; color: #c4201a;">{renewal_date}</span>
                 </div>
             </div>
 
@@ -797,7 +802,7 @@ Equipe ContrataPro
                 </div>
                 <div class="info-item">
                     <span class="info-label">Prazo para regularizar:</span>
-                    <span class="info-value" style="font-weight: bold; color: #ef4444;">{days_remaining} dias</span>
+                    <span class="info-value" style="font-weight: bold; color: #9e1712;">{days_remaining} dias</span>
                 </div>
             </div>
 
@@ -852,7 +857,7 @@ Equipe ContrataPro
                 </div>
                 <div class="info-item">
                     <span class="info-label">Status:</span>
-                    <span class="info-value" style="font-weight: bold; color: #ef4444;">Suspensa por falta de pagamento</span>
+                    <span class="info-value" style="font-weight: bold; color: #9e1712;">Suspensa por falta de pagamento</span>
                 </div>
             </div>
 
@@ -919,11 +924,11 @@ Equipe ContrataPro
                 </div>
                 <div class="info-item">
                     <span class="info-label">Data do cancelamento:</span>
-                    <span class="info-value" style="font-weight: bold; color: #f59e0b;">{cancellation_date}</span>
+                    <span class="info-value" style="font-weight: bold; color: #8a5300;">{cancellation_date}</span>
                 </div>{reason_html}
             </div>
 
-            <p style="background: #dbeafe; padding: 1rem; border-radius: 8px; border-left: 4px solid #3b82f6;">
+            <p style="background: #f6f4ef; padding: 1rem; border-top: 2px solid #c4201a;">
                 <strong>IMPORTANTE:</strong> Voce pode continuar usando todos os recursos do ContrataPro ate a data do cancelamento.
             </p>
 
@@ -990,7 +995,7 @@ Equipe ContrataPro
                 </div>
             </div>
 
-            <p style="background: #dbeafe; padding: 1rem; border-radius: 8px;">
+            <p style="background: #f6f4ef; padding: 1rem; border-top: 2px solid #c4201a;">
                 <strong>IMPORTANTE:</strong> Voce continuara com todos os recursos
                 do plano {old_plan_name} ate {change_date}.
             </p>

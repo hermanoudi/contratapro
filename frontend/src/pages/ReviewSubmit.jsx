@@ -1,186 +1,222 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { motion } from 'framer-motion';
-import { Star, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
-import { toast } from 'sonner';
+import { Star, CheckCircle, AlertCircle } from 'lucide-react';
 import { API_URL } from '../config';
+import {
+  TalaoPage,
+  Wrap,
+  paperSurface,
+  Hand,
+  PrimaryButton,
+  StampLink,
+  Field,
+  FieldNote,
+  Seam,
+  SiteHeader,
+  SiteFooter,
+  TalaoSheet,
+  Canhoto,
+  TalaoBody,
+  TalaoHead,
+  TalaoBrand,
+  SubmitRow,
+  Perforation,
+} from '../components/talao';
 
-const PageContainer = styled.div`
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg,
-    rgba(196, 32, 26, 0.05) 0%,
-    rgba(168, 85, 247, 0.05) 100%);
-  padding: 2rem;
+/* Avaliação (/avaliar/:token), o link que o cliente recebe por e-mail depois do serviço:
+   um talão de "Avaliação do serviço" preenchido à mão, na via amarela. */
 
-  @media (max-width: 480px) {
-    padding: 1rem;
+const Via = styled.section`
+  ${paperSurface('amarela')}
+  padding: clamp(1.5rem, 5vw, 3.5rem) 0 clamp(2.5rem, 6vw, 4.5rem);
+  min-height: 70vh;
+`;
+
+const Intro = styled.div`
+  max-width: 40rem;
+  margin: 0 auto clamp(1.25rem, 3vw, 2rem);
+
+  h1 {
+    font-family: var(--f-impresso);
+    font-weight: 800;
+    font-size: clamp(2.2rem, 6vw, 3.25rem);
+    line-height: 1;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  p {
+    margin-top: 0.75rem;
+    font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+    line-height: 1.55;
+    color: var(--texto-2);
   }
 `;
 
-const Card = styled(motion.div)`
-  background: white;
-  border-radius: 20px;
-  padding: 2.5rem;
-  max-width: 480px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-
-  @media (max-width: 480px) {
-    padding: 1.5rem;
-    border-radius: 16px;
-  }
+const Sheet = styled(TalaoSheet)`
+  max-width: 40rem;
+  margin: 0 auto;
 `;
 
-const Title = styled.h1`
-  font-size: 1.75rem;
-  font-weight: 800;
-  text-align: center;
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
-`;
-
-const Subtitle = styled.p`
-  color: var(--text-secondary);
-  text-align: center;
-  margin-bottom: 2rem;
-  line-height: 1.5;
-`;
-
-const StarsContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-`;
-
-const StarButton = styled.button`
-  background: none;
+// Nota: cinco estrelas impressas que são rádios de verdade (setas do teclado funcionam)
+const Rating = styled.fieldset`
   border: none;
-  cursor: pointer;
-  padding: 0.25rem;
-  transition: transform 0.15s;
+  padding: 1rem 0 0.5rem;
 
-  &:hover {
-    transform: scale(1.2);
-  }
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: 1.5rem;
-
-  label {
-    display: block;
-    font-size: 0.875rem;
+  legend {
+    font-family: var(--f-impresso);
     font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--grafica);
+    margin-bottom: 0.35rem;
   }
 `;
 
-const Input = styled.input`
-  width: 100%;
-  padding: 0.875rem 1rem;
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  font-size: 1rem;
-  transition: all 0.2s;
-  background: white;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
-  }
+const StarsRow = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
 `;
 
-const Textarea = styled.textarea`
-  width: 100%;
-  padding: 0.875rem 1rem;
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  font-size: 1rem;
-  transition: all 0.2s;
-  background: white;
-  box-sizing: border-box;
-  resize: vertical;
-  min-height: 100px;
-  font-family: inherit;
-
-  &:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
-  }
+const Stars = styled.div`
+  display: flex;
+  gap: 0.15rem;
 `;
 
-const SubmitButton = styled.button`
-  width: 100%;
-  padding: 1rem;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
+const StarOption = styled.label`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
   cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 0.5rem;
+  color: var(--grafica);
 
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(196, 32, 26, 0.3);
+  input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
   }
 
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+  svg {
+    transition: transform 140ms var(--ease-out);
+  }
+
+  &:hover svg {
+    transform: scale(1.1);
+  }
+
+  &:focus-within {
+    outline: 2px solid var(--carbono);
+    outline-offset: -2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    svg {
+      transition: none;
+    }
   }
 `;
 
-const RatingLabel = styled.p`
-  text-align: center;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  margin-top: -1rem;
-  margin-bottom: 1.5rem;
-  min-height: 1.25rem;
+const RatingWord = styled(Hand)`
+  font-size: 1.75rem;
+  line-height: 1;
+  min-height: 1.75rem;
 `;
 
-const SuccessContainer = styled(motion.div)`
-  text-align: center;
-  padding: 1rem 0;
+// Comentário em folha pautada: as linhas acompanham a altura da letra à mão
+const Comment = styled.label`
+  display: block;
+  padding-top: 1rem;
+
+  > span {
+    display: block;
+    font-family: var(--f-impresso);
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--grafica);
+  }
+
+  textarea {
+    display: block;
+    width: 100%;
+    min-height: calc(2.2rem * 4);
+    margin-top: 0.25rem;
+    padding: 0 0.25rem;
+    border: none;
+    resize: vertical;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(2.2rem - 1.5px),
+      var(--pauta) calc(2.2rem - 1.5px),
+      var(--pauta) 2.2rem
+    );
+    font-family: var(--f-mao);
+    font-weight: 700;
+    font-size: 1.5rem;
+    line-height: 2.2rem;
+    color: var(--carbono);
+    caret-color: var(--carbono);
+
+    &::placeholder {
+      font-family: var(--f-texto);
+      font-weight: 400;
+      font-size: 1.05rem;
+      color: var(--texto-2-papel);
+      opacity: 1;
+    }
+
+    &:focus {
+      outline: none;
+      background-color: rgba(207, 224, 245, 0.35);
+    }
+  }
 `;
 
-const SuccessIcon = styled.div`
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #10b981, #059669);
+const Count = styled.p`
+  margin-top: 0.25rem;
+  text-align: right;
+  font-size: 0.95rem;
+  color: var(--texto-2-papel);
+  font-variant-numeric: tabular-nums;
+`;
+
+const Status = styled.div`
+  padding: 1.25rem 0 0.5rem;
+
+  h1 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--f-impresso);
+    font-weight: 800;
+    font-size: clamp(1.9rem, 5vw, 2.4rem);
+    line-height: 1.05;
+  }
+
+  svg {
+    flex: none;
+    color: ${({ $tone }) => ($tone === 'ok' ? 'var(--sucesso)' : 'var(--grafica)')};
+  }
+
+  p {
+    margin-top: 0.75rem;
+    line-height: 1.55;
+  }
+`;
+
+const StatusActions = styled.div`
   display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 1.5rem;
-`;
-
-const ErrorContainer = styled(motion.div)`
-  text-align: center;
-  padding: 1rem 0;
-`;
-
-const ErrorIcon = styled.div`
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
 `;
 
 const ratingLabels = {
@@ -193,31 +229,34 @@ const ratingLabels = {
 
 export default function ReviewSubmit() {
   const { token } = useParams();
+  const id = useId();
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState(null);
+  const [closed, setClosed] = useState(null); // link usado/inválido ou serviço já avaliado
+  const [errors, setErrors] = useState({});
 
   const activeRating = hoveredRating || rating;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (rating === 0) {
-      toast.error('Selecione uma nota de 1 a 5 estrelas');
+    const found = {};
+    if (rating === 0) found.rating = 'Escolha uma nota de 1 a 5 estrelas.';
+    if (!customerName.trim()) found.name = 'Escreva seu nome.';
+    setErrors(found);
+    if (found.rating) {
+      document.querySelector(`input[name="${id}-nota"]`)?.focus();
       return;
     }
-
-    if (!customerName.trim()) {
-      toast.error('Informe seu nome');
+    if (found.name) {
+      document.getElementById(`${id}-nome`)?.focus();
       return;
     }
 
     setLoading(true);
-
     try {
       const response = await fetch(`${API_URL}/reviews/${token}`, {
         method: 'POST',
@@ -232,129 +271,150 @@ export default function ReviewSubmit() {
       if (response.status === 201) {
         setSubmitted(true);
       } else if (response.status === 404) {
-        setError('Este link de avaliacao e invalido ou ja foi utilizado.');
+        setClosed('invalid');
       } else if (response.status === 409) {
-        setError('Este servico ja foi avaliado. Obrigado!');
+        setClosed('done');
       } else {
-        toast.error('Erro ao enviar avaliacao. Tente novamente.');
+        setErrors({ form: 'Não deu para enviar a avaliação. Tente de novo.' });
       }
-    } catch (err) {
-      toast.error('Erro de conexao. Verifique sua internet.');
+    } catch {
+      setErrors({ form: 'Não deu para falar com o servidor. Confira sua conexão e tente de novo.' });
     } finally {
       setLoading(false);
     }
   };
 
-  // Tela de erro (token invalido ou ja avaliado)
-  if (error) {
-    return (
-      <PageContainer>
-        <Card
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-        >
-          <ErrorContainer>
-            <ErrorIcon>
-              <AlertCircle size={32} color="white" />
-            </ErrorIcon>
-            <Title style={{ fontSize: '1.5rem' }}>Ops!</Title>
-            <Subtitle>{error}</Subtitle>
-          </ErrorContainer>
-        </Card>
-      </PageContainer>
-    );
-  }
-
-  // Tela de sucesso
+  let body;
   if (submitted) {
-    return (
-      <PageContainer>
-        <Card
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-        >
-          <SuccessContainer>
-            <SuccessIcon>
-              <CheckCircle size={32} color="white" />
-            </SuccessIcon>
-            <Title style={{ fontSize: '1.5rem' }}>Obrigado!</Title>
-            <Subtitle>
-              Sua avaliacao foi enviada com sucesso. Ela ajuda outros clientes
-              a encontrar bons profissionais.
-            </Subtitle>
-          </SuccessContainer>
-        </Card>
-      </PageContainer>
+    body = (
+      <Status $tone="ok" role="status">
+        <h1 data-display><CheckCircle size={30} aria-hidden="true" /> Obrigado!</h1>
+        <p>
+          Sua avaliação foi enviada e aparece no perfil do profissional com o seu nome. Ela ajuda outros clientes a
+          escolher quem chamar.
+        </p>
+        <StatusActions>
+          <StampLink to="/">Voltar ao início</StampLink>
+        </StatusActions>
+      </Status>
+    );
+  } else if (closed) {
+    body = (
+      <Status role="status">
+        <h1 data-display>
+          {closed === 'done' ? <CheckCircle size={30} aria-hidden="true" /> : <AlertCircle size={30} aria-hidden="true" />}
+          {closed === 'done' ? 'Este serviço já foi avaliado' : 'Este link não vale mais'}
+        </h1>
+        <p>
+          {closed === 'done'
+            ? 'Cada serviço recebe uma avaliação só, e esta já foi enviada. Obrigado!'
+            : 'O link de avaliação pode ser usado uma vez só, e este já foi usado ou não existe. Confira se abriu o link do e-mail mais recente.'}
+        </p>
+        <StatusActions>
+          <StampLink to="/">Voltar ao início</StampLink>
+        </StatusActions>
+      </Status>
+    );
+  } else {
+    body = (
+      <form onSubmit={handleSubmit} noValidate>
+        <Rating aria-describedby={errors.rating ? `${id}-nota-erro` : undefined}>
+          <legend>Nota:</legend>
+          <StarsRow>
+            <Stars onMouseLeave={() => setHoveredRating(0)}>
+              {[1, 2, 3, 4, 5].map((value) => {
+                const filled = value <= activeRating;
+                return (
+                  <StarOption key={value} onMouseEnter={() => setHoveredRating(value)}>
+                    <input
+                      type="radio"
+                      name={`${id}-nota`}
+                      value={value}
+                      checked={rating === value}
+                      onChange={() => { setRating(value); setErrors((p) => ({ ...p, rating: undefined })); }}
+                      aria-label={`${value} ${value > 1 ? 'estrelas' : 'estrela'}, ${ratingLabels[value]}`}
+                    />
+                    <Star size={34} strokeWidth={1.75} fill={filled ? 'currentColor' : 'transparent'} aria-hidden="true" />
+                  </StarOption>
+                );
+              })}
+            </Stars>
+            <RatingWord aria-hidden="true">{activeRating > 0 ? ratingLabels[activeRating] : ''}</RatingWord>
+          </StarsRow>
+          {errors.rating && <FieldNote id={`${id}-nota-erro`} $tone="erro" role="alert">{errors.rating}</FieldNote>}
+        </Rating>
+
+        <Field>
+          <span>Seu nome:</span>
+          <input
+            id={`${id}-nome`}
+            type="text"
+            autoComplete="given-name"
+            value={customerName}
+            onChange={(e) => { setCustomerName(e.target.value); setErrors((p) => ({ ...p, name: undefined })); }}
+            placeholder="como vai aparecer no perfil"
+            aria-invalid={errors.name ? true : undefined}
+            aria-describedby={errors.name ? `${id}-nome-erro` : undefined}
+            required
+          />
+        </Field>
+        {errors.name && <FieldNote id={`${id}-nome-erro`} $tone="erro" role="alert">{errors.name}</FieldNote>}
+
+        <Comment>
+          <span>Como foi? (opcional)</span>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Chegou no horário? O serviço ficou bom? Conte para quem vai chamar depois."
+            maxLength={500}
+            aria-describedby={`${id}-conta`}
+          />
+        </Comment>
+        <Count id={`${id}-conta`}>{comment.length} de 500</Count>
+
+        {errors.form && <FieldNote $tone="erro" role="alert">{errors.form}</FieldNote>}
+
+        <SubmitRow>
+          <PrimaryButton type="submit" disabled={loading}>
+            {loading ? 'Enviando…' : 'Enviar avaliação'}
+          </PrimaryButton>
+        </SubmitRow>
+      </form>
     );
   }
 
-  // Formulario de avaliacao
   return (
-    <PageContainer>
-      <Card
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-          <MessageSquare size={32} color="var(--primary)" />
-        </div>
-        <Title>Avalie o servico</Title>
-        <Subtitle>Sua opiniao ajuda outros clientes e o profissional a melhorar.</Subtitle>
-
-        <form onSubmit={handleSubmit}>
-          <StarsContainer>
-            {[1, 2, 3, 4, 5].map((value) => (
-              <StarButton
-                key={value}
-                type="button"
-                onClick={() => setRating(value)}
-                onMouseEnter={() => setHoveredRating(value)}
-                onMouseLeave={() => setHoveredRating(0)}
-                aria-label={`${value} estrela${value > 1 ? 's' : ''}`}
-              >
-                <Star
-                  size={36}
-                  color={value <= activeRating ? '#f59e0b' : '#d1d5db'}
-                  fill={value <= activeRating ? '#f59e0b' : 'none'}
-                />
-              </StarButton>
-            ))}
-          </StarsContainer>
-
-          <RatingLabel>
-            {activeRating > 0 ? ratingLabels[activeRating] : 'Toque nas estrelas para avaliar'}
-          </RatingLabel>
-
-          <FormGroup>
-            <label>Seu nome *</label>
-            <Input
-              type="text"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Como voce gostaria de ser identificado"
-              required
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <label>Comentario (opcional)</label>
-            <Textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Conte como foi sua experiencia..."
-              maxLength={500}
-            />
-          </FormGroup>
-
-          <SubmitButton
-            type="submit"
-            disabled={loading || rating === 0 || !customerName.trim()}
-          >
-            {loading ? 'Enviando...' : 'Enviar Avaliacao'}
-          </SubmitButton>
-        </form>
-      </Card>
-    </PageContainer>
+    <TalaoPage>
+      <SiteHeader />
+      <main>
+        <Via aria-labelledby={`${id}-titulo`}>
+          <Wrap>
+            {!submitted && !closed && (
+              <Intro>
+                <h1 id={`${id}-titulo`} data-display>Como foi o serviço?</h1>
+                <p>Só quem agendou pelo ContrataPro recebe este link. Sua nota ajuda outros clientes e o próprio profissional.</p>
+              </Intro>
+            )}
+            <Sheet>
+              <Canhoto aria-hidden="true" />
+              <TalaoBody>
+                <TalaoHead>
+                  <TalaoBrand>
+                    <strong>CONTRATAPRO</strong>
+                    <span>Avaliação do serviço</span>
+                  </TalaoBrand>
+                </TalaoHead>
+                {body}
+                <Perforation>
+                  Cada serviço agendado recebe uma avaliação só. Sua nota aparece no perfil com o seu nome.
+                </Perforation>
+              </TalaoBody>
+            </Sheet>
+          </Wrap>
+        </Via>
+        <Seam $from="amarela" $to="papel" aria-hidden="true" />
+      </main>
+      <SiteFooter />
+    </TalaoPage>
   );
 }

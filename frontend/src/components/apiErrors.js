@@ -12,6 +12,10 @@ const KNOWN_ERRORS = {
   'Professional is currently not accepting appointments': 'Este profissional não está recebendo agendamentos agora.',
   'Service not found': 'Este serviço não está mais disponível. Escolha outro.',
   'start_time and end_time are required for hourly services': 'Escolha um horário para este serviço.',
+  // Painel do profissional
+  'Only professionals can create services': 'Só profissionais podem cadastrar serviços.',
+  'Only professionals can set working hours': 'Só profissionais podem marcar horários de atendimento.',
+  'Working hour not found': 'Este horário já não existe. Recarregue a página.',
 };
 
 export const translateError = (detail, fallback) =>
