@@ -295,6 +295,15 @@ Shared pieces live in `frontend/src/components/talao/`. Pages import them from t
   - **Pagination:** Anterior / "Página X de Y" / Próxima, which fits at 360px.
   - **History:** period shortcuts (7 dias, 30 dias, 90 dias, 12 meses) as square chips with `aria-pressed`.
   - **Notifications:** each row shows the type as a printed label, the title, the appointment details and the delivery state (Enviado / Na fila / Não foi enviado), and links to the appointment.
+- **Subscription (`pages/MySubscription.jsx`, `pages/ChangePlan.jsx`, contained register):**
+  - **Plan sheets:** `components/planParts.js` holds PlanList, PlanSheet (radio sheets, a gráfica frame when chosen, papel-2 when unavailable), PlanHead, PlanTag, PlanItems, `planItems`, `planPrice` and `sortPlans`. They are shared with the professional signup. Plans always come from `GET /plans/`.
+  - **Minha assinatura:** a receipt panel with "Plano X" and a status stamp. Ruled lines show Valor, Próxima cobrança or Termina em, Último pagamento and Inclui.
+    - Pending payment, a scheduled cancellation and a scheduled plan change each show as a papel-2 box with an alerta border and a single undo or finish action. The page never offers an action the backend rejects in that state.
+    - Cancelling opens a native `<dialog>` with ruled reason radios.
+  - **Alterar plano:** choose a plan, then confirm.
+    - The current plan and Free (after a paid plan) are disabled and tagged.
+    - A summary panel says what will actually happen: an upgrade goes to Mercado Pago and stays pending until paid; a downgrade is scheduled for the next billing date.
+    - The button names the action ("Ir para o pagamento" or "Agendar a troca").
 - **Appointment detail (`pages/AppointmentDetail.jsx`, contained register):** a receipt-like panel headed "Agendamento nº", with a status stamp (bordered, -3deg, colour plus word).
   - **Lines:** a ruled `dl` with gráfica labels (one column below 480px). It shows the other party first, then service, day and time, and addresses (the client also sees the professional's).
   - **Actions:** WhatsApp to the other party (outlined gráfica), Marcar como concluído (pro only, primary), then Cancelar and Suspender as stamp buttons.

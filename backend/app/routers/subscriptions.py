@@ -765,20 +765,20 @@ async def cancel_subscription(
     if not subscription:
         raise HTTPException(
             status_code=404,
-            detail="Assinatura nao encontrada"
+            detail="Assinatura não encontrada."
         )
 
     if subscription.status == "cancelled":
         raise HTTPException(
             status_code=400,
-            detail="Assinatura ja esta cancelada"
+            detail="A assinatura já está cancelada."
         )
 
     # Verificar se ja tem cancelamento agendado
     if subscription.scheduled_cancellation_date:
         raise HTTPException(
             status_code=400,
-            detail=f"Cancelamento ja agendado para {subscription.scheduled_cancellation_date.strftime('%d/%m/%Y')}"
+            detail=f"O cancelamento já está agendado para {subscription.scheduled_cancellation_date.strftime('%d/%m/%Y')}."
         )
 
     # Buscar plano para verificar se e trial ou pago
@@ -884,7 +884,7 @@ async def cancel_subscription(
         )
 
         return {
-            "message": f"Cancelamento agendado para {cancellation_date.strftime('%d/%m/%Y')}. Voce pode continuar usando ate essa data.",
+            "message": f"Cancelamento agendado para {cancellation_date.strftime('%d/%m/%Y')}. Você continua usando até essa data.",
             "immediate": False,
             "cancellation_date": cancellation_date.isoformat()
         }
@@ -915,7 +915,7 @@ async def cancel_scheduled_change(
     if not subscription:
         raise HTTPException(
             status_code=404,
-            detail="Assinatura nao encontrada"
+            detail="Assinatura não encontrada."
         )
 
     has_scheduled_cancellation = subscription.scheduled_cancellation_date is not None
@@ -924,7 +924,7 @@ async def cancel_scheduled_change(
     if not has_scheduled_cancellation and not has_scheduled_downgrade:
         raise HTTPException(
             status_code=400,
-            detail="Nao ha nenhuma mudanca agendada para cancelar"
+            detail="Não há nenhuma mudança agendada para desfazer."
         )
 
     # Cancelar mudancas agendadas
@@ -939,7 +939,7 @@ async def cancel_scheduled_change(
     if has_scheduled_downgrade:
         subscription.scheduled_plan_id = None
         subscription.scheduled_plan_change_date = None
-        cancelled_what.append("mudanca de plano")
+        cancelled_what.append("troca de plano")
 
     await db.commit()
 
@@ -950,8 +950,7 @@ async def cancel_scheduled_change(
 
     return {
         "success": True,
-        "message": f"Sua {' e '.join(cancelled_what)} agendada foi cancelada. "
-                   f"Sua assinatura continua normalmente.",
+        "message": f"Pronto: {' e '.join(cancelled_what)} desfeito(a). Sua assinatura continua normalmente.",
         "cancelled": cancelled_what
     }
 
@@ -1251,7 +1250,7 @@ async def change_subscription_plan(
     if current_plan and current_plan.id == new_plan.id:
         raise HTTPException(
             status_code=400,
-            detail="Voce ja esta neste plano"
+            detail="Você já está neste plano."
         )
 
     # REGRA: Nao pode mudar de plano pago para Free
@@ -1259,7 +1258,7 @@ async def change_subscription_plan(
         if current_plan and current_plan.price > 0:
             raise HTTPException(
                 status_code=403,
-                detail="Nao e possivel voltar para o plano Free."
+                detail="Não é possível voltar para o plano Free depois de um plano pago."
             )
 
     # Buscar assinatura atual
@@ -1274,7 +1273,7 @@ async def change_subscription_plan(
     if existing_subscription and existing_subscription.scheduled_plan_id:
         raise HTTPException(
             status_code=400,
-            detail=f"Ja existe uma mudanca de plano agendada para {existing_subscription.scheduled_plan_change_date}"
+            detail=f"Já existe uma troca de plano agendada para {existing_subscription.scheduled_plan_change_date.strftime('%d/%m/%Y') if existing_subscription.scheduled_plan_change_date else 'o próximo vencimento'}."
         )
 
     # Verificar limite de servicos para downgrade
@@ -1376,7 +1375,7 @@ async def change_subscription_plan(
         else:
             raise HTTPException(
                 status_code=400,
-                detail="Nenhuma assinatura ativa para fazer downgrade"
+                detail="Não há assinatura ativa para trocar por um plano menor."
             )
 
         await db.commit()
@@ -1401,7 +1400,7 @@ async def change_subscription_plan(
 
         return {
             "success": True,
-            "message": f"Downgrade agendado! Voce continuara com o plano {old_plan_name} ate {change_date.strftime('%d/%m/%Y')}, quando passara para o plano {new_plan.name}.",
+            "message": f"Troca agendada: você continua no plano {old_plan_name} até {change_date.strftime('%d/%m/%Y')} e depois passa para o {new_plan.name}.",
             "plan": {"name": new_plan.name, "slug": new_plan.slug, "price": new_plan.price},
             "scheduled_change_date": change_date.isoformat(),
             "is_scheduled": True,
@@ -1413,7 +1412,7 @@ async def change_subscription_plan(
     if not current_user.cpf:
         raise HTTPException(
             status_code=400,
-            detail="CPF e obrigatorio para assinar um plano pago. Atualize seu perfil com o CPF."
+            detail="O CPF é obrigatório para assinar um plano pago. Atualize seu perfil com o CPF."
         )
 
     # Calcular pro-rata para upgrade entre planos pagos
@@ -1514,7 +1513,7 @@ async def change_subscription_plan(
             logger.error(f"Erro ao criar plano MP: {plan_response.status_code} - {plan_response.text}")
             raise HTTPException(
                 status_code=500,
-                detail="Erro ao criar novo plano no Mercado Pago"
+                detail="Não foi possível criar a nova assinatura no Mercado Pago. Tente de novo."
             )
 
         mp_plan = plan_response.json()
@@ -1524,7 +1523,7 @@ async def change_subscription_plan(
         if not mp_init_point:
             raise HTTPException(
                 status_code=500,
-                detail="Erro: Mercado Pago nao retornou URL de checkout"
+                detail="O Mercado Pago não devolveu o link de pagamento. Tente de novo."
             )
 
         # Atualizar assinatura no banco
@@ -1589,7 +1588,7 @@ async def change_subscription_plan(
         logger.error(f"Erro ao mudar plano: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Erro ao processar mudanca de plano: {str(e)}"
+            detail="Não foi possível trocar de plano agora. Tente de novo."
         )
 
 

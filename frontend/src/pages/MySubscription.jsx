@@ -1,1013 +1,467 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { CreditCard, Calendar, DollarSign, AlertCircle, X, ArrowLeft, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RotateCw, Check, MessageCircle, Mail, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
-
 import { API_URL } from '../config';
+import { PrimaryButton, PrimaryLink, StampButton, StampLink, FieldNote } from '../components/talao';
+import { PageHead, Panel, Notice } from '../components/dashboard/parts';
+import { parseLocalDate } from '../components/dashboard/utils';
+import { planItems, planPrice, PlanItems } from '../components/planParts';
+import { translateError } from '../components/apiErrors';
+import CancelSubscriptionDialog from '../components/dashboard/CancelSubscriptionDialog';
 
-// Motivos de cancelamento para analytics
-const CANCELLATION_REASONS = [
-  { id: 'not_using', label: 'Não estou usando a plataforma', description: 'Poucos clientes ou sem tempo para atender' },
-  { id: 'too_expensive', label: 'Valor muito alto', description: 'O custo não compensa o retorno' },
-  { id: 'found_alternative', label: 'Encontrei outra plataforma', description: 'Estou usando outro serviço similar' },
-  { id: 'technical_issues', label: 'Problemas técnicos', description: 'Dificuldades com o sistema ou pagamento' },
-  { id: 'temporary_pause', label: 'Pausa temporária', description: 'Pretendo voltar no futuro' },
-  { id: 'closing_business', label: 'Encerrando atividades', description: 'Não vou mais prestar serviços' },
-  { id: 'payment_issue', label: 'Problema no pagamento', description: 'Pagamento não foi processado corretamente' },
-  { id: 'other', label: 'Outro motivo', description: 'Prefiro informar manualmente' }
-];
-const PageContainer = styled.div`
-  min-height: 100vh;
-  background: linear-gradient(135deg, rgba(196, 32, 26, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
-  padding: 2rem;
+/* Minha assinatura (ProfessionalLayout) no registro contido.
+   A página só oferece o que o backend aceita no estado atual:
+   com cancelamento ou troca agendados, o botão é desfazer, não repetir. */
 
-  @media (max-width: 768px) {
-    padding: 1rem;
-  }
+const Sheet = styled(Panel)`
+  max-width: 46rem;
 `;
 
-const Header = styled.div`
-  max-width: 800px;
-  margin: 0 auto 2rem;
+const SheetHead = styled.div`
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 2px solid var(--grafica);
 
-  @media (max-width: 768px) {
-    margin-bottom: 1.5rem;
+  h2 {
+    font-family: var(--f-impresso);
+    font-weight: 800;
+    font-size: 1.85rem;
+    line-height: 1.05;
+  }
+
+  p {
+    margin-top: 0.2rem;
+    font-size: 0.98rem;
+    color: var(--texto-2-papel);
   }
 `;
 
-const BackButton = styled.button`
-  background: white;
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  padding: 0.75rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-
-  &:hover {
-    background: var(--bg-secondary);
-    transform: translateY(-2px);
-  }
-`;
-
-const Title = styled.h1`
-  font-size: 2rem;
+// Situação da assinatura como carimbo: cor e palavra juntas
+const Stamp = styled.strong`
+  padding: 0.15rem 0.55rem;
+  border: 2px solid ${({ $color }) => $color};
+  font-family: var(--f-impresso);
   font-weight: 800;
-  color: var(--text-primary);
-  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: ${({ $color }) => $color};
+  transform: rotate(-3deg);
+`;
 
-  @media (max-width: 768px) {
-    font-size: 1.5rem;
+const Lines = styled.dl`
+  > div {
+    display: grid;
+    grid-template-columns: 10rem minmax(0, 1fr);
+    gap: 0.25rem 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1.5px solid var(--pauta);
+
+    @media (max-width: 480px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  dt {
+    padding-top: 0.15rem;
+    font-family: var(--f-impresso);
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--grafica);
+  }
+
+  dd {
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+
+    strong {
+      font-weight: 600;
+    }
+
+    span {
+      display: block;
+      color: var(--texto-2-papel);
+    }
   }
 `;
 
-const Card = styled.div`
-  background: white;
-  border-radius: 20px;
-  padding: 2rem;
-  max-width: 800px;
-  margin: 0 auto 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+const Actions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
 
-  @media (max-width: 768px) {
-    padding: 1.5rem;
-    border-radius: 16px;
+  > * {
+    flex: 0 1 auto;
   }
 
   @media (max-width: 480px) {
-    padding: 1rem;
+    > * {
+      flex: 1 1 100%;
+    }
   }
 `;
 
-const StatusBadge = styled.div`
+const Scheduled = styled.div`
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: var(--papel-2);
+  border: 1.5px solid var(--alerta);
+
+  h3 {
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.25rem;
+  }
+
+  p {
+    margin-top: 0.25rem;
+    line-height: 1.5;
+  }
+
+  button {
+    margin-top: 0.85rem;
+  }
+`;
+
+const Support = styled(Panel)`
+  max-width: 46rem;
+  margin-top: 1.5rem;
+
+  h2 {
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.35rem;
+  }
+
+  > p {
+    margin-top: 0.3rem;
+    line-height: 1.5;
+    color: var(--texto-2-papel);
+  }
+`;
+
+const OutlineLink = styled.a`
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 0.95rem;
-  background: ${props => {
-    if (props.$status === 'active') return 'rgba(34, 197, 94, 0.1)';
-    if (props.$status === 'pending') return 'rgba(251, 146, 60, 0.1)';
-    return 'rgba(239, 68, 68, 0.1)';
-  }};
-  color: ${props => {
-    if (props.$status === 'active') return '#22c55e';
-    if (props.$status === 'pending') return '#fb923c';
-    return '#ef4444';
-  }};
-`;
-
-const InfoGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  margin-top: 2rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    margin-top: 1.5rem;
-  }
-`;
-
-const InfoCard = styled.div`
-  background: var(--bg-secondary);
-  border-radius: 16px;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-
-  svg {
-    color: var(--primary);
-    margin-bottom: 0.5rem;
-  }
-`;
-
-const InfoLabel = styled.div`
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  font-weight: 600;
-`;
-
-const InfoValue = styled.div`
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--text-primary);
-`;
-
-const Section = styled.div`
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 2px solid var(--border-color);
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 1rem;
-`;
-
-const Button = styled.button`
-  padding: 1rem 2rem;
-  background: ${props => props.$variant === 'danger' ? '#ef4444' : 'var(--primary)'};
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px ${props => props.$variant === 'danger' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(196, 32, 26, 0.3)'};
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-  }
-`;
-
-const Modal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
   justify-content: center;
-  z-index: 10000;
-  padding: 1rem;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 20px;
-  padding: 2rem;
-  max-width: 500px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-
-  @media (max-width: 768px) {
-    padding: 1.5rem;
-    border-radius: 16px;
-  }
-
-  @media (max-width: 480px) {
-    padding: 1rem;
-  }
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-`;
-
-const ModalTitle = styled.h3`
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  color: var(--text-secondary);
-  transition: all 0.2s;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0 1.2rem;
+  border: 2px solid var(--grafica);
+  border-radius: 2px;
+  font-family: var(--f-impresso);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--grafica);
 
   &:hover {
-    color: var(--text-primary);
-    transform: rotate(90deg);
+    background: var(--grafica);
+    color: var(--papel);
   }
 `;
 
-const TextArea = styled.textarea`
-  width: 100%;
-  padding: 1rem;
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  font-size: 1rem;
-  font-family: inherit;
-  resize: vertical;
-  min-height: 120px;
-  transition: all 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: var(--primary);
-  }
+const Loading = styled.p`
+  padding: 2rem 0;
+  color: var(--texto-2-papel);
 `;
 
-const ModalActions = styled.div`
-  display: flex;
-  gap: 1rem;
-  margin-top: 1.5rem;
-`;
+const STATUS = {
+  active: { label: 'Ativa', color: 'var(--sucesso)' },
+  pending: { label: 'Pendente', color: 'var(--alerta)' },
+  cancelled: { label: 'Cancelada', color: 'var(--erro)' },
+  suspended: { label: 'Suspensa', color: 'var(--alerta)' },
+  paused: { label: 'Pausada', color: 'var(--alerta)' },
+  expired: { label: 'Vencida', color: 'var(--erro)' },
+};
 
-const Alert = styled.div`
-  background: rgba(251, 146, 60, 0.1);
-  border: 2px solid rgba(251, 146, 60, 0.3);
-  border-radius: 12px;
-  padding: 1rem;
-  display: flex;
-  align-items: start;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+// Colunas Date chegam como 'AAAA-MM-DD'; cancelled_at é data e hora
+const day = (value) => {
+  if (!value) return null;
+  const d = value.length === 10 ? parseLocalDate(value) : new Date(value);
+  return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+};
 
-  svg {
-    color: #fb923c;
-    flex-shrink: 0;
-    margin-top: 0.125rem;
-  }
-`;
+const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
-const AlertText = styled.div`
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
-`;
-
-const ReasonList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-  max-height: 300px;
-  overflow-y: auto;
-  padding-right: 0.5rem;
-
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
-    border-radius: 3px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 3px;
-  }
-`;
-
-const ReasonOption = styled.label`
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1rem;
-  background: ${props => props.$selected ? 'rgba(196, 32, 26, 0.08)' : 'var(--bg-secondary)'};
-  border: 2px solid ${props => props.$selected ? 'var(--primary)' : 'transparent'};
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: ${props => props.$selected ? 'rgba(196, 32, 26, 0.12)' : 'rgba(0, 0, 0, 0.04)'};
-  }
-
-  input {
-    margin-top: 0.25rem;
-    accent-color: var(--primary);
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-  }
-`;
-
-const ReasonContent = styled.div`
-  flex: 1;
-`;
-
-const ReasonLabel = styled.div`
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.25rem;
-`;
-
-const ReasonDescription = styled.div`
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-`;
-
-const LoadingSpinner = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  font-size: 1.125rem;
-  color: var(--text-secondary);
-`;
+async function loadSubscription() {
+  const headers = authHeaders();
+  const [subRes, planRes] = await Promise.all([
+    fetch(`${API_URL}/subscriptions/my-subscription`, { headers }),
+    fetch(`${API_URL}/plans/me/features`, { headers }),
+  ]);
+  if (!subRes.ok && subRes.status !== 404) throw new Error(String(subRes.status));
+  if (!planRes.ok) throw new Error(String(planRes.status));
+  const sub = subRes.ok ? await subRes.json() : {};
+  return { subscription: sub.subscription || null, plan: await planRes.json() };
+}
 
 export default function MySubscription() {
-    const [subscription, setSubscription] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [showCancelModal, setShowCancelModal] = useState(false);
-    const [selectedReason, setSelectedReason] = useState('');
-    const [cancelReasonText, setCancelReasonText] = useState('');
-    const [cancelling, setCancelling] = useState(false);
-    const [userPlan, setUserPlan] = useState(null);
-    const [resetting, setResetting] = useState(false);
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const uid = useId();
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState({ status: 'loading', subscription: null, plan: null });
+  const [busy, setBusy] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [cancelOpen, setCancelOpen] = useState(false);
 
-    useEffect(() => {
-        fetchSubscription();
-        fetchUserPlan();
-    }, []);
+  useEffect(() => {
+    let cancelled = false;
+    loadSubscription()
+      .then((data) => { if (!cancelled) setState({ status: 'ok', ...data }); })
+      .catch((e) => {
+        console.error('Falha ao carregar a assinatura', e);
+        if (!cancelled) setState({ status: 'error', subscription: null, plan: null });
+      });
+    return () => { cancelled = true; };
+  }, [attempt]);
 
-    const fetchSubscription = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/subscriptions/my-subscription`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                setSubscription(data.subscription);
-            } else if (res.status === 404) {
-                toast.error('Você não possui uma assinatura');
-            } else {
-                toast.error('Erro ao carregar assinatura');
-            }
-        } catch (error) {
-            console.error('Erro ao buscar assinatura:', error);
-            toast.error('Erro ao carregar dados');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchUserPlan = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/plans/me/features`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                setUserPlan(data);
-            }
-        } catch (error) {
-            // Erro silencioso - usuário pode não ter plano
-        }
-    };
-
-    const handleResetAndResubscribe = async () => {
-        setResetting(true);
-        try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/subscriptions/reset-pending`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                toast.success('Assinatura resetada! Redirecionando para nova assinatura...');
-                setTimeout(() => {
-                    navigate('/subscription/setup');
-                }, 1000);
-            } else {
-                const error = await res.json();
-                toast.error(error.detail || 'Erro ao resetar assinatura');
-            }
-        } catch (error) {
-            console.error('Erro ao resetar assinatura:', error);
-            toast.error('Erro ao processar reset');
-        } finally {
-            setResetting(false);
-        }
-    };
-
-    const handleCancelSubscription = async () => {
-        if (!selectedReason) {
-            toast.error('Por favor, selecione o motivo do cancelamento');
-            return;
-        }
-
-        if (selectedReason === 'other' && !cancelReasonText.trim()) {
-            toast.error('Por favor, descreva o motivo do cancelamento');
-            return;
-        }
-
-        // Montar o motivo completo para enviar
-        const reasonObj = CANCELLATION_REASONS.find(r => r.id === selectedReason);
-        const fullReason = selectedReason === 'other'
-            ? `Outro: ${cancelReasonText}`
-            : `${reasonObj.label}: ${reasonObj.description}`;
-
-        setCancelling(true);
-        try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/subscriptions/cancel`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    reason: fullReason,
-                    reason_code: selectedReason  // Código para analytics
-                })
-            });
-
-            if (res.ok) {
-                toast.success('Assinatura cancelada com sucesso');
-                setShowCancelModal(false);
-                setSelectedReason('');
-                setCancelReasonText('');
-                fetchSubscription(); // Atualizar dados
-            } else {
-                const error = await res.json();
-                toast.error(error.detail || 'Erro ao cancelar assinatura');
-            }
-        } catch (error) {
-            console.error('Erro ao cancelar assinatura:', error);
-            toast.error('Erro ao processar cancelamento');
-        } finally {
-            setCancelling(false);
-        }
-    };
-
-    const handleCancelScheduledChange = async () => {
-        const token = localStorage.getItem('token');
-        try {
-            const res = await fetch(`${API_URL}/subscriptions/cancel-scheduled-change`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                toast.success(data.message);
-                fetchSubscription();
-            } else {
-                const error = await res.json();
-                toast.error(error.detail || 'Erro ao cancelar mudanca agendada');
-            }
-        } catch (error) {
-            console.error('Erro:', error);
-            toast.error('Erro ao processar');
-        }
-    };
-
-    const formatDate = (dateString) => {
-        if (!dateString) return 'Não definida';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric'
-        });
-    };
-
-    const formatCurrency = (value) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value);
-    };
-
-    const getStatusText = (status) => {
-        const statusMap = {
-            'active': 'Ativa',
-            'pending': 'Pendente',
-            'cancelled': 'Cancelada',
-            'inactive': 'Inativa'
-        };
-        return statusMap[status] || status;
-    };
-
-    if (loading) {
-        return (
-            <PageContainer>
-                <LoadingSpinner>Carregando dados da assinatura...</LoadingSpinner>
-            </PageContainer>
-        );
+  // Depois de uma ação, recarrega sem voltar para o "Carregando"
+  const refresh = async () => {
+    try {
+      setState({ status: 'ok', ...(await loadSubscription()) });
+    } catch {
+      setAttempt((n) => n + 1);
     }
+  };
 
-    // Se for Free, mostrar como ativo sem exigir pagamento
-    const isFreePlan = userPlan?.plan_slug === 'free';
-
-    if (!subscription && !isFreePlan) {
-        return (
-            <PageContainer>
-                <Header>
-                    <BackButton onClick={() => navigate('/dashboard')}>
-                        <ArrowLeft size={24} />
-                    </BackButton>
-                    <Title>Minha Assinatura</Title>
-                </Header>
-                <Card>
-                    <Alert>
-                        <AlertCircle size={24} />
-                        <AlertText>
-                            Você ainda não possui uma assinatura ativa. Para começar a receber solicitações de clientes,
-                            você precisa ativar sua assinatura profissional.
-                        </AlertText>
-                    </Alert>
-                    <Button onClick={() => navigate('/subscription/setup')}>
-                        Ativar Assinatura
-                    </Button>
-                </Card>
-            </PageContainer>
-        );
+  const post = async (key, path, fallback) => {
+    setBusy(key);
+    setActionError('');
+    try {
+      const res = await fetch(`${API_URL}${path}`, { method: 'POST', headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionError(translateError(data.detail, fallback));
+        return null;
+      }
+      return data;
+    } catch {
+      setActionError('Não deu para falar com o servidor. Confira sua conexão e tente de novo.');
+      return null;
+    } finally {
+      setBusy('');
     }
+  };
 
+  const undoScheduled = async () => {
+    const data = await post('undo', '/subscriptions/cancel-scheduled-change', 'Não deu para desfazer a mudança. Tente de novo.');
+    if (data) {
+      toast.success('Mudança desfeita. Sua assinatura continua como está.');
+      refresh();
+    }
+  };
+
+  const restart = async () => {
+    const data = await post('reset', '/subscriptions/reset-pending', 'Não deu para recomeçar a assinatura. Tente de novo.');
+    if (data) navigate('/subscription/setup');
+  };
+
+  if (state.status === 'loading') return <Loading role="status">Carregando a sua assinatura…</Loading>;
+
+  if (state.status === 'error') {
     return (
-        <PageContainer>
-            <Header>
-                <BackButton onClick={() => navigate('/dashboard')}>
-                    <ArrowLeft size={24} />
-                </BackButton>
-                <Title>Minha Assinatura</Title>
-            </Header>
-
-            <Card>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '0.5rem' }}>
-                            {userPlan?.plan_name || 'Plano Profissional Mensal'}
-                        </h2>
-                        <StatusBadge $status={isFreePlan ? 'active' : subscription.status}>
-                            <CheckCircle size={20} />
-                            {isFreePlan ? 'Ativa (Free)' : getStatusText(subscription.status)}
-                        </StatusBadge>
-                        {userPlan?.features?.badge_label && (
-                            <div style={{
-                                marginTop: '0.5rem',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.35rem',
-                                background: 'rgba(196, 32, 26, 0.1)',
-                                color: 'var(--primary)',
-                                padding: '0.25rem 0.75rem',
-                                borderRadius: '20px',
-                                fontSize: '0.8rem',
-                                fontWeight: 700
-                            }}>
-                                ✨ {userPlan.features.badge_label}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Para Plano Free: Mostrar info do plano gratuito permanente */}
-                {isFreePlan && (
-                    <InfoGrid>
-                        <InfoCard>
-                            <DollarSign size={24} />
-                            <InfoLabel>Valor Mensal</InfoLabel>
-                            <InfoValue>GRÁTIS</InfoValue>
-                        </InfoCard>
-
-                        <InfoCard>
-                            <Calendar size={24} />
-                            <InfoLabel>Validade</InfoLabel>
-                            <InfoValue style={{ fontSize: '1rem', color: '#10b981' }}>
-                                Permanente
-                            </InfoValue>
-                        </InfoCard>
-
-                        <InfoCard>
-                            <Calendar size={24} />
-                            <InfoLabel>Agendamentos/mês</InfoLabel>
-                            <InfoValue style={{ fontSize: '1.25rem' }}>
-                                {userPlan?.features?.max_appointments_per_month ?? '3'}
-                            </InfoValue>
-                        </InfoCard>
-                    </InfoGrid>
-                )}
-
-                {/* Para planos pagos: Mostrar info de pagamento */}
-                {!isFreePlan && subscription && (
-                    <InfoGrid>
-                        <InfoCard>
-                            <DollarSign size={24} />
-                            <InfoLabel>Valor Mensal</InfoLabel>
-                            <InfoValue>{formatCurrency(subscription.plan_amount)}</InfoValue>
-                        </InfoCard>
-
-                        <InfoCard>
-                            <Calendar size={24} />
-                            <InfoLabel>Próxima Cobrança</InfoLabel>
-                            <InfoValue style={{ fontSize: '1.125rem' }}>
-                                {formatDate(subscription.next_billing_date)}
-                            </InfoValue>
-                        </InfoCard>
-
-                        <InfoCard>
-                            <CreditCard size={24} />
-                            <InfoLabel>Último Pagamento</InfoLabel>
-                            <InfoValue style={{ fontSize: '1.125rem' }}>
-                                {formatDate(subscription.last_payment_date)}
-                            </InfoValue>
-                        </InfoCard>
-                    </InfoGrid>
-                )}
-
-                {/* Benefícios do Plano - Para todos */}
-                {userPlan && (
-                    <Section>
-                        <SectionTitle>Benefícios do Plano</SectionTitle>
-                        <div style={{ background: 'var(--bg-secondary)', borderRadius: '12px', padding: '1.5rem' }}>
-                            <ul style={{ margin: 0, paddingLeft: '1.5rem', color: 'var(--text-secondary)' }}>
-                                <li style={{ marginBottom: '0.5rem' }}>✓ Perfil visível para todos os clientes</li>
-                                <li style={{ marginBottom: '0.5rem' }}>
-                                    ✓ {userPlan.features.max_services
-                                        ? `Máximo ${userPlan.features.max_services} serviço cadastrado`
-                                        : 'Serviços ilimitados'}
-                                </li>
-                                {userPlan.features.max_appointments_per_month && (
-                                    <li style={{ marginBottom: '0.5rem' }}>
-                                        ✓ Até {userPlan.features.max_appointments_per_month} agendamentos por mês
-                                    </li>
-                                )}
-                                {!userPlan.features.max_appointments_per_month && (
-                                    <li style={{ marginBottom: '0.5rem' }}>✓ Agendamentos ilimitados</li>
-                                )}
-                                {userPlan.features.can_manage_schedule && (
-                                    <li style={{ marginBottom: '0.5rem' }}>✓ Gerencie sua agenda e disponibilidade</li>
-                                )}
-                                {userPlan.features.can_receive_bookings && (
-                                    <li style={{ marginBottom: '0.5rem' }}>✓ Receba agendamentos automáticos</li>
-                                )}
-                                {userPlan.features.priority_in_search === 1 && (
-                                    <li style={{ marginBottom: '0.5rem' }}>✓ ⭐ Destaque intermediário na busca</li>
-                                )}
-                                {userPlan.features.priority_in_search >= 2 && (
-                                    <li style={{ marginBottom: '0.5rem' }}>✓ 🏆 Topo da busca</li>
-                                )}
-                                <li>✓ Sem comissões por serviço realizado</li>
-                            </ul>
-                        </div>
-                    </Section>
-                )}
-
-                {/* Suporte Prioritário — exclusivo para Premium */}
-                {userPlan?.features?.priority_in_search >= 2 && (
-                    <Section>
-                        <SectionTitle>Suporte Prioritário</SectionTitle>
-                        <div style={{
-                            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(251, 191, 36, 0.04))',
-                            border: '1px solid rgba(245, 158, 11, 0.25)',
-                            borderRadius: '12px',
-                            padding: '1.5rem',
-                        }}>
-                            <p style={{ marginBottom: '1.25rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                                Como assinante Premium você tem acesso ao canal exclusivo de suporte prioritário.
-                                Nossa equipe responde em até 24 horas úteis.
-                            </p>
-                            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                                <a
-                                    href="https://wa.me/5534999715592?text=Olá, sou assinante Premium do ContrataPro e preciso de suporte."
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        background: '#25d366',
-                                        color: 'white',
-                                        padding: '0.75rem 1.25rem',
-                                        borderRadius: '10px',
-                                        fontWeight: 700,
-                                        fontSize: '0.9rem',
-                                        textDecoration: 'none',
-                                    }}
-                                >
-                                    💬 WhatsApp Suporte
-                                </a>
-                                <a
-                                    href="mailto:contato@contratapro.com.br?subject=Suporte Premium"
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        background: 'var(--bg-secondary)',
-                                        border: '1px solid var(--border)',
-                                        color: 'var(--text-primary)',
-                                        padding: '0.75rem 1.25rem',
-                                        borderRadius: '10px',
-                                        fontWeight: 700,
-                                        fontSize: '0.9rem',
-                                        textDecoration: 'none',
-                                    }}
-                                >
-                                    ✉️ Email Suporte
-                                </a>
-                            </div>
-                        </div>
-                    </Section>
-                )}
-
-                {/* Mudancas Agendadas */}
-                {subscription && (subscription.scheduled_cancellation_date || subscription.scheduled_plan) && (
-                    <Section>
-                        <SectionTitle>Mudancas Agendadas</SectionTitle>
-                        {subscription.scheduled_cancellation_date && (
-                            <Alert style={{ background: 'rgba(239, 68, 68, 0.1)', border: '2px solid rgba(239, 68, 68, 0.3)' }}>
-                                <AlertCircle size={24} color="#ef4444" />
-                                <AlertText>
-                                    <strong>Cancelamento agendado:</strong> Sua assinatura sera cancelada em{' '}
-                                    <strong>{formatDate(subscription.scheduled_cancellation_date)}</strong>.
-                                    Voce pode continuar usando todos os recursos ate essa data.
-                                </AlertText>
-                            </Alert>
-                        )}
-                        {subscription.scheduled_plan && (
-                            <Alert style={{ background: 'rgba(251, 146, 60, 0.1)', border: '2px solid rgba(251, 146, 60, 0.3)' }}>
-                                <AlertCircle size={24} color="#f59e0b" />
-                                <AlertText>
-                                    <strong>Downgrade agendado:</strong> Seu plano sera alterado para{' '}
-                                    <strong>{subscription.scheduled_plan.name}</strong> em{' '}
-                                    <strong>{formatDate(subscription.scheduled_plan_change_date)}</strong>.
-                                    Ate la, voce continua com todos os recursos do plano atual.
-                                </AlertText>
-                            </Alert>
-                        )}
-                        <Button
-                            onClick={handleCancelScheduledChange}
-                            style={{ background: '#c4201a', marginTop: '1rem' }}
-                        >
-                            <XCircle size={20} />
-                            Cancelar Mudanca Agendada
-                        </Button>
-                    </Section>
-                )}
-
-                {/* Gerenciar Assinatura - Para planos pagos ativos ou pendentes */}
-                {!isFreePlan && subscription && ['active', 'pending'].includes(subscription.status) && (
-                    <Section>
-                        <SectionTitle>Gerenciar Assinatura</SectionTitle>
-                        {subscription.status === 'pending' ? (
-                            <>
-                                <Alert style={{ background: 'rgba(251, 146, 60, 0.1)', border: '2px solid rgba(251, 146, 60, 0.3)' }}>
-                                    <AlertCircle size={24} />
-                                    <AlertText>
-                                        <strong>Pagamento pendente:</strong> Sua assinatura ainda não foi ativada.
-                                        Se o botão de pagamento não está funcionando ou você teve problemas,
-                                        clique em &quot;Resetar e Tentar Novamente&quot; para criar uma nova assinatura.
-                                    </AlertText>
-                                </Alert>
-                                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-                                    {subscription.init_point && (
-                                        <Button
-                                            onClick={() => window.open(subscription.init_point, '_blank')}
-                                            style={{ background: '#00b1ea' }}
-                                        >
-                                            <CreditCard size={20} />
-                                            Completar Pagamento
-                                        </Button>
-                                    )}
-                                    <Button
-                                        onClick={handleResetAndResubscribe}
-                                        disabled={resetting}
-                                        style={{ background: '#f59e0b' }}
-                                    >
-                                        {resetting ? 'Resetando...' : 'Resetar e Tentar Novamente'}
-                                    </Button>
-                                </div>
-                            </>
-                        ) : (
-                            <Alert>
-                                <AlertCircle size={24} />
-                                <AlertText>
-                                    <strong>Atencao:</strong> Ao solicitar o cancelamento, voce podera continuar
-                                    usando o sistema ate o dia do vencimento da sua assinatura. A cobranca recorrente
-                                    sera interrompida no Mercado Pago e o cancelamento sera efetivado na data de renovacao.
-                                </AlertText>
-                            </Alert>
-                        )}
-                        {subscription.status === 'active' && (
-                            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                                <Button onClick={() => navigate('/alterar-plano')} style={{ background: 'var(--primary)' }}>
-                                    <RefreshCw size={20} />
-                                    Alterar Plano
-                                </Button>
-                                <Button $variant="danger" onClick={() => setShowCancelModal(true)}>
-                                    <XCircle size={20} />
-                                    Cancelar Assinatura
-                                </Button>
-                            </div>
-                        )}
-                    </Section>
-                )}
-
-                {/* Botão de upgrade para Free */}
-                {isFreePlan && (
-                    <Section>
-                        <SectionTitle>Quer mais clientes?</SectionTitle>
-                        <Alert style={{ background: '#dbeafe', border: '1px solid #3b82f6' }}>
-                            <AlertCircle size={24} color="#3b82f6" />
-                            <AlertText style={{ color: '#1e40af' }}>
-                                Faça upgrade para o plano Pro e tenha serviços ilimitados, agendamentos ilimitados e destaque na busca!
-                            </AlertText>
-                        </Alert>
-                        <Button onClick={() => navigate('/alterar-plano')} style={{ background: '#c4201a' }}>
-                            <RefreshCw size={20} />
-                            Ver Planos Pro e Premium
-                        </Button>
-                    </Section>
-                )}
-
-                {!isFreePlan && subscription?.status === 'cancelled' && subscription.cancelled_at && (
-                    <Section>
-                        <Alert>
-                            <AlertCircle size={24} />
-                            <AlertText>
-                                <strong>Assinatura cancelada em:</strong> {formatDate(subscription.cancelled_at)}
-                                <br />
-                                {subscription.cancellation_reason && (
-                                    <>
-                                        <strong>Motivo:</strong> {subscription.cancellation_reason}
-                                    </>
-                                )}
-                            </AlertText>
-                        </Alert>
-                        <Button onClick={() => navigate('/subscription/setup')}>
-                            Reativar Assinatura
-                        </Button>
-                    </Section>
-                )}
-            </Card>
-
-            {/* Modal de Cancelamento */}
-            {showCancelModal && (
-                <Modal onClick={() => !cancelling && setShowCancelModal(false)}>
-                    <ModalContent onClick={(e) => e.stopPropagation()}>
-                        <ModalHeader>
-                            <ModalTitle>Cancelar Assinatura</ModalTitle>
-                            <CloseButton onClick={() => {
-                                setShowCancelModal(false);
-                                setSelectedReason('');
-                                setCancelReasonText('');
-                            }} disabled={cancelling}>
-                                <X size={24} />
-                            </CloseButton>
-                        </ModalHeader>
-
-                        {subscription?.status === 'pending' ? (
-                            <Alert style={{ background: 'rgba(59, 130, 246, 0.1)', border: '2px solid rgba(59, 130, 246, 0.3)' }}>
-                                <AlertCircle size={20} color="#3b82f6" />
-                                <AlertText style={{ color: '#1e40af' }}>
-                                    Ao cancelar, você poderá escolher um novo plano ou tentar o pagamento novamente.
-                                </AlertText>
-                            </Alert>
-                        ) : (
-                            <Alert>
-                                <AlertCircle size={20} />
-                                <AlertText>
-                                    Sentiremos sua falta! Seu perfil será removido das buscas e você não receberá mais
-                                    solicitações de clientes.
-                                </AlertText>
-                            </Alert>
-                        )}
-
-                        <div>
-                            <label style={{
-                                display: 'block',
-                                marginBottom: '0.75rem',
-                                fontWeight: 700,
-                                color: 'var(--text-primary)',
-                                fontSize: '0.95rem'
-                            }}>
-                                Por que você está cancelando? *
-                            </label>
-                            <ReasonList>
-                                {CANCELLATION_REASONS.map((reason) => (
-                                    <ReasonOption
-                                        key={reason.id}
-                                        $selected={selectedReason === reason.id}
-                                    >
-                                        <input
-                                            type="radio"
-                                            name="cancelReason"
-                                            value={reason.id}
-                                            checked={selectedReason === reason.id}
-                                            onChange={(e) => setSelectedReason(e.target.value)}
-                                            disabled={cancelling}
-                                        />
-                                        <ReasonContent>
-                                            <ReasonLabel>{reason.label}</ReasonLabel>
-                                            <ReasonDescription>{reason.description}</ReasonDescription>
-                                        </ReasonContent>
-                                    </ReasonOption>
-                                ))}
-                            </ReasonList>
-
-                            {selectedReason === 'other' && (
-                                <div style={{ marginTop: '1rem' }}>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '0.5rem',
-                                        fontWeight: 600,
-                                        color: 'var(--text-primary)',
-                                        fontSize: '0.9rem'
-                                    }}>
-                                        Conte-nos mais sobre o motivo *
-                                    </label>
-                                    <TextArea
-                                        value={cancelReasonText}
-                                        onChange={(e) => setCancelReasonText(e.target.value)}
-                                        placeholder="Seu feedback é muito importante para melhorarmos nossos serviços..."
-                                        disabled={cancelling}
-                                        style={{ minHeight: '80px' }}
-                                    />
-                                </div>
-                            )}
-                        </div>
-
-                        <ModalActions>
-                            <Button
-                                style={{ flex: 1, background: 'var(--border-color)', color: 'var(--text-primary)' }}
-                                onClick={() => {
-                                    setShowCancelModal(false);
-                                    setSelectedReason('');
-                                    setCancelReasonText('');
-                                }}
-                                disabled={cancelling}
-                            >
-                                {subscription?.status === 'pending' ? 'Voltar' : 'Manter Assinatura'}
-                            </Button>
-                            <Button
-                                style={{ flex: 1 }}
-                                $variant="danger"
-                                onClick={handleCancelSubscription}
-                                disabled={cancelling || !selectedReason}
-                            >
-                                {cancelling ? 'Cancelando...' : 'Confirmar Cancelamento'}
-                            </Button>
-                        </ModalActions>
-                    </ModalContent>
-                </Modal>
-            )}
-        </PageContainer>
+      <Notice $tone="erro" role="alert">
+        <p>
+          <AlertCircle size={18} aria-hidden="true" />
+          <span>Não deu para carregar a sua assinatura agora. Pode ser a conexão ou uma instabilidade do nosso lado.</span>
+        </p>
+        <PrimaryButton type="button" onClick={() => { setState({ status: 'loading', subscription: null, plan: null }); setAttempt((n) => n + 1); }}>
+          <RotateCw size={18} aria-hidden="true" /> Tentar de novo
+        </PrimaryButton>
+      </Notice>
     );
+  }
+
+  const { subscription: sub, plan } = state;
+  const isFree = plan?.plan_slug === 'free';
+  const features = plan?.features || {};
+  const isPremium = (features.priority_in_search ?? 0) >= 2;
+
+  const head = (
+    <PageHead>
+      <div>
+        <h1 data-display>Minha assinatura</h1>
+        <p>O seu plano, o que ele inclui e as cobranças no Mercado Pago.</p>
+      </div>
+    </PageHead>
+  );
+
+  // Sem plano e sem assinatura: só dá para assinar
+  if (!sub && !isFree) {
+    return (
+      <>
+        {head}
+        <Sheet>
+          <SheetHead>
+            <div>
+              <h2>Nenhum plano ativo</h2>
+              <p>Sem um plano, seu perfil não aparece na busca dos clientes.</p>
+            </div>
+          </SheetHead>
+          <Actions>
+            <PrimaryLink to="/subscription/setup">Escolher um plano</PrimaryLink>
+          </Actions>
+        </Sheet>
+      </>
+    );
+  }
+
+  const status = isFree ? { label: 'Grátis', color: 'var(--sucesso)' } : (STATUS[sub.status] || { label: sub.status, color: 'var(--texto-2-papel)' });
+  const scheduledCancel = !isFree && sub?.scheduled_cancellation_date;
+  const scheduledPlan = !isFree && sub?.scheduled_plan;
+  const isActive = !isFree && sub?.status === 'active';
+  const isPending = !isFree && sub?.status === 'pending';
+  const isEnded = !isFree && ['cancelled', 'expired', 'suspended', 'paused'].includes(sub?.status);
+
+  return (
+    <>
+      {head}
+
+      <Sheet aria-labelledby={`${uid}-plano`}>
+        <SheetHead>
+          <div>
+            <h2 id={`${uid}-plano`}>Plano {plan?.plan_name || sub?.plan?.name}</h2>
+            {features.badge_label && <p>Selo no perfil: “{features.badge_label}”</p>}
+          </div>
+          <Stamp $color={status.color}>{status.label}</Stamp>
+        </SheetHead>
+
+        <Lines>
+          <div>
+            <dt>Valor</dt>
+            <dd>
+              {isFree
+                ? <><strong>Grátis</strong><span>Sem prazo para acabar</span></>
+                : <strong>{planPrice(sub.plan_amount)} por mês</strong>}
+            </dd>
+          </div>
+          {isActive && (
+            <div>
+              <dt>{scheduledCancel ? 'Termina em' : 'Próxima cobrança'}</dt>
+              <dd><strong>{day(scheduledCancel || sub.next_billing_date) || 'Ainda sem data'}</strong></dd>
+            </div>
+          )}
+          {!isFree && sub?.last_payment_date && (
+            <div>
+              <dt>Último pagamento</dt>
+              <dd>{day(sub.last_payment_date)}</dd>
+            </div>
+          )}
+          {isEnded && sub.cancelled_at && (
+            <div>
+              <dt>Cancelada em</dt>
+              <dd>
+                {day(sub.cancelled_at)}
+                {sub.cancellation_reason && <span>{sub.cancellation_reason}</span>}
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt>Inclui</dt>
+            <dd>
+              <PlanItems style={{ marginTop: 0 }}>
+                {planItems(features).map((item) => <li key={item}><Check size={16} aria-hidden="true" /> {item}</li>)}
+                <li><Check size={16} aria-hidden="true" /> Sem comissão sobre os serviços</li>
+              </PlanItems>
+            </dd>
+          </div>
+        </Lines>
+
+        {/* Pagamento pendente: concluir no Mercado Pago ou recomeçar */}
+        {isPending && (
+          <Scheduled role="status">
+            <h3>Pagamento pendente</h3>
+            <p>Enquanto o pagamento não for concluído no Mercado Pago, seu perfil não aparece na busca. Se o link não funcionar, recomece a assinatura.</p>
+            <Actions style={{ marginTop: '0.85rem' }}>
+              {sub.init_point && (
+                <OutlineLink href={sub.init_point} target="_blank" rel="noopener noreferrer">
+                  Concluir o pagamento <ExternalLink size={18} aria-hidden="true" />
+                </OutlineLink>
+              )}
+              <StampButton type="button" onClick={restart} disabled={busy === 'reset'}>
+                {busy === 'reset' ? 'Recomeçando…' : 'Recomeçar a assinatura'}
+              </StampButton>
+            </Actions>
+          </Scheduled>
+        )}
+
+        {scheduledCancel && (
+          <Scheduled role="status">
+            <h3>Cancelamento agendado</h3>
+            <p>A cobrança já parou. Você continua usando tudo até {day(scheduledCancel)}; depois disso, seu perfil sai da busca.</p>
+            <StampButton type="button" onClick={undoScheduled} disabled={busy === 'undo'}>
+              {busy === 'undo' ? 'Desfazendo…' : 'Manter a assinatura'}
+            </StampButton>
+          </Scheduled>
+        )}
+
+        {scheduledPlan && (
+          <Scheduled role="status">
+            <h3>Troca de plano agendada</h3>
+            <p>
+              Você continua no plano atual até {day(sub.scheduled_plan_change_date)} e depois passa para o {scheduledPlan.name}
+              {scheduledPlan.price ? ` (${planPrice(scheduledPlan.price)} por mês)` : ''}.
+            </p>
+            <StampButton type="button" onClick={undoScheduled} disabled={busy === 'undo'}>
+              {busy === 'undo' ? 'Desfazendo…' : 'Desfazer a troca'}
+            </StampButton>
+          </Scheduled>
+        )}
+
+        {actionError && <FieldNote role="alert" $tone="erro">{actionError}</FieldNote>}
+
+        <Actions>
+          {isFree && <PrimaryLink to="/alterar-plano">Ver os planos Pro e Premium</PrimaryLink>}
+          {isActive && !scheduledPlan && !scheduledCancel && <StampLink to="/alterar-plano">Alterar o plano</StampLink>}
+          {isActive && !scheduledCancel && (
+            <StampButton type="button" onClick={() => { setActionError(''); setCancelOpen(true); }}>Cancelar a assinatura</StampButton>
+          )}
+          {isEnded && <PrimaryLink to="/subscription/setup">Assinar de novo</PrimaryLink>}
+        </Actions>
+      </Sheet>
+
+      {/* Canal de suporte do Premium */}
+      {isPremium && !isEnded && (
+        <Support aria-labelledby={`${uid}-suporte`}>
+          <h2 id={`${uid}-suporte`}>Suporte prioritário</h2>
+          <p>Como assinante Premium, você tem um canal exclusivo de suporte. Nossa equipe responde em até 24 horas úteis.</p>
+          <Actions>
+            <OutlineLink
+              href="https://wa.me/5534999715592?text=Olá, sou assinante Premium do ContrataPro e preciso de suporte."
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <MessageCircle size={20} aria-hidden="true" /> WhatsApp
+            </OutlineLink>
+            <OutlineLink href="mailto:contato@contratapro.com.br?subject=Suporte Premium">
+              <Mail size={20} aria-hidden="true" /> E-mail
+            </OutlineLink>
+          </Actions>
+        </Support>
+      )}
+
+      <CancelSubscriptionDialog
+        open={cancelOpen}
+        endDate={isActive ? day(sub.next_billing_date) : null}
+        onClose={() => setCancelOpen(false)}
+        onCancelled={(message) => {
+          setCancelOpen(false);
+          toast.success(message || 'Cancelamento registrado.');
+          refresh();
+        }}
+      />
+    </>
+  );
 }

@@ -1,722 +1,400 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useId } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { ArrowLeft, Check, AlertCircle, Crown, Star, Zap, X } from 'lucide-react';
+import { AlertCircle, RotateCw, Check, ArrowLeft, X } from 'lucide-react';
 import { toast } from 'sonner';
-
 import { API_URL } from '../config';
-import PlanComparisonTable from '../components/PlanComparisonTable';
+import { PrimaryButton, StampButton, FieldNote } from '../components/talao';
+import { PageHead, Panel, Notice } from '../components/dashboard/parts';
+import { parseLocalDate } from '../components/dashboard/utils';
+import { PlanList, PlanSheet, PlanHead, PlanItems, PlanTag, planItems, planPrice, sortPlans } from '../components/planParts';
+import { translateError } from '../components/apiErrors';
 
-const PageContainer = styled.div`
-  min-height: 100vh;
-  background: linear-gradient(135deg, rgba(196, 32, 26, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
-  padding: 2rem;
+/* Alterar plano (ProfessionalLayout): escolher a folha do plano e confirmar.
+   Nada vai para o Mercado Pago sem o botão de confirmação, e o resumo diz
+   antes o que acontece de verdade (ver /subscriptions/change-plan). */
 
-  @media (max-width: 768px) {
-    padding: 1rem;
-  }
-`;
-
-const Header = styled.div`
-  max-width: 1000px;
-  margin: 0 auto 2rem;
-  display: flex;
+const Back = styled(Link)`
+  display: inline-flex;
   align-items: center;
-  gap: 1rem;
-`;
-
-const BackButton = styled.button`
-  background: white;
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  padding: 0.75rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-
-  &:hover {
-    background: var(--bg-secondary);
-    transform: translateY(-2px);
-  }
-`;
-
-const Title = styled.h1`
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin: 0;
-
-  @media (max-width: 768px) {
-    font-size: 1.5rem;
-  }
-`;
-
-const CurrentPlanCard = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 1.5rem;
-  max-width: 1000px;
-  margin: 0 auto 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-`;
-
-const CurrentPlanLabel = styled.span`
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-`;
-
-const CurrentPlanName = styled.span`
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text-primary);
-`;
-
-const CurrentPlanBadge = styled.span`
-  background: rgba(196, 32, 26, 0.1);
-  color: var(--primary);
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.85rem;
+  gap: 0.35rem;
+  min-height: 44px;
+  margin-bottom: 0.5rem;
+  font-family: var(--f-impresso);
   font-weight: 600;
-`;
-
-const PlansGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
-  max-width: 1000px;
-  margin: 0 auto;
-`;
-
-const PlanCard = styled.div`
-  background: white;
-  border-radius: 20px;
-  padding: 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border: 3px solid ${props => props.$featured ? 'var(--primary)' : props.$current ? '#22c55e' : 'transparent'};
-  position: relative;
-  transition: all 0.3s;
-  opacity: ${props => props.$disabled ? 0.6 : 1};
-
-  ${props => !props.$disabled && `
-    &:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-    }
-  `}
-`;
-
-const PlanBadge = styled.div`
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: ${props => props.$type === 'current' ? '#22c55e' : 'var(--primary)'};
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-`;
-
-const PlanIcon = styled.div`
-  width: 60px;
-  height: 60px;
-  border-radius: 16px;
-  background: ${props => props.$color || 'var(--bg-secondary)'};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1rem;
-
-  svg {
-    color: ${props => props.$iconColor || 'var(--text-secondary)'};
-  }
-`;
-
-const PlanName = styled.h3`
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-`;
-
-const PlanPrice = styled.div`
-  display: flex;
-  align-items: baseline;
-  gap: 0.25rem;
-  margin-bottom: 1rem;
-`;
-
-const PriceValue = styled.span`
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: var(--text-primary);
-`;
-
-const PricePeriod = styled.span`
-  font-size: 1rem;
-  color: var(--text-secondary);
-`;
-
-const FeatureList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 1.5rem 0;
-`;
-
-const Feature = styled.li`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-
-  svg {
-    color: #22c55e;
-    flex-shrink: 0;
-  }
-`;
-
-const ActionButton = styled.button`
-  width: 100%;
-  padding: 1rem;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-
-  ${props => props.$variant === 'primary' && `
-    background: var(--primary);
-    color: white;
-
-    &:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(196, 32, 26, 0.3);
-    }
-  `}
-
-  ${props => props.$variant === 'current' && `
-    background: #22c55e;
-    color: white;
-    cursor: default;
-  `}
-
-  ${props => props.$variant === 'downgrade' && `
-    background: #f59e0b;
-    color: white;
-
-    &:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
-    }
-  `}
-
-  ${props => props.$variant === 'disabled' && `
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    cursor: not-allowed;
-  `}
-
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-    transform: none;
-  }
-`;
-
-const Alert = styled.div`
-  background: ${props => props.$type === 'warning' ? 'rgba(251, 146, 60, 0.1)' : 'rgba(59, 130, 246, 0.1)'};
-  border: 2px solid ${props => props.$type === 'warning' ? 'rgba(251, 146, 60, 0.3)' : 'rgba(59, 130, 246, 0.3)'};
-  border-radius: 12px;
-  padding: 1rem;
-  display: flex;
-  align-items: start;
-  gap: 0.75rem;
-  max-width: 1000px;
-  margin: 0 auto 2rem;
-
-  svg {
-    color: ${props => props.$type === 'warning' ? '#fb923c' : '#3b82f6'};
-    flex-shrink: 0;
-    margin-top: 0.125rem;
-  }
-`;
-
-const AlertText = styled.div`
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
-`;
-
-const Modal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  padding: 1rem;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 20px;
-  padding: 2rem;
-  max-width: 500px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-`;
-
-const ModalTitle = styled.h3`
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  color: var(--text-secondary);
-  transition: all 0.2s;
+  color: var(--grafica-escura);
+  text-underline-offset: 4px;
 
   &:hover {
-    color: var(--text-primary);
-    transform: rotate(90deg);
+    color: var(--nanquim);
   }
 `;
 
-const ModalActions = styled.div`
-  display: flex;
-  gap: 1rem;
+const Layout = styled.form`
+  max-width: 46rem;
+`;
+
+const Summary = styled(Panel)`
   margin-top: 1.5rem;
-`;
 
-const Button = styled.button`
-  flex: 1;
-  padding: 1rem;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
+  h2 {
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.35rem;
+  }
 
-  ${props => props.$variant === 'secondary' && `
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-  `}
-
-  ${props => props.$variant === 'primary' && `
-    background: var(--primary);
-    color: white;
-  `}
-
-  ${props => props.$variant === 'warning' && `
-    background: #f59e0b;
-    color: white;
-  `}
-
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
+  ul {
+    margin-top: 0.5rem;
+    padding-left: 1.15rem;
+    display: grid;
+    gap: 0.35rem;
+    line-height: 1.5;
   }
 `;
 
-const ServiceList = styled.div`
-  background: var(--bg-secondary);
-  border-radius: 12px;
-  padding: 1rem;
-  margin: 1rem 0;
-  max-height: 200px;
-  overflow-y: auto;
-`;
-
-const ServiceItem = styled.label`
+const Actions = styled.div`
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 0.75rem;
-  padding: 0.75rem;
-  background: white;
-  border-radius: 8px;
-  margin-bottom: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
+  margin-top: 1.25rem;
 
-  &:hover {
-    background: rgba(196, 32, 26, 0.05);
+  @media (max-width: 480px) {
+    > * {
+      flex: 1 1 100%;
+    }
+  }
+`;
+
+const Loading = styled.p`
+  padding: 2rem 0;
+  color: var(--texto-2-papel);
+`;
+
+/* Diálogo mínimo para quando o plano novo comporta menos serviços
+   (resposta services_exceeded do backend). */
+const Dialog = styled.dialog`
+  width: min(30rem, calc(100% - 2rem));
+  margin: auto;
+  padding: 1.5rem clamp(1.25rem, 4vw, 1.75rem) 1.75rem;
+  border: none;
+  border-top: 4px solid var(--grafica);
+  border-radius: 0;
+  background: var(--papel);
+  color: var(--nanquim);
+  box-shadow: 0 24px 48px -20px rgba(23, 23, 27, 0.55);
+
+  &::backdrop {
+    background: rgba(23, 23, 27, 0.45);
   }
 
-  &:last-child {
-    margin-bottom: 0;
+  h2 {
+    font-family: var(--f-impresso);
+    font-weight: 800;
+    font-size: 1.6rem;
+  }
+
+  p {
+    margin: 0.4rem 0 1rem;
+    line-height: 1.5;
+    color: var(--texto-2-papel);
+  }
+
+  label {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    min-height: 44px;
+    border-bottom: 1.5px solid var(--pauta);
+    cursor: pointer;
   }
 
   input {
-    accent-color: var(--primary);
-    width: 18px;
-    height: 18px;
+    width: 1.15rem;
+    height: 1.15rem;
+    accent-color: var(--grafica);
   }
 `;
 
-const LoadingSpinner = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  font-size: 1.125rem;
-  color: var(--text-secondary);
-`;
+const readPlans = async () => {
+  const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
+  const [plansRes, meRes, subRes] = await Promise.all([
+    fetch(`${API_URL}/plans/`),
+    fetch(`${API_URL}/plans/me/features`, { headers }),
+    fetch(`${API_URL}/subscriptions/my-subscription`, { headers }),
+  ]);
+  if (!plansRes.ok || !meRes.ok) throw new Error('falha ao carregar os planos');
+  const sub = subRes.ok ? (await subRes.json()).subscription : null;
+  return { plans: sortPlans(await plansRes.json()), me: await meRes.json(), subscription: sub || null };
+};
 
-// Definição dos planos
-const PLANS = [
-  {
-    id: 'free',
-    name: 'Free',
-    slug: 'free',
-    price: 0,
-    max_services: null,
-    icon: Zap,
-    iconColor: '#10b981',
-    bgColor: 'rgba(16, 185, 129, 0.1)',
-    features: [
-      'Gratuito permanente',
-      'Serviços ilimitados',
-      'Até 3 agendamentos por mês',
-      'Perfil público',
-    ],
-    isFreePlan: true
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    slug: 'pro',
-    price: 19.90,
-    max_services: null,
-    icon: Star,
-    iconColor: '#c4201a',
-    bgColor: 'rgba(196, 32, 26, 0.1)',
-    features: [
-      'Serviços ilimitados',
-      'Agendamentos ilimitados',
-      'Badge Profissional Ativo',
-      'Destaque intermediário na busca',
-      'Sem comissões',
-    ],
-    featured: true
-  },
-  {
-    id: 'premium',
-    name: 'Premium',
-    slug: 'premium',
-    price: 39.90,
-    max_services: null,
-    icon: Crown,
-    iconColor: '#8b5cf6',
-    bgColor: 'rgba(139, 92, 246, 0.1)',
-    features: [
-      'Tudo do Pro',
-      'Topo da busca',
-      'Selo Destaque',
-      'Relatório de desempenho',
-      'Sem comissões',
-    ],
-  }
-];
+const dayMonth = (iso) => (iso ? parseLocalDate(iso).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }) : null);
 
 export default function ChangePlan() {
-  const [loading, setLoading] = useState(true);
-  const [currentPlan, setCurrentPlan] = useState(null);
-  const [userFeatures, setUserFeatures] = useState(null);
-  const [changingPlan, setChangingPlan] = useState(false);
-  const [showServiceModal, setShowServiceModal] = useState(false);
-  const [excessServices, setExcessServices] = useState([]);
-  const [selectedServices, setSelectedServices] = useState([]);
-  const [pendingPlanChange, setPendingPlanChange] = useState(null);
-  const [maxAllowed, setMaxAllowed] = useState(0);
   const navigate = useNavigate();
+  const uid = useId();
+  const dialogRef = useRef(null);
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState({ status: 'loading' });
+  const [selected, setSelected] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null); // { text, cpf }
+  const [excess, setExcess] = useState(null); // { services, max }
+  const [keep, setKeep] = useState([]);
 
   useEffect(() => {
-    fetchCurrentPlan();
-  }, []);
-
-  const fetchCurrentPlan = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/plans/me/features`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+    let cancelled = false;
+    readPlans()
+      .then((data) => { if (!cancelled) setState({ status: 'ok', ...data }); })
+      .catch((e) => {
+        console.error('Falha ao carregar os planos', e);
+        if (!cancelled) setState({ status: 'error' });
       });
+    return () => { cancelled = true; };
+  }, [attempt]);
 
-      if (res.ok) {
-        const data = await res.json();
-        setUserFeatures(data);
-        setCurrentPlan(data.plan_slug);
-      }
-    } catch (error) {
-      console.error('Erro ao buscar plano atual:', error);
-      toast.error('Erro ao carregar dados do plano');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (excess && !dialog.open) dialog.showModal();
+    if (!excess && dialog.open) dialog.close();
+  }, [excess]);
 
-  const handleChangePlan = async (newPlanSlug) => {
-    if (newPlanSlug === currentPlan) return;
+  const back = <Back to="/minha-assinatura"><ArrowLeft size={18} aria-hidden="true" /> Voltar para minha assinatura</Back>;
+  const head = (
+    <PageHead>
+      <div>
+        <h1 data-display>Alterar o plano</h1>
+        <p>Escolha o plano e confira o que acontece antes de confirmar.</p>
+      </div>
+    </PageHead>
+  );
 
-    setChangingPlan(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/subscriptions/change-plan/${newPlanSlug}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+  if (state.status === 'loading') return <Loading role="status">Carregando os planos…</Loading>;
 
-      const data = await res.json();
-
-      if (res.ok) {
-        if (data.success === false && data.error === 'services_exceeded') {
-          // Precisa remover serviços antes de fazer downgrade
-          setExcessServices(data.current_services);
-          setMaxAllowed(data.max_allowed);
-          setPendingPlanChange(newPlanSlug);
-          setSelectedServices(data.current_services.slice(0, data.max_allowed).map(s => s.id));
-          setShowServiceModal(true);
-        } else if (data.init_point) {
-          // Plano pago - redirecionar para checkout
-          toast.success('Redirecionando para pagamento...');
-          window.location.href = data.init_point;
-        } else if (data.success) {
-          // Mudança bem sucedida (plano free ou grátis)
-          toast.success(data.message);
-          navigate('/minha-assinatura');
-        }
-      } else {
-        toast.error(data.detail || 'Erro ao alterar plano');
-      }
-    } catch (error) {
-      console.error('Erro ao alterar plano:', error);
-      toast.error('Erro ao processar alteração');
-    } finally {
-      setChangingPlan(false);
-    }
-  };
-
-  const handleServiceSelection = (serviceId) => {
-    setSelectedServices(prev => {
-      if (prev.includes(serviceId)) {
-        return prev.filter(id => id !== serviceId);
-      } else if (prev.length < maxAllowed) {
-        return [...prev, serviceId];
-      }
-      return prev;
-    });
-  };
-
-  const handleConfirmServiceRemoval = async () => {
-    if (selectedServices.length !== maxAllowed) {
-      toast.error(`Selecione exatamente ${maxAllowed} serviço(s) para manter`);
-      return;
-    }
-
-    setChangingPlan(true);
-    try {
-      const token = localStorage.getItem('token');
-
-      // Primeiro remove os serviços excedentes
-      const removeRes = await fetch(`${API_URL}/plans/me/remove-excess-services`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ keep_service_ids: selectedServices })
-      });
-
-      if (!removeRes.ok) {
-        const error = await removeRes.json();
-        toast.error(error.detail || 'Erro ao remover serviços');
-        return;
-      }
-
-      // Agora tenta mudar o plano novamente
-      setShowServiceModal(false);
-      await handleChangePlan(pendingPlanChange);
-
-    } catch (error) {
-      console.error('Erro ao remover serviços:', error);
-      toast.error('Erro ao processar remoção de serviços');
-    } finally {
-      setChangingPlan(false);
-    }
-  };
-
-  const getButtonConfig = (plan) => {
-    const isCurrentPlan = plan.slug === currentPlan;
-    const currentPlanData = PLANS.find(p => p.slug === currentPlan);
-    const isUpgrade = currentPlanData && plan.price > currentPlanData.price;
-    const isDowngrade = currentPlanData && plan.price < currentPlanData.price;
-    const isPaidToFree = plan.slug === 'free' && currentPlanData && currentPlanData.price > 0;
-
-    if (isCurrentPlan) {
-      return { variant: 'current', text: 'Plano Atual', disabled: true };
-    }
-
-    if (isPaidToFree) {
-      return { variant: 'disabled', text: 'Indisponível', disabled: true };
-    }
-
-    if (isUpgrade) {
-      return { variant: 'primary', text: 'Fazer Upgrade', disabled: false };
-    }
-
-    if (isDowngrade) {
-      return { variant: 'downgrade', text: 'Fazer Downgrade', disabled: false };
-    }
-
-    return { variant: 'primary', text: 'Selecionar', disabled: false };
-  };
-
-  if (loading) {
+  if (state.status === 'error') {
     return (
-      <PageContainer>
-        <LoadingSpinner>Carregando planos...</LoadingSpinner>
-      </PageContainer>
+      <>
+        {back}
+        <Notice $tone="erro" role="alert">
+          <p>
+            <AlertCircle size={18} aria-hidden="true" />
+            <span>Não deu para carregar os planos agora. Pode ser a conexão ou uma instabilidade do nosso lado.</span>
+          </p>
+          <PrimaryButton type="button" onClick={() => { setState({ status: 'loading' }); setAttempt((n) => n + 1); }}>
+            <RotateCw size={18} aria-hidden="true" /> Tentar de novo
+          </PrimaryButton>
+        </Notice>
+      </>
     );
   }
 
-  const currentPlanData = PLANS.find(p => p.slug === currentPlan);
+  const { plans, me, subscription } = state;
+  const current = plans.find((p) => p.slug === me.plan_slug) || null;
+  const currentPrice = current?.price ?? 0;
+  const hasPaid = currentPrice > 0;
+
+  // Já existe troca ou cancelamento agendado: o backend recusa outra troca
+  if (subscription?.scheduled_plan || subscription?.scheduled_cancellation_date) {
+    return (
+      <>
+        {back}
+        {head}
+        <Notice $tone="alerta">
+          <p>
+            <AlertCircle size={18} aria-hidden="true" />
+            <span>
+              {subscription.scheduled_plan
+                ? `Já existe uma troca para o plano ${subscription.scheduled_plan.name} agendada para ${dayMonth(subscription.scheduled_plan_change_date)}. Desfaça essa troca em Minha assinatura para escolher outro plano.`
+                : `Sua assinatura tem um cancelamento agendado para ${dayMonth(subscription.scheduled_cancellation_date)}. Mantenha a assinatura em Minha assinatura antes de trocar de plano.`}
+            </span>
+          </p>
+          <Link to="/minha-assinatura">Ir para minha assinatura</Link>
+        </Notice>
+      </>
+    );
+  }
+
+  const chosen = plans.find((p) => p.slug === selected) || null;
+  const isUpgrade = chosen && chosen.price > currentPrice;
+  const isDowngrade = chosen && hasPaid && chosen.price < currentPrice;
+  const billingDate = dayMonth(subscription?.next_billing_date);
+
+  const send = async (slug) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/subscriptions/change-plan/${slug}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const text = translateError(data.detail, 'Não deu para trocar de plano agora. Tente de novo.');
+        setError({ text, cpf: /CPF/.test(text) });
+        return;
+      }
+      if (data.success === false && data.error === 'services_exceeded') {
+        setKeep(data.current_services.slice(0, data.max_allowed).map((s) => s.id));
+        setExcess({ services: data.current_services, max: data.max_allowed });
+        return;
+      }
+      if (data.init_point) {
+        window.location.href = data.init_point;
+        return;
+      }
+      toast.success(data.is_scheduled ? 'Troca de plano agendada.' : 'Plano alterado.');
+      navigate('/minha-assinatura');
+    } catch {
+      setError({ text: 'Não deu para falar com o servidor. Confira sua conexão e tente de novo.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirm = (e) => {
+    e.preventDefault();
+    if (!chosen) {
+      setError({ text: 'Escolha um plano diferente do atual.' });
+      return;
+    }
+    send(chosen.slug);
+  };
+
+  const keepAndContinue = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_URL}/plans/me/remove-excess-services`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keep_service_ids: keep }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setExcess(null);
+      if (!res.ok) {
+        setError({ text: translateError(data.detail, 'Não deu para remover os serviços. Tente de novo.') });
+        setSaving(false);
+        return;
+      }
+      await send(chosen.slug);
+    } catch {
+      setExcess(null);
+      setSaving(false);
+      setError({ text: 'Não deu para falar com o servidor. Confira sua conexão e tente de novo.' });
+    }
+  };
 
   return (
-    <PageContainer>
-      <Header>
-        <BackButton onClick={() => navigate('/minha-assinatura')}>
-          <ArrowLeft size={24} />
-        </BackButton>
-        <Title>Alterar Plano</Title>
-      </Header>
+    <>
+      {back}
+      {head}
 
-      {currentPlanData && (
-        <CurrentPlanCard>
-          <CurrentPlanLabel>Seu plano atual:</CurrentPlanLabel>
-          <CurrentPlanName>{currentPlanData.name}</CurrentPlanName>
-          <CurrentPlanBadge>
-            {currentPlanData.price === 0
-              ? 'Grátis'
-              : `R$ ${currentPlanData.price.toFixed(2).replace('.', ',')}/mês`}
-          </CurrentPlanBadge>
-        </CurrentPlanCard>
-      )}
+      <Layout onSubmit={confirm} noValidate>
+        <PlanList>
+          <legend>Planos</legend>
+          {plans.map((plan) => {
+            const isCurrent = plan.slug === me.plan_slug;
+            // O grátis não volta depois de um plano pago (regra do backend)
+            const blocked = plan.slug === 'free' && hasPaid;
+            const off = isCurrent || blocked;
+            const on = selected === plan.slug;
+            return (
+              <PlanSheet key={plan.id} $on={on} $off={off}>
+                <input
+                  type="radio"
+                  name={`${uid}-plano`}
+                  value={plan.slug}
+                  checked={on || (isCurrent && !selected)}
+                  disabled={off}
+                  onChange={() => { setSelected(plan.slug); setError(null); }}
+                />
+                <PlanHead>
+                  <strong>{plan.name}</strong>
+                  <span>
+                    {plan.price === 0 ? 'Grátis' : planPrice(plan.price)}
+                    <small>{plan.price === 0 ? ' sem prazo' : ' por mês'}</small>
+                  </span>
+                </PlanHead>
+                {isCurrent && <PlanTag $tone="atual">Seu plano atual</PlanTag>}
+                {blocked && <PlanTag>Não volta depois de um plano pago</PlanTag>}
+                <PlanItems>
+                  {planItems(plan).map((item) => <li key={item}><Check size={16} aria-hidden="true" /> {item}</li>)}
+                </PlanItems>
+              </PlanSheet>
+            );
+          })}
+        </PlanList>
 
-      {currentPlanData && currentPlanData.price > 0 && (
-        <Alert $type="info">
-          <AlertCircle size={24} />
-          <AlertText>
-            <strong>Importante:</strong> Ao mudar de plano, sua assinatura atual será cancelada e uma nova será criada.
-            Você precisará completar o pagamento do novo plano.
-          </AlertText>
-        </Alert>
-      )}
+        {chosen && (
+          <Summary aria-live="polite">
+            <h2>{isDowngrade ? `Trocar para o ${chosen.name}` : `Passar para o ${chosen.name}`}</h2>
+            <ul>
+              {isUpgrade && (
+                <>
+                  <li>Você vai para o Mercado Pago autorizar a assinatura de {planPrice(chosen.price)} por mês.</li>
+                  {hasPaid && billingDate
+                    ? <li>A assinatura atual é cancelada no Mercado Pago, e a primeira cobrança do novo valor é em {billingDate}, no lugar da próxima cobrança.</li>
+                    : <li>A cobrança começa quando você concluir o pagamento.</li>}
+                  <li>Até você concluir o pagamento, sua assinatura fica pendente e seu perfil não aparece na busca.</li>
+                </>
+              )}
+              {isDowngrade && (
+                <>
+                  <li>Nada muda agora: você continua no {current?.name} até {billingDate || 'a próxima cobrança'}.</li>
+                  <li>Depois disso, o plano passa para o {chosen.name}, por {planPrice(chosen.price)} por mês.</li>
+                  <li>Dá para desfazer a troca em Minha assinatura até essa data.</li>
+                </>
+              )}
+            </ul>
+          </Summary>
+        )}
 
-      <PlanComparisonTable
-        currentPlan={currentPlan}
-        onChangePlan={handleChangePlan}
-        changingPlan={changingPlan}
-      />
+        {error && (
+          <FieldNote role="alert" $tone="erro">
+            {error.text}
+            {error.cpf && <> <Link to="/profile" style={{ color: 'inherit' }}>Atualizar o perfil</Link></>}
+          </FieldNote>
+        )}
 
-      {/* Modal para remoção de serviços */}
-      {showServiceModal && (
-        <Modal onClick={() => !changingPlan && setShowServiceModal(false)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Selecione os serviços</ModalTitle>
-              <CloseButton onClick={() => setShowServiceModal(false)} disabled={changingPlan}>
-                <X size={24} />
-              </CloseButton>
-            </ModalHeader>
+        <Actions>
+          <PrimaryButton type="submit" disabled={saving || !chosen}>
+            {saving
+              ? 'Enviando…'
+              : !chosen
+                ? 'Escolha um plano'
+                : isDowngrade
+                  ? 'Agendar a troca'
+                  : 'Ir para o pagamento'}
+          </PrimaryButton>
+        </Actions>
+      </Layout>
 
-            <Alert $type="warning">
-              <AlertCircle size={20} />
-              <AlertText>
-                O novo plano permite apenas <strong>{maxAllowed} serviço(s)</strong>.
-                Selecione quais deseja manter. Os demais serão removidos.
-              </AlertText>
-            </Alert>
-
-            <ServiceList>
-              {excessServices.map((service) => (
-                <ServiceItem key={service.id}>
-                  <input
-                    type="checkbox"
-                    checked={selectedServices.includes(service.id)}
-                    onChange={() => handleServiceSelection(service.id)}
-                    disabled={changingPlan}
-                  />
-                  <span>{service.title}</span>
-                </ServiceItem>
-              ))}
-            </ServiceList>
-
-            <div style={{
-              textAlign: 'center',
-              color: 'var(--text-secondary)',
-              fontSize: '0.9rem',
-              marginBottom: '0.5rem'
-            }}>
-              Selecionados: {selectedServices.length} / {maxAllowed}
-            </div>
-
-            <ModalActions>
-              <Button
-                $variant="secondary"
-                onClick={() => setShowServiceModal(false)}
-                disabled={changingPlan}
-              >
-                Cancelar
-              </Button>
-              <Button
-                $variant="warning"
-                onClick={handleConfirmServiceRemoval}
-                disabled={changingPlan || selectedServices.length !== maxAllowed}
-              >
-                {changingPlan ? 'Processando...' : 'Confirmar e Continuar'}
-              </Button>
-            </ModalActions>
-          </ModalContent>
-        </Modal>
-      )}
-    </PageContainer>
+      <Dialog ref={dialogRef} aria-labelledby={`${uid}-servicos`} onClose={() => setExcess(null)}>
+        {excess && (
+          <>
+            <h2 id={`${uid}-servicos`}>Quais serviços ficam?</h2>
+            <p>O plano {chosen?.name} permite {excess.max} {excess.max === 1 ? 'serviço' : 'serviços'}. Os outros serão apagados do seu perfil.</p>
+            {excess.services.map((s) => (
+              <label key={s.id}>
+                <input
+                  type="checkbox"
+                  checked={keep.includes(s.id)}
+                  onChange={() => setKeep((k) => (k.includes(s.id) ? k.filter((x) => x !== s.id) : k.length < excess.max ? [...k, s.id] : k))}
+                />
+                {s.title}
+              </label>
+            ))}
+            <Actions>
+              <StampButton type="button" onClick={() => setExcess(null)}><X size={18} aria-hidden="true" /> Voltar</StampButton>
+              <PrimaryButton type="button" onClick={keepAndContinue} disabled={saving || keep.length !== excess.max}>
+                Manter {keep.length} de {excess.max} e continuar
+              </PrimaryButton>
+            </Actions>
+          </>
+        )}
+      </Dialog>
+    </>
   );
 }
