@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
-from sqlalchemy import func, and_
+from sqlalchemy.orm import selectinload, aliased
+from sqlalchemy import func, and_, or_
 from typing import Optional
 from datetime import date
 
 from ..database import get_db
-from ..models import Notification, Appointment, User
+from ..models import Notification, Appointment, User, Service
 from ..schemas import NotificationResponse, NotificationPagination
 from ..dependencies import get_current_user
 from ..config import settings
@@ -61,15 +61,34 @@ async def get_my_notifications(
 
     filter_stmt = and_(*filters)
 
+    # Busca no banco (antes da paginação) por título, serviço, cliente ou profissional
+    def with_search(stmt):
+        if not search:
+            return stmt
+        client = aliased(User)
+        professional = aliased(User)
+        term = f"%{search.strip()}%"
+        return (
+            stmt.outerjoin(Appointment, Appointment.id == Notification.appointment_id)
+            .outerjoin(Service, Service.id == Appointment.service_id)
+            .outerjoin(client, client.id == Appointment.client_id)
+            .outerjoin(professional, professional.id == Appointment.professional_id)
+            .filter(or_(
+                Notification.title.ilike(term),
+                Service.title.ilike(term),
+                client.name.ilike(term),
+                professional.name.ilike(term),
+            ))
+        )
+
     # Contar total
-    count_query = select(func.count()).select_from(Notification).filter(filter_stmt)
+    count_query = with_search(select(func.count(Notification.id)).select_from(Notification).filter(filter_stmt))
     count_result = await db.execute(count_query)
     total = count_result.scalar()
 
     # Buscar itens
     query = (
-        select(Notification)
-        .filter(filter_stmt)
+        with_search(select(Notification).filter(filter_stmt))
         .order_by(Notification.created_at.desc())
         .offset(skip)
         .limit(size)
@@ -106,18 +125,6 @@ async def get_my_notifications(
                     resp.client_name = appt.client.name
 
         items.append(resp)
-
-    # Filtrar por busca se fornecido (busca client-side nos dados enriquecidos)
-    if search:
-        search_lower = search.lower()
-        items = [
-            item for item in items
-            if (item.service_title and search_lower in item.service_title.lower()) or
-               (item.professional_name and search_lower in item.professional_name.lower()) or
-               (item.client_name and search_lower in item.client_name.lower()) or
-               (search_lower in item.title.lower())
-        ]
-        total = len(items)
 
     pages = (total + size - 1) // size if total > 0 else 0
 

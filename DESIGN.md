@@ -289,6 +289,12 @@ Shared pieces live in `frontend/src/components/talao/`. Pages import them from t
 - **Client area (`pages/ClientDashboard.jsx`, contained register):** tabs are links (`/my-appointments`, `?tab=conta`).
   - **Appointments:** grouped as Próximos (ascending) and Anteriores (descending). Each row links to the detail page with a printed day block (number plus month), the service, date and professional, and a status word in its colour.
   - **Minha conta:** a form with the signup `TextField`/`AddressFields`. A CEP lookup refills city and UF, and errors show inline.
+- **Filtered lists (`pages/History.jsx`, `pages/MyNotifications.jsx`, contained register):** built from shared pieces.
+  - **Shared pieces:** `components/dashboard/listParts.js` (FilterPanel, FilterGrid, Shortcuts/Chip, FilterActions, ResultCount, EmptyList), `AppointmentRow.jsx` (the same row as Meus agendamentos) and `Pager.jsx`.
+  - **Filters:** a form whose draft state only takes effect on "Filtrar". "Limpar" resets both the draft and the applied filters. Dates use native inputs and are checked for start ≤ end.
+  - **Pagination:** Anterior / "Página X de Y" / Próxima, which fits at 360px.
+  - **History:** period shortcuts (7 dias, 30 dias, 90 dias, 12 meses) as square chips with `aria-pressed`.
+  - **Notifications:** each row shows the type as a printed label, the title, the appointment details and the delivery state (Enviado / Na fila / Não foi enviado), and links to the appointment.
 - **Appointment detail (`pages/AppointmentDetail.jsx`, contained register):** a receipt-like panel headed "Agendamento nº", with a status stamp (bordered, -3deg, colour plus word).
   - **Lines:** a ruled `dl` with gráfica labels (one column below 480px). It shows the other party first, then service, day and time, and addresses (the client also sees the professional's).
   - **Actions:** WhatsApp to the other party (outlined gráfica), Marcar como concluído (pro only, primary), then Cancelar and Suspender as stamp buttons.

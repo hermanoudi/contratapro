@@ -1,616 +1,309 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useId } from 'react';
+import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import {
-    ChevronLeft, ChevronRight, Calendar, Bell, Filter, X,
-    CheckCircle, XCircle, AlertCircle, Clock, Mail, Search,
-    User, Briefcase
-} from 'lucide-react';
-import { toast } from 'sonner';
+import { AlertCircle, RotateCw, Filter, X, Search, ChevronRight } from 'lucide-react';
 import { API_URL } from '../config';
+import { PrimaryButton, StampButton, FieldLabel, InputBox, TextInput, FieldNote } from '../components/talao';
+import { PageHead, Notice } from '../components/dashboard/parts';
+import { parseLocalDate } from '../components/dashboard/utils';
+import { FilterPanel, FilterGrid, FilterActions, ResultCount, EmptyList, Loading } from '../components/dashboard/listParts';
+import Pager from '../components/dashboard/Pager';
 
-const Container = styled.div`
-    min-height: 100vh;
-    background: var(--bg-secondary);
-    padding: 2rem;
+/* Avisos que o ContrataPro mandou para você (hoje, por e-mail), no registro contido.
+   Mesmo padrão do Histórico: rascunho no formulário, filtros aplicados na busca. */
 
-    @media (max-width: 768px) {
-        padding: 1rem;
-    }
+const PAGE_SIZE = 10;
+const EMPTY = { search: '', type: '', start: '', end: '' };
+
+const TYPES = {
+  new_appointment: 'Novo agendamento',
+  appointment_updated: 'Agendamento alterado',
+  appointment_cancelled: 'Agendamento cancelado',
+};
+
+// Situação do envio, não do agendamento
+const DELIVERY = {
+  sent: { label: 'Enviado', color: 'var(--sucesso)' },
+  pending: { label: 'Na fila', color: 'var(--alerta)' },
+  error: { label: 'Não foi enviado', color: 'var(--erro)' },
+};
+
+const CHANNELS = { email: 'e-mail', sms: 'SMS', whatsapp: 'WhatsApp', push: 'notificação no celular' };
+
+const Row = styled.li`
+  border-bottom: 1.5px solid var(--pauta);
 `;
 
-const Content = styled.div`
-    max-width: 1200px;
-    margin: 0 auto;
+const rowInner = `
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.25rem 1rem;
+  align-items: center;
+  padding: 0.85rem 0.25rem;
+  color: var(--nanquim);
+  text-decoration: none;
 `;
 
-const Header = styled.div`
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
-    gap: 1rem;
+const RowLink = styled(Link)`
+  ${rowInner}
 
-    h1 {
-        font-size: 2rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
+  &:hover strong {
+    color: var(--grafica);
+  }
 
-        @media (max-width: 768px) {
-            font-size: 1.5rem;
-        }
-    }
+  > svg {
+    color: var(--texto-2-papel);
+  }
 `;
 
-const FilterButton = styled.button`
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.25rem;
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 12px;
+const RowStatic = styled.div`
+  ${rowInner}
+`;
+
+const Body = styled.span`
+  min-width: 0;
+
+  small {
+    display: block;
+    font-family: var(--f-impresso);
     font-weight: 600;
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.2s;
-
-    &:hover {
-        border-color: var(--primary);
-        color: var(--primary);
-    }
-`;
-
-const FiltersPanel = styled.div`
-    background: white;
-    border-radius: 16px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    border: 1px solid var(--border);
-    display: ${props => props.$show ? 'block' : 'none'};
-`;
-
-const FiltersGrid = styled.div`
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-`;
-
-const FilterGroup = styled.div`
-    label {
-        display: block;
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        margin-bottom: 0.5rem;
-    }
-
-    input, select {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        font-size: 0.875rem;
-
-        &:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-    }
-`;
-
-const FilterActions = styled.div`
-    display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
-    justify-content: flex-end;
-`;
-
-const Button = styled.button`
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-
-    ${props => props.$primary ? `
-        background: var(--primary);
-        color: white;
-        border: none;
-
-        &:hover {
-            background: var(--grafica-escura);
-        }
-    ` : `
-        background: transparent;
-        color: var(--text-secondary);
-        border: 1px solid var(--border);
-
-        &:hover {
-            border-color: var(--text-secondary);
-        }
-    `}
-`;
-
-const Grid = styled.div`
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 1.5rem;
-
-    @media (max-width: 768px) {
-        grid-template-columns: 1fr;
-    }
-`;
-
-const Card = styled.div`
-    background: white;
-    border-radius: 16px;
-    padding: 1.5rem;
-    border: 1px solid var(--border);
-    transition: all 0.2s;
-
-    &:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-`;
-
-const CardHeader = styled.div`
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1rem;
-`;
-
-const TypeBadge = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.8rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
+    color: var(--grafica-escura);
+  }
 
-    ${props => {
-        switch (props.$type) {
-            case 'new_appointment':
-                return 'background: #e0f2fe; color: #0369a1;';
-            case 'appointment_updated':
-                return 'background: #fef3c7; color: #b45309;';
-            case 'appointment_cancelled':
-                return 'background: #fee2e2; color: #b91c1c;';
-            default:
-                return 'background: #f1f5f9; color: #475569;';
-        }
-    }}
-`;
-
-const StatusBadge = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-
-    ${props => {
-        switch (props.$status) {
-            case 'sent':
-                return 'color: #10b981;';
-            case 'error':
-                return 'color: #ef4444;';
-            default:
-                return 'color: #f59e0b;';
-        }
-    }}
-`;
-
-const CardTitle = styled.h3`
-    font-size: 1rem;
+  strong {
+    display: block;
+    margin-top: 0.1rem;
+    font-family: var(--f-impresso);
     font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 0.75rem;
-    line-height: 1.4;
+    font-size: 1.2rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  > span {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: var(--texto-2-papel);
+  }
 `;
 
-const CardInfo = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
+const Delivery = styled.b`
+  font-weight: 700;
+  color: ${({ $color }) => $color};
 `;
 
-const InfoItem = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
+const readIsProfessional = () => {
+  try {
+    const token = localStorage.getItem('token');
+    return token ? !!JSON.parse(atob(token.split('.')[1])).is_professional : false;
+  } catch {
+    return false;
+  }
+};
 
-    svg {
-        flex-shrink: 0;
-    }
-`;
+const received = (iso) => new Date(iso).toLocaleString('pt-BR', {
+  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+}).replace('.', '');
 
-const CardFooter = styled.div`
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border);
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-`;
+function NotificationRow({ notif, isProfessional }) {
+  const delivery = DELIVERY[notif.status] || { label: notif.status, color: 'var(--texto-2-papel)' };
+  const channel = CHANNELS[notif.channel] || notif.channel;
+  const person = isProfessional ? notif.client_name : notif.professional_name;
+  const details = [
+    notif.service_title,
+    notif.appointment_date && `${parseLocalDate(notif.appointment_date).toLocaleDateString('pt-BR')}${notif.appointment_start_time ? `, às ${notif.appointment_start_time.slice(0, 5)}` : ''}`,
+    person && (isProfessional ? `cliente ${person}` : `com ${person}`),
+  ].filter(Boolean).join(' · ');
 
-const EmptyState = styled.div`
-    text-align: center;
-    padding: 4rem 2rem;
-    background: white;
-    border-radius: 16px;
-    border: 1px solid var(--border);
+  const inner = (
+    <Body>
+      <small>{TYPES[notif.type] || 'Aviso'}</small>
+      <strong>{notif.title}</strong>
+      {details && <span>{details}</span>}
+      <span>
+        <Delivery $color={delivery.color}>{delivery.label}</Delivery>
+        {notif.status === 'sent' ? ` por ${channel}` : ''} · {received(notif.created_at)}
+      </span>
+    </Body>
+  );
 
-    svg {
-        color: var(--text-secondary);
-        margin-bottom: 1rem;
-    }
-
-    h3 {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 0.5rem;
-    }
-
-    p {
-        color: var(--text-secondary);
-    }
-`;
-
-const Pagination = styled.div`
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 1rem;
-    margin-top: 2rem;
-`;
-
-const PageButton = styled.button`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: white;
-    cursor: pointer;
-    transition: all 0.2s;
-
-    &:hover:not(:disabled) {
-        border-color: var(--primary);
-        color: var(--primary);
-    }
-
-    &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-`;
-
-const PageInfo = styled.span`
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-`;
-
-const LoadingContainer = styled.div`
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 300px;
-    font-size: 1rem;
-    color: var(--text-secondary);
-`;
+  return (
+    <Row>
+      {notif.appointment_id ? (
+        <RowLink to={`/appointment/${notif.appointment_id}`}>
+          {inner}
+          <ChevronRight size={20} aria-hidden="true" />
+        </RowLink>
+      ) : (
+        <RowStatic>{inner}</RowStatic>
+      )}
+    </Row>
+  );
+}
 
 export default function MyNotifications() {
-    const navigate = useNavigate();
-    const [data, setData] = useState({ items: [], total: 0, page: 1, size: 10, pages: 0 });
-    const [loading, setLoading] = useState(true);
-    const [showFilters, setShowFilters] = useState(false);
-    const [isProfessional, setIsProfessional] = useState(false);
+  const uid = useId();
+  const [isProfessional] = useState(readIsProfessional);
 
-    // Filtros
-    const [typeFilter, setTypeFilter] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [search, setSearch] = useState('');
+  const [draft, setDraft] = useState(EMPTY);
+  const [applied, setApplied] = useState(EMPTY);
+  const [page, setPage] = useState(1);
+  const [attempt, setAttempt] = useState(0);
+  const [dateError, setDateError] = useState('');
 
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            navigate('/login');
-            return;
-        }
+  const key = JSON.stringify({ applied, page, attempt });
+  const [response, setResponse] = useState({ key: null, status: 'ok', data: null });
+  const ready = response.key === key;
 
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            setIsProfessional(payload.is_professional);
-        } catch (e) {
-            navigate('/login');
-            return;
-        }
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const params = new URLSearchParams({ page: String(page), size: String(PAGE_SIZE) });
+    if (applied.search.trim()) params.append('search', applied.search.trim());
+    if (applied.type) params.append('type_filter', applied.type);
+    if (applied.start) params.append('start_date', applied.start);
+    if (applied.end) params.append('end_date', applied.end);
+    let cancelled = false;
+    fetch(`${API_URL}/notifications/me?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        if (!cancelled) setResponse({ key, status: 'ok', data });
+      })
+      .catch((e) => {
+        console.error('Falha ao carregar as notificações', e);
+        if (!cancelled) setResponse({ key, status: 'error', data: null });
+      });
+    return () => { cancelled = true; };
+  }, [key, applied, page]);
 
-        fetchNotifications(1);
-    }, [navigate]);
+  const set = (field) => (e) => {
+    setDraft((d) => ({ ...d, [field]: e.target.value }));
+    if (field === 'start' || field === 'end') setDateError('');
+  };
 
-    const fetchNotifications = async (page) => {
-        setLoading(true);
-        const token = localStorage.getItem('token');
-
-        try {
-            const params = new URLSearchParams({ page: page.toString(), size: '10' });
-
-            if (typeFilter) params.append('type_filter', typeFilter);
-            if (statusFilter) params.append('status_filter', statusFilter);
-            if (startDate) params.append('start_date', startDate);
-            if (endDate) params.append('end_date', endDate);
-            if (search) params.append('search', search);
-
-            const res = await fetch(`${API_URL}/notifications/me?${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                setData(await res.json());
-            } else {
-                toast.error('Erro ao carregar notificações');
-            }
-        } catch (e) {
-            toast.error('Erro de conexão');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleFilter = () => {
-        fetchNotifications(1);
-    };
-
-    const handleClearFilters = () => {
-        setTypeFilter('');
-        setStatusFilter('');
-        setStartDate('');
-        setEndDate('');
-        setSearch('');
-        setTimeout(() => fetchNotifications(1), 0);
-    };
-
-    const getTypeLabel = (type) => {
-        const labels = {
-            'new_appointment': 'Novo Agendamento',
-            'appointment_updated': 'Atualizado',
-            'appointment_cancelled': 'Cancelado'
-        };
-        return labels[type] || type;
-    };
-
-    const getTypeIcon = (type) => {
-        switch (type) {
-            case 'new_appointment':
-                return <Calendar size={14} />;
-            case 'appointment_updated':
-                return <AlertCircle size={14} />;
-            case 'appointment_cancelled':
-                return <XCircle size={14} />;
-            default:
-                return <Bell size={14} />;
-        }
-    };
-
-    const getStatusIcon = (status) => {
-        switch (status) {
-            case 'sent':
-                return <CheckCircle size={14} />;
-            case 'error':
-                return <XCircle size={14} />;
-            default:
-                return <Clock size={14} />;
-        }
-    };
-
-    const getStatusLabel = (status) => {
-        const labels = {
-            'sent': 'Enviado',
-            'error': 'Erro',
-            'pending': 'Pendente'
-        };
-        return labels[status] || status;
-    };
-
-    const formatDate = (dateStr) => {
-        if (!dateStr) return '';
-        return new Date(dateStr).toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
-    const formatAppointmentDate = (dateStr) => {
-        if (!dateStr) return '';
-        return new Date(dateStr).toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
-    };
-
-    if (loading && data.items.length === 0) {
-        return (
-            <Container>
-                <Content>
-                    <LoadingContainer>Carregando notificações...</LoadingContainer>
-                </Content>
-            </Container>
-        );
+  const apply = (e) => {
+    e.preventDefault();
+    if (draft.start && draft.end && draft.start > draft.end) {
+      setDateError('A data inicial precisa ser antes da final.');
+      document.getElementById(`${uid}-de`)?.focus();
+      return;
     }
+    setApplied(draft);
+    setPage(1);
+  };
 
-    return (
-        <Container>
-            <Content>
-                <Header>
-                    <h1>
-                        <Bell size={28} />
-                        Minhas Notificações
-                    </h1>
-                    <FilterButton onClick={() => setShowFilters(!showFilters)}>
-                        {showFilters ? <X size={18} /> : <Filter size={18} />}
-                        {showFilters ? 'Fechar' : 'Filtros'}
-                    </FilterButton>
-                </Header>
+  const clear = () => {
+    setDraft(EMPTY);
+    setApplied(EMPTY);
+    setDateError('');
+    setPage(1);
+  };
 
-                <FiltersPanel $show={showFilters}>
-                    <FiltersGrid>
-                        <FilterGroup>
-                            <label>Buscar</label>
-                            <input
-                                type="text"
-                                placeholder="Serviço, nome..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                        </FilterGroup>
-                        <FilterGroup>
-                            <label>Tipo</label>
-                            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-                                <option value="">Todos</option>
-                                <option value="new_appointment">Novo Agendamento</option>
-                                <option value="appointment_updated">Atualizado</option>
-                                <option value="appointment_cancelled">Cancelado</option>
-                            </select>
-                        </FilterGroup>
-                        <FilterGroup>
-                            <label>Status</label>
-                            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                                <option value="">Todos</option>
-                                <option value="sent">Enviado</option>
-                                <option value="pending">Pendente</option>
-                                <option value="error">Erro</option>
-                            </select>
-                        </FilterGroup>
-                        <FilterGroup>
-                            <label>Data Inicial</label>
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                            />
-                        </FilterGroup>
-                        <FilterGroup>
-                            <label>Data Final</label>
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                            />
-                        </FilterGroup>
-                    </FiltersGrid>
-                    <FilterActions>
-                        <Button onClick={handleClearFilters}>Limpar</Button>
-                        <Button $primary onClick={handleFilter}>Aplicar Filtros</Button>
-                    </FilterActions>
-                </FiltersPanel>
+  const filtered = JSON.stringify(applied) !== JSON.stringify(EMPTY);
+  const data = ready && response.status === 'ok' ? response.data : null;
 
-                {data.items.length === 0 ? (
-                    <EmptyState>
-                        <Bell size={48} />
-                        <h3>Nenhuma notificação</h3>
-                        <p>Você ainda não recebeu nenhuma notificação.</p>
-                    </EmptyState>
-                ) : (
-                    <>
-                        <Grid>
-                            {data.items.map((notif) => (
-                                <Card key={notif.id}>
-                                    <CardHeader>
-                                        <TypeBadge $type={notif.type}>
-                                            {getTypeIcon(notif.type)}
-                                            {getTypeLabel(notif.type)}
-                                        </TypeBadge>
-                                        <StatusBadge $status={notif.status}>
-                                            {getStatusIcon(notif.status)}
-                                            {getStatusLabel(notif.status)}
-                                        </StatusBadge>
-                                    </CardHeader>
+  return (
+    <>
+      <PageHead>
+        <div>
+          <h1 data-display>Notificações</h1>
+          <p>Os avisos que mandamos para você sobre seus agendamentos, e se cada um chegou a ser enviado.</p>
+        </div>
+      </PageHead>
 
-                                    <CardTitle>{notif.title}</CardTitle>
+      <FilterPanel onSubmit={apply} noValidate aria-label="Filtrar as notificações">
+        <FilterGrid>
+          <div>
+            <FieldLabel htmlFor={`${uid}-busca`}>Buscar</FieldLabel>
+            <InputBox>
+              <Search size={20} aria-hidden="true" />
+              <TextInput
+                $icon
+                type="search"
+                id={`${uid}-busca`}
+                value={draft.search}
+                onChange={set('search')}
+                placeholder={isProfessional ? 'serviço ou cliente' : 'serviço ou profissional'}
+              />
+            </InputBox>
+          </div>
+          <div>
+            <FieldLabel htmlFor={`${uid}-tipo`}>Tipo</FieldLabel>
+            <TextInput as="select" id={`${uid}-tipo`} value={draft.type} onChange={set('type')}>
+              <option value="">Todos</option>
+              {Object.entries(TYPES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </TextInput>
+          </div>
+          <div>
+            <FieldLabel htmlFor={`${uid}-de`}>Recebidas de</FieldLabel>
+            <TextInput
+              type="date"
+              id={`${uid}-de`}
+              value={draft.start}
+              onChange={set('start')}
+              aria-invalid={dateError ? true : undefined}
+              aria-describedby={dateError ? `${uid}-erro-data` : undefined}
+            />
+          </div>
+          <div>
+            <FieldLabel htmlFor={`${uid}-ate`}>Até</FieldLabel>
+            <TextInput type="date" id={`${uid}-ate`} value={draft.end} onChange={set('end')} />
+          </div>
+        </FilterGrid>
+        {dateError && <FieldNote id={`${uid}-erro-data`} role="alert" $tone="erro">{dateError}</FieldNote>}
 
-                                    <CardInfo>
-                                        {notif.service_title && (
-                                            <InfoItem>
-                                                <Briefcase size={16} />
-                                                {notif.service_title}
-                                            </InfoItem>
-                                        )}
-                                        {notif.appointment_date && (
-                                            <InfoItem>
-                                                <Calendar size={16} />
-                                                {formatAppointmentDate(notif.appointment_date)}
-                                                {notif.appointment_start_time && ` às ${notif.appointment_start_time.slice(0, 5)}`}
-                                            </InfoItem>
-                                        )}
-                                        {isProfessional && notif.client_name && (
-                                            <InfoItem>
-                                                <User size={16} />
-                                                Cliente: {notif.client_name}
-                                            </InfoItem>
-                                        )}
-                                        {!isProfessional && notif.professional_name && (
-                                            <InfoItem>
-                                                <User size={16} />
-                                                Profissional: {notif.professional_name}
-                                            </InfoItem>
-                                        )}
-                                    </CardInfo>
+        <FilterActions>
+          <StampButton type="button" onClick={clear}>
+            <X size={18} aria-hidden="true" /> Limpar
+          </StampButton>
+          <PrimaryButton type="submit">
+            <Filter size={18} aria-hidden="true" /> Filtrar
+          </PrimaryButton>
+        </FilterActions>
+      </FilterPanel>
 
-                                    <CardFooter>
-                                        <span>
-                                            <Mail size={12} style={{ marginRight: '4px' }} />
-                                            {notif.channel}
-                                        </span>
-                                        <span>{formatDate(notif.created_at)}</span>
-                                    </CardFooter>
-                                </Card>
-                            ))}
-                        </Grid>
+      {!ready && <Loading role="status">Carregando as notificações…</Loading>}
 
-                        {data.pages > 1 && (
-                            <Pagination>
-                                <PageButton
-                                    onClick={() => fetchNotifications(data.page - 1)}
-                                    disabled={data.page <= 1}
-                                >
-                                    <ChevronLeft size={20} />
-                                </PageButton>
-                                <PageInfo>
-                                    Página {data.page} de {data.pages}
-                                </PageInfo>
-                                <PageButton
-                                    onClick={() => fetchNotifications(data.page + 1)}
-                                    disabled={data.page >= data.pages}
-                                >
-                                    <ChevronRight size={20} />
-                                </PageButton>
-                            </Pagination>
-                        )}
-                    </>
-                )}
-            </Content>
-        </Container>
-    );
+      {ready && response.status === 'error' && (
+        <Notice $tone="erro" role="alert">
+          <p>
+            <AlertCircle size={18} aria-hidden="true" />
+            <span>Não deu para carregar as notificações agora. Pode ser a conexão ou uma instabilidade do nosso lado.</span>
+          </p>
+          <PrimaryButton type="button" onClick={() => setAttempt((n) => n + 1)}>
+            <RotateCw size={18} aria-hidden="true" /> Tentar de novo
+          </PrimaryButton>
+        </Notice>
+      )}
+
+      {data && data.items.length === 0 && (
+        <EmptyList>
+          <h2>{filtered ? 'Nada com esses filtros' : 'Nenhuma notificação ainda'}</h2>
+          <p>
+            {filtered
+              ? 'Tente outra busca ou outro período, ou limpe os filtros para ver tudo.'
+              : 'Quando um agendamento for feito, alterado ou cancelado, o aviso que mandamos aparece aqui.'}
+          </p>
+        </EmptyList>
+      )}
+
+      {data && data.items.length > 0 && (
+        <section aria-labelledby={`${uid}-total`}>
+          <ResultCount id={`${uid}-total`} aria-live="polite">
+            {data.total} {data.total === 1 ? 'aviso' : 'avisos'}
+            {filtered && <span> com os filtros</span>}
+          </ResultCount>
+          <ul style={{ listStyle: 'none' }}>
+            {data.items.map((notif) => <NotificationRow key={notif.id} notif={notif} isProfessional={isProfessional} />)}
+          </ul>
+          <Pager page={data.page} pages={data.pages} onChange={setPage} label="Páginas das notificações" />
+        </section>
+      )}
+    </>
+  );
 }

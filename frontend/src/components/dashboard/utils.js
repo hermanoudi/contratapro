@@ -47,3 +47,19 @@ export const formatCurrency = (value) => {
 
 // Agendamentos que ocupam a agenda: cancelado não ocupa nada
 export const OCCUPYING = ['scheduled', 'completed', 'blocked'];
+
+// Situação do agendamento: palavra e cor sempre juntas
+export const APPOINTMENT_STATUS = {
+  scheduled: { label: 'Agendado', color: 'var(--carbono)' },
+  completed: { label: 'Concluído', color: 'var(--sucesso)' },
+  cancelled: { label: 'Cancelado', color: 'var(--erro)' },
+  suspended: { label: 'Suspenso', color: 'var(--alerta)' },
+};
+
+export const statusOf = (status) => APPOINTMENT_STATUS[status] || { label: status, color: 'var(--texto-2-papel)' };
+
+// 'AAAA-MM-DD' como data local (new Date('AAAA-MM-DD') seria meia-noite UTC, o dia anterior no Brasil)
+export const parseLocalDate = (iso) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};

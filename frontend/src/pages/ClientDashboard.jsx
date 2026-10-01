@@ -1,12 +1,13 @@
 import { useState, useEffect, useId } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { Calendar, Settings, ChevronRight, AlertCircle, RotateCw, Save, User, Mail, Phone } from 'lucide-react';
+import { Calendar, Settings, AlertCircle, RotateCw, Save, User, Mail, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { API_URL } from '../config';
 import { PrimaryButton, PrimaryLink, FieldNote } from '../components/talao';
 import { PageHead, Panel, Notice } from '../components/dashboard/parts';
 import { localISO } from '../components/dashboard/utils';
+import AppointmentRow, { AppointmentGroup as Group } from '../components/dashboard/AppointmentRow';
 import { TextField, AddressFields } from '../components/SignupParts';
 import { formatWhatsApp, formatCepMask } from '../components/signupUtils';
 import { translateError } from '../components/apiErrors';
@@ -47,96 +48,6 @@ const Tabs = styled.nav`
       color: var(--grafica);
     }
   }
-`;
-
-const Group = styled.section`
-  & + & {
-    margin-top: 2rem;
-  }
-
-  > h2 {
-    padding-bottom: 0.4rem;
-    border-bottom: 2px solid var(--grafica);
-    font-family: var(--f-impresso);
-    font-weight: 700;
-    font-size: 1.35rem;
-  }
-`;
-
-// Cada agendamento é uma linha de talão: dia impresso à esquerda, serviço e pessoa no meio
-const Item = styled(Link)`
-  display: grid;
-  grid-template-columns: 4.25rem minmax(0, 1fr) auto;
-  gap: 0.25rem 1rem;
-  align-items: center;
-  min-height: 76px;
-  padding: 0.75rem 0.25rem;
-  border-bottom: 1.5px solid var(--pauta);
-  color: var(--nanquim);
-  text-decoration: none;
-
-  &:hover strong {
-    color: var(--grafica);
-  }
-
-  > svg {
-    color: var(--texto-2-papel);
-  }
-`;
-
-const Day = styled.span`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-family: var(--f-impresso);
-  line-height: 1;
-  color: ${({ $muted }) => ($muted ? 'var(--texto-2-papel)' : 'var(--grafica-escura)')};
-
-  b {
-    font-weight: 800;
-    font-size: 1.9rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  small {
-    margin-top: 0.15rem;
-    font-weight: 600;
-    font-size: 0.95rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-`;
-
-const Info = styled.span`
-  min-width: 0;
-
-  strong {
-    display: block;
-    font-family: var(--f-impresso);
-    font-weight: 700;
-    font-size: 1.25rem;
-    line-height: 1.15;
-    overflow-wrap: anywhere;
-  }
-
-  span {
-    display: block;
-    margin-top: 0.15rem;
-    font-size: 0.95rem;
-    color: var(--texto-2-papel);
-  }
-`;
-
-const STATUS = {
-  scheduled: { label: 'Agendado', color: 'var(--carbono)' },
-  completed: { label: 'Concluído', color: 'var(--sucesso)' },
-  cancelled: { label: 'Cancelado', color: 'var(--erro)' },
-  suspended: { label: 'Suspenso', color: 'var(--alerta)' },
-};
-
-const Status = styled.b`
-  font-weight: 700;
-  color: ${({ $color }) => $color};
 `;
 
 const Empty = styled.div`
@@ -186,33 +97,6 @@ const SaveRow = styled.div`
     }
   }
 `;
-
-const parseDate = (iso) => {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d);
-};
-
-function AppointmentItem({ appt }) {
-  const date = parseDate(appt.date);
-  const status = STATUS[appt.status] || { label: appt.status, color: 'var(--texto-2-papel)' };
-  return (
-    <Item to={`/appointment/${appt.id}`}>
-      <Day $muted={appt.status !== 'scheduled'} aria-hidden="true">
-        <b>{String(date.getDate()).padStart(2, '0')}</b>
-        <small>{date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</small>
-      </Day>
-      <Info>
-        <strong>{appt.service_title}</strong>
-        <span>
-          {date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}, às {appt.start_time.slice(0, 5)}
-          {appt.professional_name ? ` · com ${appt.professional_name}` : ''}
-        </span>
-        <span><Status $color={status.color}>{status.label}</Status></span>
-      </Info>
-      <ChevronRight size={20} aria-hidden="true" />
-    </Item>
-  );
-}
 
 export default function ClientDashboard() {
   const [searchParams] = useSearchParams();
@@ -365,13 +249,13 @@ export default function ClientDashboard() {
               <Group aria-labelledby={`${id}-proximos`}>
                 <h2 id={`${id}-proximos`}>Próximos</h2>
                 {upcoming.length > 0
-                  ? upcoming.map((a) => <AppointmentItem key={a.id} appt={a} />)
+                  ? upcoming.map((a) => <AppointmentRow key={a.id} appt={a} person={a.professional_name ? `com ${a.professional_name}` : ''} />)
                   : <Muted>Nenhum horário marcado daqui para a frente.</Muted>}
               </Group>
               {past.length > 0 && (
                 <Group aria-labelledby={`${id}-anteriores`}>
                   <h2 id={`${id}-anteriores`}>Anteriores</h2>
-                  {past.map((a) => <AppointmentItem key={a.id} appt={a} />)}
+                  {past.map((a) => <AppointmentRow key={a.id} appt={a} person={a.professional_name ? `com ${a.professional_name}` : ''} />)}
                 </Group>
               )}
             </>

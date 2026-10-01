@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { API_URL } from '../config';
 import { PrimaryButton, StampButton, FieldLabel, TextInput, FieldNote } from '../components/talao';
 import { PageHead, Panel, Notice } from '../components/dashboard/parts';
-import { formatPhone } from '../components/dashboard/utils';
+import { formatPhone, statusOf, parseLocalDate } from '../components/dashboard/utils';
 import { translateError } from '../components/apiErrors';
 
 /* Detalhe de um agendamento, para o profissional e para o cliente (SharedLayout).
@@ -186,13 +186,6 @@ const Loading = styled.p`
   color: var(--texto-2-papel);
 `;
 
-const STATUS = {
-  scheduled: { label: 'Agendado', color: 'var(--carbono)' },
-  completed: { label: 'Concluído', color: 'var(--sucesso)' },
-  cancelled: { label: 'Cancelado', color: 'var(--erro)' },
-  suspended: { label: 'Suspenso', color: 'var(--alerta)' },
-};
-
 const STATUS_DONE = { completed: 'concluído', cancelled: 'cancelado', suspended: 'suspenso' };
 
 // Papel de quem está vendo, lido do token (o mesmo critério de antes)
@@ -322,12 +315,11 @@ export default function AppointmentDetail() {
     );
   }
 
-  const [y, m, d] = appt.date.split('-').map(Number);
-  const dateObj = new Date(y, m - 1, d);
+  const dateObj = parseLocalDate(appt.date);
   const dateLong = dateObj.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const dateShort = dateObj.toLocaleDateString('pt-BR');
   const time = `${appt.start_time.slice(0, 5)} às ${appt.end_time.slice(0, 5)}`;
-  const status = STATUS[appt.status] || { label: appt.status, color: 'var(--texto-2-papel)' };
+  const status = statusOf(appt.status);
   const clientAddr = address({
     street: appt.client_street, number: appt.client_number, complement: appt.client_complement,
     neighborhood: appt.client_neighborhood, city: appt.client_city, state: appt.client_state, cep: appt.client_cep,

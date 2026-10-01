@@ -39,7 +39,9 @@ async def get_appointment_history(
         or_(
             Appointment.client_id == current_user.id,
             Appointment.professional_id == current_user.id
-        )
+        ),
+        # Bloqueios manuais não são serviços: ficam fora do histórico
+        Appointment.status != "blocked"
     ]
 
     # Apply optional filters
@@ -455,7 +457,10 @@ async def get_filter_people(
         query = select(User).join(
             Appointment, Appointment.client_id == User.id
         ).filter(
-            Appointment.professional_id == current_user.id
+            Appointment.professional_id == current_user.id,
+            # Bloqueios gravam o próprio profissional como cliente
+            Appointment.status != "blocked",
+            User.id != current_user.id
         ).distinct()
     else:
         # Get unique professionals who have appointments with this client
