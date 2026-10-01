@@ -1246,7 +1246,7 @@ export default function Booking() {
                     {isLoggedIn && clientChecked && !clientCity && (
                       <Notice>
                         <AlertCircle size={20} aria-hidden="true" />
-                        <span>Falta o seu endereço no cadastro para agendar. Complete em <Link to="/my-appointments">Minha conta</Link> e volte aqui.</span>
+                        <span>Falta o seu endereço no cadastro para agendar. Complete em <Link to="/my-appointments?tab=conta">Minha conta</Link> e volte aqui.</span>
                       </Notice>
                     )}
                     {matching === false && (

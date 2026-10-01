@@ -32,7 +32,9 @@ export const toMinutes = (time) => {
 
 export const formatPhone = (phone) => {
   if (!phone) return '';
-  const cleaned = phone.replace(/\D/g, '');
+  let cleaned = phone.replace(/\D/g, '');
+  // Número salvo com o 55 do Brasil na frente
+  if ((cleaned.length === 12 || cleaned.length === 13) && cleaned.startsWith('55')) cleaned = cleaned.slice(2);
   if (cleaned.length === 11) return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
   if (cleaned.length === 10) return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
   return phone;

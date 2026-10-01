@@ -1,447 +1,439 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { Calendar, Clock, User, Briefcase, Settings, Save, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Calendar, Settings, ChevronRight, AlertCircle, RotateCw, Save, User, Mail, Phone } from 'lucide-react';
 import { toast } from 'sonner';
-
 import { API_URL } from '../config';
-const Container = styled.div`
-  width: 100%;
-`;
+import { PrimaryButton, PrimaryLink, FieldNote } from '../components/talao';
+import { PageHead, Panel, Notice } from '../components/dashboard/parts';
+import { localISO } from '../components/dashboard/utils';
+import { TextField, AddressFields } from '../components/SignupParts';
+import { formatWhatsApp, formatCepMask } from '../components/signupUtils';
+import { translateError } from '../components/apiErrors';
 
-const TabNav = styled.div`
+/* Área do cliente (dentro do AppShell): agendamentos e "Minha conta".
+   ?tab=conta abre direto os dados (a página do profissional manda para cá
+   quando falta endereço para agendar). */
+
+const Tabs = styled.nav`
   display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  border-bottom: 2px solid var(--border);
+  gap: 0.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1.5px solid var(--regua);
   overflow-x: auto;
 
-  @media (max-width: 768px) {
-    gap: 0.5rem;
-  }
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 48px;
+    font-family: var(--f-impresso);
+    font-weight: 600;
+    font-size: 1.15rem;
+    letter-spacing: 0.03em;
+    color: var(--nanquim);
+    text-decoration: none;
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1.5px;
 
-  @media (max-width: 360px) {
-    gap: 0.25rem;
-    margin-bottom: 1.5rem;
-  }
-`;
+    &[aria-current='page'] {
+      color: var(--grafica);
+      font-weight: 700;
+      border-bottom-color: var(--grafica);
+    }
 
-const TabButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  background: none;
-  border: none;
-  border-bottom: 3px solid ${props => props.$active ? 'var(--primary)' : 'transparent'};
-  color: ${props => props.$active ? 'var(--primary)' : 'var(--text-secondary)'};
-  font-weight: ${props => props.$active ? '700' : '500'};
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: -2px;
-  white-space: nowrap;
-
-  &:hover {
-    color: var(--primary);
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.875rem 1rem;
-    font-size: 0.9rem;
-  }
-
-  @media (max-width: 480px) {
-    padding: 0.75rem 0.75rem;
-    font-size: 0.85rem;
-    gap: 0.375rem;
-  }
-
-  @media (max-width: 360px) {
-    padding: 0.65rem 0.5rem;
-    font-size: 0.8rem;
-    gap: 0.25rem;
+    &:hover {
+      color: var(--grafica);
+    }
   }
 `;
 
-const AppointmentGrid = styled.div`
+const Group = styled.section`
+  & + & {
+    margin-top: 2rem;
+  }
+
+  > h2 {
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--grafica);
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.35rem;
+  }
+`;
+
+// Cada agendamento é uma linha de talão: dia impresso à esquerda, serviço e pessoa no meio
+const Item = styled(Link)`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
-  gap: 1.5rem;
-  margin-top: 2rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  @media (max-width: 480px) {
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-  }
-
-  @media (max-width: 360px) {
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-`;
-
-const AppointmentCard = styled.div`
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s;
-
-  &:hover {
-    transform: translateY(-4px);
-  }
-
-  @media (max-width: 768px) {
-    padding: 1.25rem;
-    border-radius: 16px;
-  }
-
-  @media (max-width: 480px) {
-    padding: 1rem;
-    border-radius: 14px;
-  }
-
-  @media (max-width: 360px) {
-    padding: 0.875rem;
-    border-radius: 12px;
-  }
-`;
-
-const StatusBadge = styled.div`
-  display: flex;
+  grid-template-columns: 4.25rem minmax(0, 1fr) auto;
+  gap: 0.25rem 1rem;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.8rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  width: fit-content;
+  min-height: 76px;
+  padding: 0.75rem 0.25rem;
+  border-bottom: 1.5px solid var(--pauta);
+  color: var(--nanquim);
+  text-decoration: none;
 
-  ${props => {
-        switch (props.$status) {
-            case 'scheduled': return 'background: #e0f2fe; color: #0369a1;';
-            case 'completed': return 'background: #dcfce7; color: #15803d;';
-            case 'cancelled': return 'background: #fee2e2; color: #b91c1c;';
-            case 'suspended': return 'background: #fef3c7; color: #92400e;';
-            default: return 'background: #f1f5f9; color: #475569;';
-        }
-    }}
-`;
-
-const Form = styled.form`
-  background: white;
-  padding: 2rem;
-  border-radius: 24px;
-  border: 1px solid var(--border);
-  max-width: 600px;
-
-  @media (max-width: 768px) {
-    padding: 1.5rem;
-    border-radius: 16px;
+  &:hover strong {
+    color: var(--grafica);
   }
 
-  @media (max-width: 480px) {
-    padding: 1rem;
+  > svg {
+    color: var(--texto-2-papel);
   }
 `;
 
-const InputGroup = styled.div`
-  margin-bottom: 1.5rem;
-`;
+const Day = styled.span`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--f-impresso);
+  line-height: 1;
+  color: ${({ $muted }) => ($muted ? 'var(--texto-2-papel)' : 'var(--grafica-escura)')};
 
-const Label = styled.label`
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 0.5rem;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.75rem 1rem;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: 1rem;
-
-  &:focus {
-    outline: none;
-    border-color: var(--primary);
+  b {
+    font-weight: 800;
+    font-size: 1.9rem;
+    font-variant-numeric: tabular-nums;
   }
 
-  @media (max-width: 480px) {
+  small {
+    margin-top: 0.15rem;
+    font-weight: 600;
     font-size: 0.95rem;
-    padding: 0.65rem 0.85rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 `;
 
-const FormGrid = styled.div`
-  display: grid;
-  grid-template-columns: ${props => props.$columns || '1fr 1fr'};
-  gap: 1.5rem;
+const Info = styled.span`
+  min-width: 0;
 
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 1.25rem;
+  strong {
+    display: block;
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.25rem;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
   }
 
-  @media (max-width: 480px) {
-    gap: 1rem;
-  }
-
-  @media (max-width: 360px) {
-    gap: 0.875rem;
+  span {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.95rem;
+    color: var(--texto-2-papel);
   }
 `;
+
+const STATUS = {
+  scheduled: { label: 'Agendado', color: 'var(--carbono)' },
+  completed: { label: 'Concluído', color: 'var(--sucesso)' },
+  cancelled: { label: 'Cancelado', color: 'var(--erro)' },
+  suspended: { label: 'Suspenso', color: 'var(--alerta)' },
+};
+
+const Status = styled.b`
+  font-weight: 700;
+  color: ${({ $color }) => $color};
+`;
+
+const Empty = styled.div`
+  padding: 1.5rem 0;
+
+  h2 {
+    font-family: var(--f-impresso);
+    font-weight: 700;
+    font-size: 1.4rem;
+  }
+
+  p {
+    margin: 0.4rem 0 1.25rem;
+    color: var(--texto-2-papel);
+    line-height: 1.55;
+  }
+`;
+
+const Muted = styled.p`
+  padding: 1rem 0;
+  color: var(--texto-2-papel);
+`;
+
+const Loading = styled.p`
+  padding: 2rem 0;
+  color: var(--texto-2-papel);
+`;
+
+const AccountPanel = styled(Panel)`
+  max-width: 44rem;
+
+  > p {
+    margin: -0.5rem 0 1.25rem;
+    color: var(--texto-2-papel);
+    line-height: 1.5;
+  }
+`;
+
+const SaveRow = styled.div`
+  margin-top: 1.75rem;
+
+  button {
+    min-width: 14rem;
+
+    @media (max-width: 480px) {
+      width: 100%;
+    }
+  }
+`;
+
+const parseDate = (iso) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+function AppointmentItem({ appt }) {
+  const date = parseDate(appt.date);
+  const status = STATUS[appt.status] || { label: appt.status, color: 'var(--texto-2-papel)' };
+  return (
+    <Item to={`/appointment/${appt.id}`}>
+      <Day $muted={appt.status !== 'scheduled'} aria-hidden="true">
+        <b>{String(date.getDate()).padStart(2, '0')}</b>
+        <small>{date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</small>
+      </Day>
+      <Info>
+        <strong>{appt.service_title}</strong>
+        <span>
+          {date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}, às {appt.start_time.slice(0, 5)}
+          {appt.professional_name ? ` · com ${appt.professional_name}` : ''}
+        </span>
+        <span><Status $color={status.color}>{status.label}</Status></span>
+      </Info>
+      <ChevronRight size={20} aria-hidden="true" />
+    </Item>
+  );
+}
 
 export default function ClientDashboard() {
-    const [activeTab, setActiveTab] = useState('appointments');
-    const [appointments, setAppointments] = useState([]);
-    const [userData, setUserData] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') === 'conta' ? 'conta' : 'agendamentos';
+  const navigate = useNavigate();
+  const id = useId();
 
-    const handleWhatsAppChange = (e) => {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 11) value = value.slice(0, 11);
+  const [appointments, setAppointments] = useState([]);
+  const [userData, setUserData] = useState(null);
+  const [loadState, setLoadState] = useState('loading'); // loading | ok | error
+  const [attempt, setAttempt] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [formError, setFormError] = useState('');
 
-        let displayValue = value;
-        if (value.length === 11) {
-            displayValue = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
-        } else if (value.length === 10) {
-            displayValue = `(${value.slice(0, 2)}) ${value.slice(2, 6)}-${value.slice(6)}`;
-        } else if (value.length > 6) {
-            displayValue = `(${value.slice(0, 2)}) ${value.slice(2)}`;
-        } else if (value.length > 2) {
-            displayValue = `(${value.slice(0, 2)}) ${value.slice(2)}`;
-        }
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return undefined;
+    }
+    let cancelled = false;
+    const headers = { Authorization: `Bearer ${token}` };
+    Promise.all([
+      fetch(`${API_URL}/appointments/client/me`, { headers }),
+      fetch(`${API_URL}/auth/me`, { headers }),
+    ])
+      .then(async ([apptsRes, userRes]) => {
+        if (!apptsRes.ok || !userRes.ok) throw new Error('falha ao carregar');
+        const [appts, user] = await Promise.all([apptsRes.json(), userRes.json()]);
+        if (cancelled) return;
+        setAppointments(Array.isArray(appts) ? appts : []);
+        setUserData({
+          ...user,
+          whatsapp: user.whatsapp ? formatWhatsApp(user.whatsapp) : '',
+          cep: user.cep ? formatCepMask(user.cep) : '',
+          street: user.street || '',
+          number: user.number || '',
+          complement: user.complement || '',
+          neighborhood: user.neighborhood || '',
+          city: user.city || '',
+          state: user.state || '',
+        });
+        setLoadState('ok');
+      })
+      .catch((e) => {
+        console.error(e);
+        if (!cancelled) setLoadState('error');
+      });
+    return () => { cancelled = true; };
+  }, [navigate, attempt]);
 
-        setUserData({ ...userData, whatsapp: displayValue });
-    };
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    const found = {};
+    if (!userData.name?.trim()) found.name = 'Informe seu nome.';
+    if (!userData.email?.trim()) found.email = 'Informe seu e-mail.';
+    setErrors(found);
+    if (Object.keys(found).length) {
+      document.getElementById(`${id}-${Object.keys(found)[0]}`)?.focus();
+      return;
+    }
 
-    useEffect(() => {
-        const fetchData = async () => {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                navigate('/login');
-                return;
-            }
+    const token = localStorage.getItem('token');
+    setSaving(true);
+    setFormError('');
+    try {
+      const res = await fetch(`${API_URL}/users/me`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: userData.name.trim(),
+          email: userData.email.trim(),
+          whatsapp: userData.whatsapp,
+          cep: userData.cep.replace(/\D/g, ''),
+          street: userData.street,
+          number: userData.number,
+          complement: userData.complement,
+          neighborhood: userData.neighborhood,
+          city: userData.city,
+          state: userData.state,
+        })
+      });
+      if (res.ok) {
+        toast.success('Seus dados foram salvos.');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setFormError(translateError(data.detail, 'Não deu para salvar seus dados. Tente de novo.'));
+      }
+    } catch {
+      setFormError('Não deu para falar com o servidor. Confira sua conexão e tente de novo.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
-            try {
-                // Fetch Appointments
-                const apptsRes = await fetch(`${API_URL}/appointments/client/me`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (apptsRes.ok) setAppointments(await apptsRes.json());
+  if (loadState === 'loading') return <Loading role="status">Carregando…</Loading>;
 
-                // Fetch User Data
-                const userRes = await fetch(`${API_URL}/auth/me`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (userRes.ok) setUserData(await userRes.json());
-
-            } catch (e) { console.error(e); }
-            finally { setLoading(false); }
-        };
-        fetchData();
-    }, [navigate]);
-
-    const handleUpdateProfile = async (e) => {
-        e.preventDefault();
-        const token = localStorage.getItem('token');
-        try {
-            const res = await fetch(`${API_URL}/users/me`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(userData)
-            });
-            if (res.ok) {
-                toast.success('Perfil atualizado com sucesso!');
-            } else {
-                toast.error('Erro ao atualizar perfil.');
-            }
-        } catch (e) { toast.error('Erro de conexão.'); }
-    };
-
-    if (loading) return <Container>Carregando...</Container>;
-
+  if (loadState === 'error') {
     return (
-        <Container>
-            <TabNav>
-                <TabButton $active={activeTab === 'appointments'} onClick={() => setActiveTab('appointments')}>
-                    <Calendar size={20} /> Meus Agendamentos
-                </TabButton>
-                <TabButton $active={activeTab === 'profile'} onClick={() => setActiveTab('profile')}>
-                    <Settings size={20} /> Minha Conta
-                </TabButton>
-            </TabNav>
-                {activeTab === 'appointments' ? (
-                    <>
-                        <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Meus Agendamentos</h1>
-                        <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Acompanhe o status dos seus serviços contratados.</p>
-
-                        {appointments.length > 0 ? (
-                            <AppointmentGrid>
-                                {appointments.map(appt => (
-                                    <AppointmentCard key={appt.id}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                                            <StatusBadge $status={appt.status}>
-                                                {appt.status === 'scheduled' && <Clock size={14} />}
-                                                {appt.status === 'completed' && <CheckCircle size={14} />}
-                                                {appt.status === 'cancelled' && <XCircle size={14} />}
-                                                {appt.status === 'suspended' && <AlertCircle size={14} />}
-                                                {appt.status === 'scheduled' ? 'Agendado' :
-                                                    appt.status === 'completed' ? 'Executado' :
-                                                        appt.status === 'cancelled' ? 'Cancelado' : 'Suspenso'}
-                                            </StatusBadge>
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                                ID: #{appt.id}
-                                            </span>
-                                        </div>
-
-                                        <div style={{ marginBottom: '1.25rem' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                                                <Briefcase size={14} />
-                                                {appt.professional_category || 'Serviço'}
-                                            </div>
-                                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{appt.service_title}</h3>
-                                        </div>
-
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-primary)', fontWeight: 600 }}>
-                                                <User size={18} style={{ color: 'var(--text-secondary)' }} />
-                                                {appt.professional_name}
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                <Calendar size={18} />
-                                                {(() => {
-                                                    const [y, m, d] = appt.date.split('-').map(Number);
-                                                    return new Date(y, m - 1, d).toLocaleDateString('pt-BR');
-                                                })()} às {appt.start_time.slice(0, 5)}
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            className="btn-primary"
-                                            style={{ width: '100%', marginTop: '1.5rem', padding: '0.75rem', fontSize: '0.9rem' }}
-                                            onClick={() => navigate(`/appointment/${appt.id}`)}
-                                        >
-                                            Ver Detalhes
-                                        </button>
-                                    </AppointmentCard>
-                                ))}
-                            </AppointmentGrid>
-                        ) : (
-                            <div style={{ textAlign: 'center', padding: '5rem 2rem', background: 'white', borderRadius: '32px', border: '1px solid var(--border)', marginTop: '2rem' }}>
-                                <AlertCircle size={48} color="var(--text-secondary)" style={{ marginBottom: '1.5rem', opacity: 0.5 }} />
-                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>Nenhum agendamento</h3>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>Você ainda não realizou nenhum agendamento.</p>
-                                <button className="btn-primary" style={{ marginTop: '2rem' }} onClick={() => navigate('/')}>
-                                    Buscar Profissionais
-                                </button>
-                            </div>
-                        )}
-                    </>
-                ) : (
-                    <>
-                        <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Minha Conta</h1>
-                        <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Mantenha seus dados sempre atualizados.</p>
-
-                        <div style={{ marginTop: '2rem' }}>
-                            <Form onSubmit={handleUpdateProfile}>
-                                <FormGrid>
-                                    <InputGroup>
-                                        <Label>Nome Completo</Label>
-                                        <Input
-                                            value={userData?.name || ''}
-                                            onChange={e => setUserData({ ...userData, name: e.target.value })}
-                                        />
-                                    </InputGroup>
-                                    <InputGroup>
-                                        <Label>E-mail</Label>
-                                        <Input
-                                            type="email"
-                                            value={userData?.email || ''}
-                                            onChange={e => setUserData({ ...userData, email: e.target.value })}
-                                        />
-                                    </InputGroup>
-                                </FormGrid>
-
-                                <FormGrid>
-                                    <InputGroup>
-                                        <Label>WhatsApp</Label>
-                                        <Input
-                                            value={userData?.whatsapp || ''}
-                                            onChange={handleWhatsAppChange}
-                                            placeholder="(00) 00000-0000"
-                                        />
-                                    </InputGroup>
-                                    <InputGroup>
-                                        <Label>CEP</Label>
-                                        <Input
-                                            value={userData?.cep || ''}
-                                            onChange={e => setUserData({ ...userData, cep: e.target.value })}
-                                        />
-                                    </InputGroup>
-                                </FormGrid>
-
-                                <InputGroup>
-                                    <Label>Rua / Logradouro</Label>
-                                    <Input
-                                        value={userData?.street || ''}
-                                        onChange={e => setUserData({ ...userData, street: e.target.value })}
-                                    />
-                                </InputGroup>
-
-                                <FormGrid>
-                                    <InputGroup>
-                                        <Label>Número</Label>
-                                        <Input
-                                            value={userData?.number || ''}
-                                            onChange={e => setUserData({ ...userData, number: e.target.value })}
-                                        />
-                                    </InputGroup>
-                                    <InputGroup>
-                                        <Label>Bairro</Label>
-                                        <Input
-                                            value={userData?.neighborhood || ''}
-                                            onChange={e => setUserData({ ...userData, neighborhood: e.target.value })}
-                                        />
-                                    </InputGroup>
-                                </FormGrid>
-
-                                <FormGrid $columns="2fr 1fr">
-                                    <InputGroup>
-                                        <Label>Cidade</Label>
-                                        <Input value={userData?.city || ''} readOnly />
-                                    </InputGroup>
-                                    <InputGroup>
-                                        <Label>UF</Label>
-                                        <Input value={userData?.state || ''} readOnly />
-                                    </InputGroup>
-                                </FormGrid>
-
-                                <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                                    <Save size={20} /> Salvar Alterações
-                                </button>
-                            </Form>
-                        </div>
-                    </>
-                )}
-        </Container>
+      <Notice $tone="erro" role="alert">
+        <p>
+          <AlertCircle size={18} aria-hidden="true" />
+          <span>Não deu para carregar seus agendamentos agora. Pode ser a conexão ou uma instabilidade do nosso lado.</span>
+        </p>
+        <PrimaryButton type="button" onClick={() => { setLoadState('loading'); setAttempt((n) => n + 1); }}>
+          <RotateCw size={18} aria-hidden="true" /> Tentar de novo
+        </PrimaryButton>
+      </Notice>
     );
+  }
+
+  // Próximos: agendados de hoje em diante, do mais perto ao mais longe. O resto vai para "Anteriores".
+  const todayISO = localISO(new Date());
+  const upcoming = appointments
+    .filter((a) => a.status === 'scheduled' && a.date >= todayISO)
+    .sort((a, b) => (a.date + a.start_time).localeCompare(b.date + b.start_time));
+  const past = appointments
+    .filter((a) => !upcoming.includes(a))
+    .sort((a, b) => (b.date + b.start_time).localeCompare(a.date + a.start_time));
+
+  return (
+    <>
+      <Tabs aria-label="Minha área">
+        <Link to="/my-appointments" aria-current={activeTab === 'agendamentos' ? 'page' : undefined}>
+          <Calendar size={18} aria-hidden="true" /> Meus agendamentos
+        </Link>
+        <Link to="/my-appointments?tab=conta" aria-current={activeTab === 'conta' ? 'page' : undefined} data-tour="client-account">
+          <Settings size={18} aria-hidden="true" /> Minha conta
+        </Link>
+      </Tabs>
+
+      {activeTab === 'agendamentos' ? (
+        <>
+          <PageHead>
+            <div>
+              <h1 data-display>Meus agendamentos</h1>
+              <p>Toque num agendamento para ver os detalhes ou cancelar.</p>
+            </div>
+          </PageHead>
+
+          {appointments.length === 0 ? (
+            <Empty>
+              <h2>Nenhum agendamento ainda</h2>
+              <p>Busque quem atende perto de você e marque direto na agenda da pessoa.</p>
+              <PrimaryLink to="/">Buscar profissionais</PrimaryLink>
+            </Empty>
+          ) : (
+            <>
+              <Group aria-labelledby={`${id}-proximos`}>
+                <h2 id={`${id}-proximos`}>Próximos</h2>
+                {upcoming.length > 0
+                  ? upcoming.map((a) => <AppointmentItem key={a.id} appt={a} />)
+                  : <Muted>Nenhum horário marcado daqui para a frente.</Muted>}
+              </Group>
+              {past.length > 0 && (
+                <Group aria-labelledby={`${id}-anteriores`}>
+                  <h2 id={`${id}-anteriores`}>Anteriores</h2>
+                  {past.map((a) => <AppointmentItem key={a.id} appt={a} />)}
+                </Group>
+              )}
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <PageHead>
+            <div>
+              <h1 data-display>Minha conta</h1>
+              <p>Seus dados de contato e o endereço onde o serviço é feito.</p>
+            </div>
+          </PageHead>
+
+          <AccountPanel as="form" onSubmit={handleUpdateProfile} noValidate aria-label="Meus dados">
+            <h2>Contato</h2>
+            <TextField
+              id={`${id}-name`}
+              label="Nome completo"
+              icon={User}
+              autoComplete="name"
+              value={userData.name || ''}
+              onChange={(e) => { setUserData({ ...userData, name: e.target.value }); setErrors((p) => ({ ...p, name: undefined })); }}
+              error={errors.name}
+              required
+            />
+            <TextField
+                id={`${id}-email`}
+                label="E-mail"
+                icon={Mail}
+                type="email"
+                autoComplete="email"
+                value={userData.email || ''}
+                onChange={(e) => { setUserData({ ...userData, email: e.target.value }); setErrors((p) => ({ ...p, email: undefined })); }}
+                error={errors.email}
+                required
+              />
+            <TextField
+                id={`${id}-whatsapp`}
+                label="WhatsApp"
+                icon={Phone}
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel-national"
+                placeholder="(00) 00000-0000"
+                value={userData.whatsapp}
+                onChange={(e) => setUserData({ ...userData, whatsapp: formatWhatsApp(e.target.value) })}
+              />
+
+            <h2 style={{ marginTop: '2rem' }}>Endereço</h2>
+            <AddressFields idPrefix={id} formData={userData} setFormData={setUserData} errors={{}} />
+
+            {formError && <FieldNote role="alert" $tone="erro">{formError}</FieldNote>}
+
+            <SaveRow>
+              <PrimaryButton type="submit" disabled={saving}>
+                <Save size={18} aria-hidden="true" /> {saving ? 'Salvando…' : 'Salvar meus dados'}
+              </PrimaryButton>
+            </SaveRow>
+          </AccountPanel>
+        </>
+      )}
+    </>
+  );
 }

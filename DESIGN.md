@@ -286,12 +286,19 @@ Shared pieces live in `frontend/src/components/talao/`. Pages import them from t
   - **Lists and forms:** services as cards with a gráfica foot rule; working hours as a ruled list; block time in a native `<dialog>`.
   - **Premium summary:** a ruled list, not icon stat cards.
   - **Notices:** the inactive subscription shows as an inline alerta notice, never a fixed bar over the shell.
+- **Client area (`pages/ClientDashboard.jsx`, contained register):** tabs are links (`/my-appointments`, `?tab=conta`).
+  - **Appointments:** grouped as Próximos (ascending) and Anteriores (descending). Each row links to the detail page with a printed day block (number plus month), the service, date and professional, and a status word in its colour.
+  - **Minha conta:** a form with the signup `TextField`/`AddressFields`. A CEP lookup refills city and UF, and errors show inline.
+- **Appointment detail (`pages/AppointmentDetail.jsx`, contained register):** a receipt-like panel headed "Agendamento nº", with a status stamp (bordered, -3deg, colour plus word).
+  - **Lines:** a ruled `dl` with gráfica labels (one column below 480px). It shows the other party first, then service, day and time, and addresses (the client also sees the professional's).
+  - **Actions:** WhatsApp to the other party (outlined gráfica), Marcar como concluído (pro only, primary), then Cancelar and Suspender as stamp buttons.
+  - **Reason:** cancelling or suspending opens an inline papel-2 form. The reason needs 5 or more letters, and the error stays inside that form.
 - **E-mails (`backend/app/services/notifications/templates.py`):** the same single ink.
   - Red logo image (`contratapro.com.br/logo.png`) on white over a 2px gráfica rule.
   - 2px gráfica frame, papel-2 page, info box with a gráfica top rule, dashed tear line before the footer.
   - Square gráfica button.
   - Statuses in sucesso/alerta/erro. No gradients or indigo.
-- **Backend messages:** `components/apiErrors.js` (`translateError`) maps the English or unaccented messages from signup, reset and booking.
+- **Backend messages:** `components/apiErrors.js` (`translateError`) maps the English or unaccented messages from signup, reset, booking, the dashboard and the appointment detail.
 - **Surface:** `TalaoPage` sets the font, ink, paper, `::selection` and focus ring, and holds `font-size: 1rem` against the mobile body shrink in `index.css`. `Wrap` is the 1200px column. `paperSurface('rosa')` paints a via and tints `--texto-2` for it. Every sheet of papel resting on a coloured via resets `--texto-2` via `cardSheet`.
 - **Components:**
   - Type: `Display` (always carries `data-display`, so the mobile `!important` heading rule never shrinks it), `Lead`, `Hand`.

@@ -16,6 +16,12 @@ const KNOWN_ERRORS = {
   'Only professionals can create services': 'Só profissionais podem cadastrar serviços.',
   'Only professionals can set working hours': 'Só profissionais podem marcar horários de atendimento.',
   'Working hour not found': 'Este horário já não existe. Recarregue a página.',
+  // Detalhe do agendamento
+  'Appointment not found': 'Não encontramos este agendamento.',
+  'Not authorized': 'Este agendamento não é da sua conta.',
+  'Only professionals can mark as completed': 'Só o profissional pode marcar o serviço como concluído.',
+  'Reason is mandatory and must be at least 5 characters': 'Escreva o motivo com pelo menos 5 letras.',
+  'Invalid status': 'Essa mudança não é possível para este agendamento.',
 };
 
 export const translateError = (detail, fallback) =>
