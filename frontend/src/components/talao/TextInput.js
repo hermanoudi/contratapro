@@ -63,6 +63,19 @@ export const TextInput = styled.input`
     border-color: var(--grafica);
   }
 
+  /* Só leitura: papel-2 e borda de régua, sem o realce de foco de edição */
+  &[readonly] {
+    background: var(--papel-2);
+    border-color: var(--regua);
+    color: var(--texto-2-papel);
+  }
+
+  &[readonly]:focus,
+  &[readonly]:focus-visible {
+    background: var(--papel-2);
+    box-shadow: none;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     transition: none;
   }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useId } from 'react';
 import styled from 'styled-components';
-import { ArrowRight, ArrowLeft, Check, User, Phone, Mail, ImagePlus, RotateCw } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, User, Phone, Mail, RotateCw } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PlanList, PlanSheet, PlanHead, PlanItems, planItems, planPrice, sortPlans } from '../components/planParts';
@@ -9,7 +9,8 @@ import PasswordInput from '../components/PasswordInput';
 import AuthLayout from '../components/AuthLayout';
 import { PrimaryButton, StampButton, FieldLabel, FieldNote, TextInput } from '../components/talao';
 import { StepHead, Group, Actions, FormError, FooterNote, TextField, AddressFields } from '../components/SignupParts';
-import { formatCpf, formatWhatsApp, validateAddress } from '../components/signupUtils';
+import { formatCpf, formatWhatsApp, validateAddress, photoError } from '../components/signupUtils';
+import PhotoPicker from '../components/PhotoPicker';
 import { translateError } from '../components/apiErrors';
 
 // Só o que o ContrataPro faz de fato (PRODUCT.md): cadastro grátis, sem intermediar serviço nem pagamento
@@ -21,86 +22,7 @@ const FACTS = [
 
 const TOTAL = 5;
 
-/* ------------------------------ Foto ------------------------------ */
-
-const PhotoBox = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 1.25rem;
-  background: var(--papel-2);
-  border: 1.5px dashed ${({ $erro }) => ($erro ? 'var(--grafica)' : 'var(--controle)')};
-
-  @media (max-width: 420px) {
-    flex-direction: column;
-    align-items: stretch;
-    text-align: center;
-  }
-`;
-
-// Mesma moldura da foto no cartão de profissional: é assim que o cliente vai ver
-const Frame = styled.div`
-  flex: none;
-  width: 120px;
-  height: 120px;
-  margin: 0 auto;
-  border: 2px solid var(--nanquim);
-  background: var(--amarela);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  color: var(--nanquim);
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-`;
-
-const PhotoActions = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  min-width: 0;
-
-  p {
-    font-size: 0.95rem;
-    color: var(--texto-2-papel);
-  }
-`;
-
-// O input fica acessível (só escondido da vista): o rótulo estilizado é o botão
-const FilePick = styled.label`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 48px;
-  padding: 0 1.2rem;
-  border: 2px solid var(--grafica);
-  border-radius: 2px;
-  font-family: var(--f-impresso);
-  font-weight: 700;
-  font-size: 1.1rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--grafica);
-  cursor: pointer;
-  transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out);
-
-  &:hover {
-    background: var(--grafica);
-    color: var(--papel);
-  }
-
-  &:focus-within {
-    outline: 2px solid var(--carbono);
-    outline-offset: 3px;
-  }
-`;
-
+// Ação secundária em texto (tentar de novo)
 const TextButton = styled.button`
   align-self: center;
   background: none;
@@ -215,13 +137,9 @@ export default function RegisterProfessional() {
     const file = e.target.files[0];
     e.target.value = '';
     if (!file) return;
-    // Validar tipo e tamanho (máx 5MB)
-    if (!file.type.startsWith('image/')) {
-      setErrors((prev) => ({ ...prev, photo: 'Escolha um arquivo de imagem (JPG, PNG ou GIF).' }));
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setErrors((prev) => ({ ...prev, photo: 'Essa imagem passa de 5 MB. Escolha uma menor.' }));
+    const problem = photoError(file);
+    if (problem) {
+      setErrors((prev) => ({ ...prev, photo: problem }));
       return;
     }
     clear('photo');
@@ -526,33 +444,15 @@ export default function RegisterProfessional() {
         <form onSubmit={nextStep} noValidate>
           <StepHead ref={headingRef} step={4} total={TOTAL} title="Sua foto" lead="Quem vai receber você em casa quer ver seu rosto. É esta foto que aparece no seu cartão na busca." />
 
-          <PhotoBox $erro={!!errors.photo}>
-            <Frame>
-              {profilePicturePreview ? <img src={profilePicturePreview} alt="Prévia da sua foto" /> : <User size={56} aria-hidden="true" />}
-            </Frame>
-            <PhotoActions>
-              <FilePick>
-                <input
-                  id={`${id}-photo`}
-                  className="sr-only"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleProfilePictureChange}
-                  aria-describedby={`${id}-photo-nota`}
-                  ref={(el) => { fieldRefs.current.photo = el; }}
-                />
-                <ImagePlus size={20} aria-hidden="true" />
-                {profilePicture ? 'Trocar a foto' : 'Escolher a foto'}
-              </FilePick>
-              {profilePicture && (
-                <TextButton type="button" onClick={() => { setProfilePicture(null); setProfilePicturePreview(null); }}>
-                  Tirar esta foto
-                </TextButton>
-              )}
-              <p id={`${id}-photo-nota`}>JPG, PNG ou GIF, até 5 MB.</p>
-            </PhotoActions>
-          </PhotoBox>
-          {errors.photo && <FieldNote $tone="erro" role="alert">{errors.photo}</FieldNote>}
+          <PhotoPicker
+            id={`${id}-photo`}
+            preview={profilePicturePreview}
+            hasFile={!!profilePicture}
+            onChange={handleProfilePictureChange}
+            onRemove={() => { setProfilePicture(null); setProfilePicturePreview(null); }}
+            error={errors.photo}
+            inputRef={(el) => { fieldRefs.current.photo = el; }}
+          />
 
           <Actions>
             {back}

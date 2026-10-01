@@ -1,666 +1,329 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import styled from 'styled-components';
-import { User, MapPin, Camera, Save, Briefcase } from 'lucide-react';
+import { AlertCircle, RotateCw, Save, User, Mail, Phone, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { API_URL } from '../config';
+import { PrimaryButton, FieldLabel, TextInput, FieldNote } from '../components/talao';
+import { PageHead, Panel, Notice } from '../components/dashboard/parts';
+import { TextField, AddressFields } from '../components/SignupParts';
+import { formatWhatsApp, formatCepMask, validateAddress, profileFormData, photoError } from '../components/signupUtils';
+import { translateError } from '../components/apiErrors';
+import PhotoPicker from '../components/PhotoPicker';
 
-const PageContainer = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
+/* Meu perfil (ProfessionalLayout) no registro contido: o que o cliente vê
+   no cartão da busca e na página pública. PUT /users/me é FormData. */
+
+const Sheet = styled(Panel).attrs({ as: 'form' })`
+  max-width: 46rem;
 `;
 
-const PageHeader = styled.div`
-  margin-bottom: 2rem;
+const Section = styled.section`
+  & + & {
+    margin-top: 2rem;
+  }
 
-  h1 {
-    font-size: 1.75rem;
+  > h2 {
+    padding-bottom: 0.4rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--grafica);
+    font-family: var(--f-impresso);
     font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
+    font-size: 1.35rem;
   }
 
-  p {
-    color: var(--text-secondary);
-    font-size: 0.95rem;
+  > p {
+    margin: -0.5rem 0 1rem;
+    line-height: 1.5;
+    color: var(--texto-2-papel);
   }
 `;
 
-const ProfileSection = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1.5rem;
+const Group = styled.div`
+  & + & {
+    margin-top: 1.1rem;
+  }
 `;
 
-const ProfileHeader = styled.div`
-  display: flex;
+const SaveRow = styled.div`
+  margin-top: 2rem;
+
+  button {
+    min-width: 14rem;
+
+    @media (max-width: 480px) {
+      width: 100%;
+    }
+  }
+`;
+
+const PublicLink = styled.a`
+  display: inline-flex;
   align-items: center;
-  gap: 2rem;
-  margin-bottom: 2rem;
-  padding-bottom: 2rem;
-  border-bottom: 1px solid var(--border);
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    text-align: center;
-  }
-`;
-
-const ProfilePictureWrapper = styled.div`
-  position: relative;
-  width: 120px;
-  height: 120px;
-  flex-shrink: 0;
-`;
-
-const ProfilePicture = styled.div`
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: ${props => props.$imageUrl ? `url(${props.$imageUrl})` : 'linear-gradient(135deg, var(--primary), var(--accent))'};
-  background-size: cover;
-  background-position: center;
-  border: 4px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.5rem;
-  color: white;
-  font-weight: bold;
-  overflow: hidden;
-`;
-
-const UploadButton = styled.label`
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  background: var(--primary);
-  border: 3px solid white;
-  padding: 0.5rem;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-
-  &:hover {
-    background: var(--accent);
-    transform: scale(1.1);
-  }
-
-  svg {
-    color: white;
-  }
-
-  input {
-    display: none;
-  }
-`;
-
-const ProfileInfo = styled.div`
-  flex: 1;
-
-  h2 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 0.25rem;
-  }
-
-  p {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-  }
-`;
-
-const SectionTitle = styled.h3`
-  font-size: 1.1rem;
-  color: var(--text-primary);
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid var(--border);
-
-  svg {
-    color: var(--primary);
-  }
-`;
-
-const Form = styled.form``;
-
-const InputGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-`;
-
-const InputGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
-const Label = styled.label`
-  font-size: 0.875rem;
+  gap: 0.35rem;
+  min-height: 44px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--grafica);
+  text-underline-offset: 3px;
 `;
 
-const Input = styled.input`
-  padding: 0.75rem;
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.95rem;
-  transition: all 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
-  }
-
-  &:disabled {
-    background: var(--bg-secondary);
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
+const Loading = styled.p`
+  padding: 2rem 0;
+  color: var(--texto-2-papel);
 `;
 
-const Textarea = styled.textarea`
-  padding: 0.75rem;
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.95rem;
-  transition: all 0.2s;
-  resize: vertical;
-  min-height: 100px;
-  font-family: inherit;
+const DESCRIPTION_MAX = 500;
 
-  &:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
-  }
-`;
+const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
-const Select = styled.select`
-  padding: 0.75rem;
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.95rem;
-  transition: all 0.2s;
-  cursor: pointer;
-  background: white;
+async function loadProfile() {
+  const [meRes, catRes] = await Promise.all([
+    fetch(`${API_URL}/auth/me`, { headers: authHeaders() }),
+    fetch(`${API_URL}/categories/groups`).catch(() => null),
+  ]);
+  if (!meRes.ok) throw new Error(String(meRes.status));
+  const me = await meRes.json();
+  const categories = catRes && catRes.ok ? await catRes.json() : null;
+  return { me, categories };
+}
 
-  &:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(196, 32, 26, 0.1);
-  }
-
-  &:disabled {
-    background: var(--bg-secondary);
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-`;
-
-const SaveButton = styled.button`
-  width: 100%;
-  padding: 1rem;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  transition: all 0.2s;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(196, 32, 26, 0.3);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-  }
-`;
-
-const LoadingState = styled.div`
-  text-align: center;
-  padding: 3rem;
-  color: var(--text-secondary);
-`;
+const toForm = (me) => ({
+  name: me.name || '',
+  email: me.email || '',
+  whatsapp: me.whatsapp ? formatWhatsApp(me.whatsapp) : '',
+  category: me.category || '',
+  description: me.description || '',
+  cep: me.cep ? formatCepMask(me.cep) : '',
+  street: me.street || '',
+  number: me.number || '',
+  complement: me.complement || '',
+  neighborhood: me.neighborhood || '',
+  city: me.city || '',
+  state: me.state || '',
+});
 
 export default function ProfessionalProfile() {
-  const [loading, setLoading] = useState(true);
+  const id = useId();
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState({ status: 'loading' });
+  const [form, setForm] = useState(null);
+  const [photo, setPhoto] = useState({ file: null, preview: null });
+  const [errors, setErrors] = useState({});
+  const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [categories, setCategories] = useState({});
-  const [profilePicturePreview, setProfilePicturePreview] = useState(null);
-  const [profilePictureFile, setProfilePictureFile] = useState(null);
-
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    whatsapp: '',
-    category: '',
-    description: '',
-    cep: '',
-    street: '',
-    number: '',
-    complement: '',
-    neighborhood: '',
-    city: '',
-    state: ''
-  });
 
   useEffect(() => {
-    loadProfile();
-    loadCategories();
-  }, []);
-
-  const loadProfile = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Você precisa estar logado');
-        return;
-      }
-
-      const response = await fetch(`${API_URL}/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+    let cancelled = false;
+    loadProfile()
+      .then(({ me, categories }) => {
+        if (cancelled) return;
+        setState({ status: 'ok', me, categories });
+        setForm(toForm(me));
+        setPhoto({ file: null, preview: me.profile_picture || null });
+      })
+      .catch((e) => {
+        console.error('Falha ao carregar o perfil', e);
+        if (!cancelled) setState({ status: 'error' });
       });
+    return () => { cancelled = true; };
+  }, [attempt]);
 
-      if (!response.ok) {
-        throw new Error('Erro ao carregar perfil');
-      }
-
-      const data = await response.json();
-
-      setFormData({
-        name: data.name || '',
-        email: data.email || '',
-        whatsapp: data.whatsapp || '',
-        category: data.category || '',
-        description: data.description || '',
-        cep: data.cep || '',
-        street: data.street || '',
-        number: data.number || '',
-        complement: data.complement || '',
-        neighborhood: data.neighborhood || '',
-        city: data.city || '',
-        state: data.state || ''
-      });
-
-      if (data.profile_picture) {
-        setProfilePicturePreview(data.profile_picture);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar perfil:', error);
-      toast.error('Erro ao carregar perfil');
-    } finally {
-      setLoading(false);
-    }
+  const set = (field) => (e) => {
+    const value = field === 'whatsapp' ? formatWhatsApp(e.target.value) : e.target.value;
+    setForm((f) => ({ ...f, [field]: value }));
+    setErrors((p) => ({ ...p, [field]: undefined }));
   };
 
-  const loadCategories = async () => {
-    try {
-      const res = await fetch(`${API_URL}/categories/groups`);
-      if (res.ok) {
-        const data = await res.json();
-        setCategories(data);
-      }
-    } catch (e) {
-      console.error('Erro ao buscar categorias:', e);
-    }
-  };
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleWhatsAppChange = (e) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 11) value = value.slice(0, 11);
-
-    let displayValue = value;
-    if (value.length === 11) {
-      displayValue = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
-    } else if (value.length === 10) {
-      displayValue = `(${value.slice(0, 2)}) ${value.slice(2, 6)}-${value.slice(6)}`;
-    } else if (value.length > 2) {
-      displayValue = `(${value.slice(0, 2)}) ${value.slice(2)}`;
-    }
-
-    setFormData(prev => ({ ...prev, whatsapp: displayValue }));
-  };
-
-  const handleCepChange = async (e) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 8) value = value.slice(0, 8);
-
-    let displayValue = value;
-    if (value.length > 5) {
-      displayValue = value.replace(/^(\d{5})(\d)/, '$1-$2');
-    }
-
-    setFormData(prev => ({ ...prev, cep: displayValue }));
-
-    if (value.length === 8) {
-      try {
-        const response = await fetch(`${API_URL}/cep/${value}`);
-        if (response.ok) {
-          const data = await response.json();
-          setFormData(prev => ({
-            ...prev,
-            street: data.street,
-            neighborhood: data.neighborhood,
-            city: data.city,
-            state: data.state
-          }));
-          toast.success('Endereço localizado!');
-        }
-      } catch (error) {
-        console.error('Erro ao buscar CEP:', error);
-      }
-    }
-  };
-
-  const handleProfilePictureChange = (e) => {
+  const pickPhoto = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Imagem muito grande. Máximo: 5MB');
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        toast.error('Apenas imagens são permitidas');
-        return;
-      }
-
-      setProfilePictureFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePicturePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    e.target.value = '';
+    if (!file) return;
+    const problem = photoError(file);
+    if (problem) {
+      setErrors((p) => ({ ...p, photo: problem }));
+      return;
     }
+    setErrors((p) => ({ ...p, photo: undefined }));
+    const reader = new FileReader();
+    reader.onloadend = () => setPhoto({ file, preview: reader.result });
+    reader.readAsDataURL(file);
   };
 
-  const handleSubmit = async (e) => {
+  const validate = () => {
+    const found = {};
+    if (!form.name.trim()) found.name = 'Informe seu nome.';
+    const phone = form.whatsapp.replace(/\D/g, '');
+    if (phone.length < 10) found.whatsapp = 'Informe o WhatsApp com DDD.';
+    if (!form.category) found.category = 'Escolha a sua categoria.';
+    Object.assign(found, validateAddress(form));
+    return found;
+  };
+
+  const save = async (e) => {
     e.preventDefault();
+    const found = validate();
+    setErrors(found);
+    setFormError('');
+    const first = Object.keys(found)[0];
+    if (first) {
+      document.getElementById(`${id}-${first}`)?.focus();
+      return;
+    }
     setSaving(true);
-
     try {
-      const token = localStorage.getItem('token');
-      const formDataToSend = new FormData();
-
-      Object.keys(formData).forEach(key => {
-        if (formData[key]) {
-          formDataToSend.append(key, formData[key]);
-        }
+      const body = profileFormData({
+        name: form.name.trim(),
+        whatsapp: form.whatsapp,
+        category: form.category,
+        description: form.description.trim(),
+        cep: form.cep.replace(/\D/g, ''),
+        street: form.street,
+        number: form.number,
+        complement: form.complement,
+        neighborhood: form.neighborhood,
+        city: form.city,
+        state: form.state,
       });
-
-      if (profilePictureFile) {
-        formDataToSend.append('profile_picture', profilePictureFile);
+      if (photo.file) body.append('profile_picture', photo.file);
+      const res = await fetch(`${API_URL}/users/me`, { method: 'PUT', headers: authHeaders(), body });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setFormError(translateError(data.detail, 'Não deu para salvar o seu perfil. Tente de novo.'));
+        return;
       }
-
-      const response = await fetch(`${API_URL}/users/me`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formDataToSend
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao atualizar perfil');
-      }
-
-      toast.success('Perfil atualizado com sucesso!');
-      setProfilePictureFile(null);
-      await loadProfile();
-    } catch (error) {
-      console.error('Erro ao salvar perfil:', error);
-      toast.error('Erro ao atualizar perfil');
+      setState((s) => ({ ...s, me: data }));
+      setPhoto({ file: null, preview: data.profile_picture || photo.preview });
+      toast.success('Perfil salvo. É assim que os clientes veem você agora.');
+    } catch {
+      setFormError('Não deu para falar com o servidor. Confira sua conexão e tente de novo.');
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
+  if (state.status === 'loading') return <Loading role="status">Carregando o seu perfil…</Loading>;
+
+  if (state.status === 'error') {
     return (
-      <PageContainer>
-        <LoadingState>Carregando perfil...</LoadingState>
-      </PageContainer>
+      <Notice $tone="erro" role="alert">
+        <p>
+          <AlertCircle size={18} aria-hidden="true" />
+          <span>Não deu para carregar o seu perfil agora. Pode ser a conexão ou uma instabilidade do nosso lado.</span>
+        </p>
+        <PrimaryButton type="button" onClick={() => { setState({ status: 'loading' }); setAttempt((n) => n + 1); }}>
+          <RotateCw size={18} aria-hidden="true" /> Tentar de novo
+        </PrimaryButton>
+      </Notice>
     );
   }
 
-  const getInitials = (name) => {
-    if (!name) return 'U';
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
+  const { me, categories } = state;
 
   return (
-    <PageContainer>
-      <PageHeader>
-        <h1>Meu Perfil</h1>
-        <p>Gerencie suas informações pessoais e profissionais</p>
-      </PageHeader>
+    <>
+      <PageHead>
+        <div>
+          <h1 data-display>Meu perfil</h1>
+          <p>O que os clientes veem no seu cartão da busca e na sua página.</p>
+        </div>
+        {me.slug && (
+          <PublicLink href={`/p/${me.slug}`} target="_blank" rel="noopener noreferrer">
+            Ver minha página <ExternalLink size={16} aria-hidden="true" />
+          </PublicLink>
+        )}
+      </PageHead>
 
-      <Form onSubmit={handleSubmit}>
-        <ProfileSection>
-          <ProfileHeader>
-            <ProfilePictureWrapper>
-              <ProfilePicture $imageUrl={profilePicturePreview}>
-                {!profilePicturePreview && getInitials(formData.name)}
-              </ProfilePicture>
-              <UploadButton>
-                <Camera size={18} />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleProfilePictureChange}
-                />
-              </UploadButton>
-            </ProfilePictureWrapper>
-            <ProfileInfo>
-              <h2>{formData.name}</h2>
-              <p>{formData.email}</p>
-            </ProfileInfo>
-          </ProfileHeader>
+      <Sheet onSubmit={save} noValidate aria-label="Meu perfil">
+        <Section aria-labelledby={`${id}-foto-titulo`}>
+          <h2 id={`${id}-foto-titulo`}>Foto</h2>
+          <p>Quem vai receber você em casa quer ver seu rosto.</p>
+          <PhotoPicker
+            id={`${id}-photo`}
+            preview={photo.preview}
+            hasFile={!!photo.file}
+            onChange={pickPhoto}
+            onRemove={() => setPhoto({ file: null, preview: me.profile_picture || null })}
+            removeLabel="Manter a foto anterior"
+            error={errors.photo}
+          />
+        </Section>
 
-          <SectionTitle>
-            <User size={20} />
-            Dados Pessoais
-          </SectionTitle>
+        <Section aria-labelledby={`${id}-contato-titulo`}>
+          <h2 id={`${id}-contato-titulo`}>Contato</h2>
+          <TextField id={`${id}-name`} label="Nome" icon={User} autoComplete="name" value={form.name} onChange={set('name')} error={errors.name} required />
+          <TextField id={`${id}-email`} label="E-mail" icon={Mail} type="email" value={form.email} readOnly hint="O e-mail é o seu login e não muda por aqui." />
+          <TextField
+            id={`${id}-whatsapp`}
+            label="WhatsApp"
+            icon={Phone}
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel-national"
+            value={form.whatsapp}
+            onChange={set('whatsapp')}
+            error={errors.whatsapp}
+            hint="Os clientes falam com você por aqui."
+            required
+          />
+        </Section>
 
-          <InputGrid>
-            <InputGroup>
-              <Label>Nome Completo</Label>
-              <Input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
-            </InputGroup>
-            <InputGroup>
-              <Label>Email</Label>
-              <Input
-                type="email"
-                name="email"
-                value={formData.email}
-                disabled
-              />
-            </InputGroup>
-          </InputGrid>
-        </ProfileSection>
-
-        <ProfileSection>
-          <SectionTitle>
-            <Briefcase size={20} />
-            Informações Profissionais
-          </SectionTitle>
-
-          <InputGrid>
-            <InputGroup>
-              <Label>WhatsApp</Label>
-              <Input
-                type="text"
-                name="whatsapp"
-                value={formData.whatsapp}
-                onChange={handleWhatsAppChange}
-                placeholder="(00) 00000-0000"
-              />
-            </InputGroup>
-            <InputGroup>
-              <Label>Categoria</Label>
-              <Select
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-              >
-                <option value="">Selecione...</option>
-                {Object.entries(categories).map(([group, items]) => (
-                  <optgroup key={group} label={group}>
-                    {items.map((cat) => (
-                      <option key={cat.id} value={cat.slug}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </Select>
-            </InputGroup>
-          </InputGrid>
-
-          <InputGroup>
-            <Label>Descrição / Sobre Você</Label>
-            <Textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Conte um pouco sobre sua experiência e serviços..."
+        <Section aria-labelledby={`${id}-trabalho-titulo`}>
+          <h2 id={`${id}-trabalho-titulo`}>O seu trabalho</h2>
+          <Group>
+            <FieldLabel htmlFor={`${id}-category`}>Categoria</FieldLabel>
+            <TextInput
+              as="select"
+              id={`${id}-category`}
+              value={form.category}
+              onChange={set('category')}
+              aria-invalid={errors.category ? true : undefined}
+              aria-describedby={errors.category ? `${id}-category-nota` : undefined}
+            >
+              <option value="">Escolha…</option>
+              {/* Categoria atual continua na lista mesmo se as categorias não carregarem */}
+              {!categories && form.category && <option value={form.category}>{me.category}</option>}
+              {categories && Object.entries(categories).map(([group, items]) => (
+                <optgroup key={group} label={group}>
+                  {items.map((cat) => <option key={cat.id} value={cat.slug}>{cat.name}</option>)}
+                </optgroup>
+              ))}
+            </TextInput>
+            {errors.category
+              ? <FieldNote id={`${id}-category-nota`} $tone="erro">{errors.category}</FieldNote>
+              : !categories && <FieldNote>Não deu para carregar a lista de categorias. A atual continua salva.</FieldNote>}
+          </Group>
+          <Group>
+            <FieldLabel htmlFor={`${id}-description`}>Sobre você</FieldLabel>
+            <TextInput
+              as="textarea"
+              id={`${id}-description`}
+              rows={4}
+              maxLength={DESCRIPTION_MAX}
+              placeholder="Ex.: faço acabamento fino, levo o material, atendo aos sábados"
+              value={form.description}
+              onChange={set('description')}
+              aria-describedby={`${id}-description-nota`}
+              style={{ resize: 'vertical', padding: '0.75rem 1rem', minHeight: '7rem' }}
             />
-          </InputGroup>
-        </ProfileSection>
+            <FieldNote id={`${id}-description-nota`}>
+              Aparece na sua página. {form.description.length} de {DESCRIPTION_MAX} letras.
+            </FieldNote>
+          </Group>
+        </Section>
 
-        <ProfileSection>
-          <SectionTitle>
-            <MapPin size={20} />
-            Endereço
-          </SectionTitle>
+        <Section aria-labelledby={`${id}-endereco-titulo`}>
+          <h2 id={`${id}-endereco-titulo`}>Endereço</h2>
+          <p>A cidade aparece na busca; a rua e o número, só para quem agendou com você.</p>
+          <AddressFields idPrefix={id} formData={form} setFormData={setForm} errors={errors} />
+        </Section>
 
-          <InputGrid>
-            <InputGroup>
-              <Label>CEP</Label>
-              <Input
-                type="text"
-                name="cep"
-                value={formData.cep}
-                onChange={handleCepChange}
-                placeholder="00000-000"
-              />
-            </InputGroup>
-            <InputGroup>
-              <Label>Número</Label>
-              <Input
-                type="text"
-                name="number"
-                value={formData.number}
-                onChange={handleChange}
-              />
-            </InputGroup>
-          </InputGrid>
+        {formError && <FieldNote role="alert" $tone="erro">{formError}</FieldNote>}
 
-          <InputGroup style={{ marginBottom: '1.5rem' }}>
-            <Label>Rua</Label>
-            <Input
-              type="text"
-              name="street"
-              value={formData.street}
-              onChange={handleChange}
-            />
-          </InputGroup>
-
-          <InputGrid>
-            <InputGroup>
-              <Label>Bairro</Label>
-              <Input
-                type="text"
-                name="neighborhood"
-                value={formData.neighborhood}
-                onChange={handleChange}
-              />
-            </InputGroup>
-            <InputGroup>
-              <Label>Complemento</Label>
-              <Input
-                type="text"
-                name="complement"
-                value={formData.complement}
-                onChange={handleChange}
-                placeholder="Opcional"
-              />
-            </InputGroup>
-          </InputGrid>
-
-          <InputGrid style={{ marginTop: '1.5rem' }}>
-            <InputGroup>
-              <Label>Cidade</Label>
-              <Input
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-              />
-            </InputGroup>
-            <InputGroup>
-              <Label>Estado</Label>
-              <Input
-                type="text"
-                name="state"
-                value={formData.state}
-                onChange={handleChange}
-                maxLength={2}
-                placeholder="UF"
-              />
-            </InputGroup>
-          </InputGrid>
-        </ProfileSection>
-
-        <SaveButton type="submit" disabled={saving}>
-          <Save size={20} />
-          {saving ? 'Salvando...' : 'Salvar Alterações'}
-        </SaveButton>
-      </Form>
-    </PageContainer>
+        <SaveRow>
+          <PrimaryButton type="submit" disabled={saving}>
+            <Save size={18} aria-hidden="true" /> {saving ? 'Salvando…' : 'Salvar o perfil'}
+          </PrimaryButton>
+        </SaveRow>
+      </Sheet>
+    </>
   );
 }

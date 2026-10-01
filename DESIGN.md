@@ -304,6 +304,12 @@ Shared pieces live in `frontend/src/components/talao/`. Pages import them from t
     - The current plan and Free (after a paid plan) are disabled and tagged.
     - A summary panel says what will actually happen: an upgrade goes to Mercado Pago and stays pending until paid; a downgrade is scheduled for the next billing date.
     - The button names the action ("Ir para o pagamento" or "Agendar a troca").
+- **Meu perfil (`pages/ProfessionalProfile.jsx`, contained register):** a single form panel with four sections (Foto, Contato, O seu trabalho, Endereço), each headed by a gráfica rule.
+  - **Photo:** `components/PhotoPicker.jsx`, shared with signup, uses the yellow ProCard frame, so the professional sees what clients see.
+  - **E-mail:** read-only (papel-2 field with a régua border, via `TextInput[readonly]`), because it is the login.
+  - **Errors:** shown inline, and focus moves to the first field with a problem. "Ver minha página" opens `/p/:slug`.
+  - **Saving:** `PUT /users/me` only accepts FormData, so it uses `profileFormData` from signupUtils.
+- **Pending upgrade (Minha assinatura):** a papel-2 box with an alerta border, "Upgrade para X aguardando pagamento", offering Concluir o pagamento and Desistir do upgrade. The current plan stays in force until Mercado Pago confirms.
 - **Appointment detail (`pages/AppointmentDetail.jsx`, contained register):** a receipt-like panel headed "Agendamento nº", with a status stamp (bordered, -3deg, colour plus word).
   - **Lines:** a ruled `dl` with gráfica labels (one column below 480px). It shows the other party first, then service, day and time, and addresses (the client also sees the professional's).
   - **Actions:** WhatsApp to the other party (outlined gráfica), Marcar como concluído (pro only, primary), then Cancelar and Suspender as stamp buttons.

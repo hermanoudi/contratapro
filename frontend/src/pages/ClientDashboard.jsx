@@ -9,7 +9,7 @@ import { PageHead, Panel, Notice } from '../components/dashboard/parts';
 import { localISO } from '../components/dashboard/utils';
 import AppointmentRow, { AppointmentGroup as Group } from '../components/dashboard/AppointmentRow';
 import { TextField, AddressFields } from '../components/SignupParts';
-import { formatWhatsApp, formatCepMask } from '../components/signupUtils';
+import { formatWhatsApp, formatCepMask, profileFormData } from '../components/signupUtils';
 import { translateError } from '../components/apiErrors';
 
 /* Área do cliente (dentro do AppShell): agendamentos e "Minha conta".
@@ -153,7 +153,6 @@ export default function ClientDashboard() {
     e.preventDefault();
     const found = {};
     if (!userData.name?.trim()) found.name = 'Informe seu nome.';
-    if (!userData.email?.trim()) found.email = 'Informe seu e-mail.';
     setErrors(found);
     if (Object.keys(found).length) {
       document.getElementById(`${id}-${Object.keys(found)[0]}`)?.focus();
@@ -166,10 +165,9 @@ export default function ClientDashboard() {
     try {
       const res = await fetch(`${API_URL}/users/me`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
+        headers: { Authorization: `Bearer ${token}` },
+        body: profileFormData({
           name: userData.name.trim(),
-          email: userData.email.trim(),
           whatsapp: userData.whatsapp,
           cep: userData.cep.replace(/\D/g, ''),
           street: userData.street,
@@ -287,11 +285,9 @@ export default function ClientDashboard() {
                 label="E-mail"
                 icon={Mail}
                 type="email"
-                autoComplete="email"
                 value={userData.email || ''}
-                onChange={(e) => { setUserData({ ...userData, email: e.target.value }); setErrors((p) => ({ ...p, email: undefined })); }}
-                error={errors.email}
-                required
+                readOnly
+                hint="O e-mail é o seu login e não muda por aqui."
               />
             <TextField
                 id={`${id}-whatsapp`}

@@ -33,3 +33,20 @@ export const validateAddress = (formData) => {
   if (!formData.city.trim()) errors.city = 'Informe a cidade.';
   return errors;
 };
+
+// PUT /users/me só aceita FormData (por causa da foto). Campos undefined
+// ficam de fora; string vazia vai e limpa o campo (ex.: complemento).
+export const profileFormData = (fields) => {
+  const body = new FormData();
+  Object.entries(fields).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) body.append(key, value);
+  });
+  return body;
+};
+
+// Valida a imagem da foto de perfil: devolve a mensagem de erro ou null
+export const photoError = (file) => {
+  if (!file.type.startsWith('image/')) return 'Escolha um arquivo de imagem (JPG, PNG ou GIF).';
+  if (file.size > 5 * 1024 * 1024) return 'Essa imagem passa de 5 MB. Escolha uma menor.';
+  return null;
+};
