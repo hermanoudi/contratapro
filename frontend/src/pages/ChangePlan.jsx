@@ -196,6 +196,26 @@ export default function ChangePlan() {
   const currentPrice = current?.price ?? 0;
   const hasPaid = currentPrice > 0;
 
+  // Upgrade já aguardando o Mercado Pago: concluir ou desistir antes de outro
+  if (subscription?.pending_plan) {
+    return (
+      <>
+        {back}
+        {head}
+        <Notice $tone="alerta">
+          <p>
+            <AlertCircle size={18} aria-hidden="true" />
+            <span>
+              O upgrade para o {subscription.pending_plan.name} está aguardando o pagamento no Mercado Pago.
+              Conclua o pagamento ou desista dele em Minha assinatura antes de escolher outro plano.
+            </span>
+          </p>
+          <Link to="/minha-assinatura">Ir para minha assinatura</Link>
+        </Notice>
+      </>
+    );
+  }
+
   // Já existe troca ou cancelamento agendado: o backend recusa outra troca
   if (subscription?.scheduled_plan || subscription?.scheduled_cancellation_date) {
     return (
@@ -221,6 +241,8 @@ export default function ChangePlan() {
   const isUpgrade = chosen && chosen.price > currentPrice;
   const isDowngrade = chosen && hasPaid && chosen.price < currentPrice;
   const billingDate = dayMonth(subscription?.next_billing_date);
+  // Com um plano em vigor, ele continua valendo até o MP confirmar o novo (backend: keep_current)
+  const keepsCurrent = !!current && (currentPrice === 0 || subscription?.status === 'active');
 
   const send = async (slug) => {
     setSaving(true);
@@ -334,10 +356,12 @@ export default function ChangePlan() {
               {isUpgrade && (
                 <>
                   <li>Você vai para o Mercado Pago autorizar a assinatura de {planPrice(chosen.price)} por mês.</li>
-                  {hasPaid && billingDate
-                    ? <li>A assinatura atual é cancelada no Mercado Pago, e a primeira cobrança do novo valor é em {billingDate}, no lugar da próxima cobrança.</li>
+                  {keepsCurrent
+                    ? <li>Você continua no {current.name}, e na busca, até o Mercado Pago confirmar. Se desistir no meio, nada muda.</li>
+                    : <li>Até você concluir o pagamento, sua assinatura fica pendente e seu perfil não aparece na busca.</li>}
+                  {keepsCurrent && hasPaid && billingDate
+                    ? <li>Com a confirmação, a assinatura do {current.name} é cancelada e a primeira cobrança do novo valor é em {billingDate}, no lugar da próxima cobrança.</li>
                     : <li>A cobrança começa quando você concluir o pagamento.</li>}
-                  <li>Até você concluir o pagamento, sua assinatura fica pendente e seu perfil não aparece na busca.</li>
                 </>
               )}
               {isDowngrade && (

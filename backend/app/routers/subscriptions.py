@@ -59,6 +59,23 @@ class SubscribePlanResponse(BaseModel):
     init_point: Optional[str] = None  # URL do Mercado Pago (apenas para planos pagos)
 
 
+async def _cancel_mp_preapproval(preapproval_id: str) -> None:
+    """Cancela um preapproval no Mercado Pago (melhor esforço: só registra falhas)."""
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.put(
+                f"https://api.mercadopago.com/preapproval/{preapproval_id}",
+                json={"status": "cancelled"},
+                headers={
+                    "Authorization": f"Bearer {settings.MERCADOPAGO_ACCESS_TOKEN}",
+                    "Content-Type": "application/json"
+                }
+            )
+        logger.info(f"Preapproval MP cancelado: {preapproval_id}")
+    except Exception as e:
+        logger.error(f"Erro ao cancelar preapproval MP {preapproval_id}: {str(e)}")
+
+
 @router.post("/subscribe/{plan_slug}", response_model=SubscribePlanResponse)
 async def subscribe_to_plan(
     plan_slug: str,
@@ -693,6 +710,21 @@ async def get_my_subscription(
                 "price": scheduled_plan.price
             }
 
+    # Upgrade aguardando o Mercado Pago (o plano atual continua valendo)
+    pending_plan_info = None
+    if subscription.pending_plan_id:
+        result = await db.execute(
+            select(SubscriptionPlan).where(SubscriptionPlan.id == subscription.pending_plan_id)
+        )
+        pending_plan = result.scalar_one_or_none()
+        if pending_plan:
+            pending_plan_info = {
+                "id": pending_plan.id,
+                "name": pending_plan.name,
+                "slug": pending_plan.slug,
+                "price": pending_plan.price
+            }
+
     return {
         "subscription": {
             "id": subscription.id,
@@ -730,7 +762,9 @@ async def get_my_subscription(
                 str(subscription.scheduled_plan_change_date)
                 if subscription.scheduled_plan_change_date else None
             ),
-            "scheduled_plan_id": subscription.scheduled_plan_id
+            "scheduled_plan_id": subscription.scheduled_plan_id,
+            "pending_plan": pending_plan_info,
+            "pending_init_point": subscription.pending_init_point
         }
     }
 
@@ -859,6 +893,12 @@ async def cancel_subscription(
     else:
         # PLANO PAGO: Agendar cancelamento para o vencimento
         cancellation_date = subscription.next_billing_date or date.today()
+        # Quem cancela não segue com um upgrade pela metade
+        if subscription.pending_preapproval_id:
+            await _cancel_mp_preapproval(subscription.pending_preapproval_id)
+            subscription.pending_plan_id = None
+            subscription.pending_preapproval_id = None
+            subscription.pending_init_point = None
         subscription.scheduled_cancellation_date = cancellation_date
 
         await db.commit()
@@ -953,6 +993,32 @@ async def cancel_scheduled_change(
         "message": f"Pronto: {' e '.join(cancelled_what)} desfeito(a). Sua assinatura continua normalmente.",
         "cancelled": cancelled_what
     }
+
+
+@router.post("/cancel-pending-upgrade")
+async def cancel_pending_upgrade(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Desiste de um upgrade que ainda aguarda o pagamento no Mercado Pago."""
+    if not current_user.is_professional:
+        raise HTTPException(status_code=403, detail="Apenas profissionais podem fazer isso")
+
+    result = await db.execute(
+        select(Subscription).where(Subscription.professional_id == current_user.id)
+    )
+    subscription = result.scalar_one_or_none()
+
+    if not subscription or not subscription.pending_preapproval_id:
+        raise HTTPException(status_code=400, detail="Não há upgrade aguardando pagamento.")
+
+    await _cancel_mp_preapproval(subscription.pending_preapproval_id)
+    subscription.pending_plan_id = None
+    subscription.pending_preapproval_id = None
+    subscription.pending_init_point = None
+    await db.commit()
+
+    return {"success": True, "message": "Upgrade desfeito. Você continua no plano atual."}
 
 
 @router.post("/debug-checkout")
@@ -1427,8 +1493,24 @@ async def change_subscription_plan(
             prorata_amount = round((price_diff * days_remaining) / 30, 2)
             logger.info(f"Pro-rata calculado: R${prorata_amount} ({days_remaining} dias restantes, diferenca R${price_diff})")
 
-    # Cancelar assinatura atual no MP
-    if existing_subscription and existing_subscription.mercadopago_preapproval_id:
+    # Quem já tem um plano em vigor (pago ativo ou Free) continua nele até o
+    # Mercado Pago confirmar o novo: o upgrade fica guardado em pending_*,
+    # e o webhook troca o plano quando o novo preapproval for autorizado.
+    keep_current = bool(
+        current_plan
+        and current_user.subscription_status == "active"
+        and (
+            current_plan.price == 0
+            or (existing_subscription and existing_subscription.status == "active")
+        )
+    )
+
+    # Upgrade pendente anterior é substituído pelo novo (cancelado no MP)
+    if keep_current and existing_subscription and existing_subscription.pending_preapproval_id:
+        await _cancel_mp_preapproval(existing_subscription.pending_preapproval_id)
+
+    # Sem plano em vigor: a assinatura antiga (pendente) é cancelada no MP
+    if not keep_current and existing_subscription and existing_subscription.mercadopago_preapproval_id:
         if existing_subscription.status in ["active", "pending"]:
             try:
                 async with httpx.AsyncClient() as client:
@@ -1483,7 +1565,7 @@ async def change_subscription_plan(
                 },
                 "payer_email": current_user.email,
                 "back_url": f"{settings.FRONTEND_URL}/subscription/callback",
-                "external_reference": str(current_user.id),
+                "external_reference": f"{current_user.id}_upgrade" if keep_current else str(current_user.id),
             }
 
         if current_user.cpf:
@@ -1525,6 +1607,34 @@ async def change_subscription_plan(
                 status_code=500,
                 detail="O Mercado Pago não devolveu o link de pagamento. Tente de novo."
             )
+
+        # Plano em vigor continua: só guarda o upgrade pendente
+        if keep_current:
+            if not existing_subscription:
+                # Free sem linha de assinatura: linha "free" só para guardar o pendente
+                existing_subscription = Subscription(
+                    professional_id=current_user.id,
+                    plan_id=current_plan.id,
+                    status="free",
+                    plan_amount=0.0,
+                )
+                db.add(existing_subscription)
+            existing_subscription.pending_plan_id = new_plan.id
+            existing_subscription.pending_preapproval_id = mp_plan_id
+            existing_subscription.pending_init_point = mp_init_point
+            await db.commit()
+
+            logger.info(f"Upgrade pendente para usuario {current_user.id}: {current_plan.slug} -> {new_plan.slug} (aguarda o MP)")
+
+            return {
+                "success": True,
+                "message": f"Conclua o pagamento no Mercado Pago para passar para o {new_plan.name}. Até lá você continua no {current_plan.name}.",
+                "plan": {"name": new_plan.name, "slug": new_plan.slug, "price": new_plan.price},
+                "init_point": mp_init_point,
+                "requires_payment": True,
+                "is_upgrade": is_upgrade,
+                "keeps_current_plan": True
+            }
 
         # Atualizar assinatura no banco
         if existing_subscription:
@@ -1569,8 +1679,6 @@ async def change_subscription_plan(
         )
 
         message = f"Plano alterado para {new_plan.name}. Complete o pagamento para ativar."
-        if prorata_amount > 0:
-            message = f"Upgrade para {new_plan.name}! Valor pro-rata: R$ {prorata_amount:.2f}. Complete o pagamento."
 
         return {
             "success": True,
@@ -1578,7 +1686,6 @@ async def change_subscription_plan(
             "plan": {"name": new_plan.name, "slug": new_plan.slug, "price": new_plan.price},
             "init_point": mp_init_point,
             "requires_payment": True,
-            "prorata_amount": prorata_amount if prorata_amount > 0 else None,
             "is_upgrade": is_upgrade
         }
 
@@ -1775,6 +1882,76 @@ def _verify_mercadopago_webhook_signature(request: Request) -> bool:
     return secrets.compare_digest(expected_hash, received_hash)
 
 
+async def _apply_pending_upgrade(db, subscription, mp_status, preapproval_data):
+    """Webhook de um preapproval de upgrade pendente (ver change-plan)."""
+    if mp_status != "authorized":
+        if mp_status in ("cancelled", "paused", "expired"):
+            logger.info(
+                f"Upgrade pendente descartado ({mp_status}) para assinatura {subscription.id}; "
+                f"plano atual mantido"
+            )
+            subscription.pending_plan_id = None
+            subscription.pending_preapproval_id = None
+            subscription.pending_init_point = None
+            await db.commit()
+        return {"status": "ok"}
+
+    plan_result = await db.execute(
+        select(SubscriptionPlan).where(SubscriptionPlan.id == subscription.pending_plan_id)
+    )
+    new_plan = plan_result.scalar_one_or_none()
+    if not new_plan:
+        logger.error(f"Upgrade pendente sem plano válido na assinatura {subscription.id}")
+        return {"status": "error", "message": "Pending plan not found"}
+
+    user_result = await db.execute(select(User).where(User.id == subscription.professional_id))
+    user = user_result.scalar_one_or_none()
+
+    old_preapproval_id = subscription.mercadopago_preapproval_id
+    today = date.today()
+
+    # Troca o plano primeiro; o preapproval antigo é cancelado depois do commit
+    subscription.plan_id = new_plan.id
+    subscription.plan_amount = new_plan.price
+    subscription.mercadopago_preapproval_id = subscription.pending_preapproval_id
+    subscription.mercadopago_payer_id = preapproval_data.get("payer_id") or subscription.mercadopago_payer_id
+    subscription.status = "active"
+    subscription.init_point = None
+    subscription.trial_ends_at = None
+    subscription.scheduled_plan_id = None
+    subscription.scheduled_plan_change_date = None
+    subscription.pending_plan_id = None
+    subscription.pending_preapproval_id = None
+    subscription.pending_init_point = None
+    # Vindo de plano pago, o novo preapproval começa no vencimento atual (free_trial
+    # até lá): a data segue; vindo do Free, a cobrança é agora
+    if not subscription.next_billing_date or subscription.next_billing_date <= today:
+        subscription.last_payment_date = today
+        subscription.next_billing_date = today + timedelta(days=30)
+
+    if user:
+        user.subscription_plan_id = new_plan.id
+        user.subscription_status = "active"
+        user.trial_ends_at = None
+
+    await db.commit()
+    logger.info(f"Upgrade confirmado: assinatura {subscription.id} -> {new_plan.slug}")
+
+    if old_preapproval_id and old_preapproval_id != subscription.mercadopago_preapproval_id:
+        await _cancel_mp_preapproval(old_preapproval_id)
+
+    if user:
+        await notification_service.notify_subscription_activated(
+            user_email=user.email,
+            user_name=user.name,
+            plan_name=new_plan.name,
+            plan_price=new_plan.price,
+            is_trial=False
+        )
+
+    return {"status": "ok"}
+
+
 @router.post("/webhook")
 async def mercadopago_webhook(
     request: Request,
@@ -1824,6 +2001,19 @@ async def mercadopago_webhook(
                 )
             )
             subscription = result.scalar_one_or_none()
+
+            # Upgrade pendente: o plano atual segue valendo até este preapproval
+            # ser autorizado. Autorizado → troca de plano; qualquer outro
+            # estado final → só descarta o pendente (o usuário segue no atual).
+            if not subscription:
+                result = await db.execute(
+                    select(Subscription).where(
+                        Subscription.pending_preapproval_id == preapproval_id
+                    )
+                )
+                pending_sub = result.scalar_one_or_none()
+                if pending_sub:
+                    return await _apply_pending_upgrade(db, pending_sub, mp_status, preapproval_data)
 
             # Fallback: fluxo init_point salva preapproval_plan_id no campo,
             # não o preapproval_id real. Buscar pelo professional_id via external_reference.
@@ -1875,10 +2065,10 @@ async def mercadopago_webhook(
                 )
                 return {"status": "error", "message": "Subscription not found"}
 
-            # Buscar usuário
+            # Usuário da própria assinatura (external_reference pode ser "7_upgrade" ou vir vazio)
             result = await db.execute(
                 select(User).where(
-                    User.id == int(external_reference)
+                    User.id == subscription.professional_id
                 )
             )
             user = result.scalar_one_or_none()
@@ -1956,8 +2146,19 @@ async def mercadopago_webhook(
                         )
                         subscription = result.scalar_one_or_none()
 
+                        # Pagamento de um upgrade pendente: quem troca o plano é o
+                        # webhook do preapproval; aqui nada é sobrescrito
+                        is_pending_upgrade = False
+                        if not subscription:
+                            result = await db.execute(
+                                select(Subscription.id).where(
+                                    Subscription.pending_preapproval_id == preapproval_id
+                                )
+                            )
+                            is_pending_upgrade = result.scalar_one_or_none() is not None
+
                         # Fallback: buscar pelo external_reference e corrigir o ID
-                        if not subscription and payment_external_ref:
+                        if not subscription and not is_pending_upgrade and payment_external_ref:
                             try:
                                 result = await db.execute(
                                     select(Subscription).where(

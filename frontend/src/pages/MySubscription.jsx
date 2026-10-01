@@ -263,6 +263,14 @@ export default function MySubscription() {
     }
   };
 
+  const dropUpgrade = async () => {
+    const data = await post('drop', '/subscriptions/cancel-pending-upgrade', 'Não deu para desfazer o upgrade. Tente de novo.');
+    if (data) {
+      toast.success('Upgrade desfeito. Você continua no plano atual.');
+      refresh();
+    }
+  };
+
   const restart = async () => {
     const data = await post('reset', '/subscriptions/reset-pending', 'Não deu para recomeçar a assinatura. Tente de novo.');
     if (data) navigate('/subscription/setup');
@@ -324,6 +332,8 @@ export default function MySubscription() {
   const isActive = !isFree && sub?.status === 'active';
   const isPending = !isFree && sub?.status === 'pending';
   const isEnded = !isFree && ['cancelled', 'expired', 'suspended', 'paused'].includes(sub?.status);
+  // Upgrade aguardando o Mercado Pago (vale também para quem está no Free)
+  const pendingPlan = sub?.pending_plan;
 
   return (
     <>
@@ -379,6 +389,26 @@ export default function MySubscription() {
           </div>
         </Lines>
 
+        {pendingPlan && (
+          <Scheduled role="status">
+            <h3>Upgrade para o {pendingPlan.name} aguardando pagamento</h3>
+            <p>
+              Você continua no plano {plan?.plan_name}, e na busca, até o Mercado Pago confirmar o pagamento.
+              Aí o plano passa para o {pendingPlan.name} ({planPrice(pendingPlan.price)} por mês).
+            </p>
+            <Actions style={{ marginTop: '0.85rem' }}>
+              {sub.pending_init_point && (
+                <OutlineLink href={sub.pending_init_point} target="_blank" rel="noopener noreferrer">
+                  Concluir o pagamento <ExternalLink size={18} aria-hidden="true" />
+                </OutlineLink>
+              )}
+              <StampButton type="button" onClick={dropUpgrade} disabled={busy === 'drop'}>
+                {busy === 'drop' ? 'Desfazendo…' : 'Desistir do upgrade'}
+              </StampButton>
+            </Actions>
+          </Scheduled>
+        )}
+
         {/* Pagamento pendente: concluir no Mercado Pago ou recomeçar */}
         {isPending && (
           <Scheduled role="status">
@@ -423,8 +453,8 @@ export default function MySubscription() {
         {actionError && <FieldNote role="alert" $tone="erro">{actionError}</FieldNote>}
 
         <Actions>
-          {isFree && <PrimaryLink to="/alterar-plano">Ver os planos Pro e Premium</PrimaryLink>}
-          {isActive && !scheduledPlan && !scheduledCancel && <StampLink to="/alterar-plano">Alterar o plano</StampLink>}
+          {isFree && !pendingPlan && <PrimaryLink to="/alterar-plano">Ver os planos Pro e Premium</PrimaryLink>}
+          {isActive && !scheduledPlan && !scheduledCancel && !pendingPlan && <StampLink to="/alterar-plano">Alterar o plano</StampLink>}
           {isActive && !scheduledCancel && (
             <StampButton type="button" onClick={() => { setActionError(''); setCancelOpen(true); }}>Cancelar a assinatura</StampButton>
           )}

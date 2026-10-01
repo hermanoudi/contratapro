@@ -170,6 +170,12 @@ class Subscription(Base):
     scheduled_plan_id = Column(Integer, ForeignKey("subscription_plans.id"), nullable=True)
     scheduled_plan_change_date = Column(Date, nullable=True)  # Data em que mudança será efetivada
 
+    # Upgrade aguardando o Mercado Pago: o plano atual segue valendo até o
+    # novo preapproval ser autorizado (o webhook faz a troca)
+    pending_plan_id = Column(Integer, ForeignKey("subscription_plans.id"), nullable=True)
+    pending_preapproval_id = Column(String, nullable=True, index=True)
+    pending_init_point = Column(String, nullable=True)
+
     # Controle de falhas de pagamento
     payment_failure_count = Column(Integer, default=0)  # Contador de falhas consecutivas
     last_payment_failure_date = Column(Date, nullable=True)  # Data da última falha
