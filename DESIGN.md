@@ -310,6 +310,14 @@ Shared pieces live in `frontend/src/components/talao/`. Pages import them from t
   - **Errors:** shown inline, and focus moves to the first field with a problem. "Ver minha página" opens `/p/:slug`.
   - **Saving:** `PUT /users/me` only accepts FormData, so it uses `profileFormData` from signupUtils.
 - **Pending upgrade (Minha assinatura):** a papel-2 box with an alerta border, "Upgrade para X aguardando pagamento", offering Concluir o pagamento and Desistir do upgrade. The current plan stays in force until Mercado Pago confirms.
+- **Subscription flow (`SubscriptionSetup.jsx`, `SubscriptionCallback.jsx`, contained register inside `AuthLayout`):**
+  - **Setup:** the planParts sheets fed from `/plans/`. `?plano=<slug>` comes from signup with the plan preselected, and the current Free plan is tagged and disabled.
+    - The summary says what happens: a user on Free stays on Free, and in search, until Mercado Pago confirms; a user without a plan appears once it confirms.
+    - One primary button names the action, next to a quiet "Decidir depois" link. Users who already pay are sent to Minha assinatura.
+  - **Callback:** a status stamp (Pago, Aguardando, Em análise, Recusado) over the heading.
+    - It reports success only when the subscription is already on the plan the person went to pay for, which is stored in sessionStorage via `rememberPlanIntent` and has no pending upgrade.
+    - Until then it shows "Confirmando o pagamento" and checks every 2 s, up to 10 times, cancelling the polling on unmount.
+  - `StepHead` accepts an `eyebrow` in place of "Passo X de Y".
 - **Appointment detail (`pages/AppointmentDetail.jsx`, contained register):** a receipt-like panel headed "Agendamento nº", with a status stamp (bordered, -3deg, colour plus word).
   - **Lines:** a ruled `dl` with gráfica labels (one column below 480px). It shows the other party first, then service, day and time, and addresses (the client also sees the professional's).
   - **Actions:** WhatsApp to the other party (outlined gráfica), Marcar como concluído (pro only, primary), then Cancelar and Suspender as stamp buttons.

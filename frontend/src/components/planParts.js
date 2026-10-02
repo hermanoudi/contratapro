@@ -130,3 +130,20 @@ export const planItems = (plan) => {
   if (plan.badge_label) items.push(`Selo "${plan.badge_label}" no seu perfil`);
   return items;
 };
+
+// Plano que a pessoa foi pagar no Mercado Pago: o retorno (/subscription/callback)
+// só fala em sucesso quando a assinatura já está nele. sessionStorage pode falhar
+// (aba privada, bloqueio), então tudo fica em try/catch.
+const INTENT_KEY = 'contratapro:plano-em-pagamento';
+
+export const rememberPlanIntent = (slug) => {
+  try { sessionStorage.setItem(INTENT_KEY, slug); } catch { /* sem armazenamento: o retorno usa a regra antiga */ }
+};
+
+export const readPlanIntent = () => {
+  try { return sessionStorage.getItem(INTENT_KEY); } catch { return null; }
+};
+
+export const clearPlanIntent = () => {
+  try { sessionStorage.removeItem(INTENT_KEY); } catch { /* nada a limpar */ }
+};

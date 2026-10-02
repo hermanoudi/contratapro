@@ -43,10 +43,11 @@ const Head = styled.div`
 `;
 
 // A ordem dos passos é informação real aqui: "Passo 1 de 2" fica à vista
-export const StepHead = forwardRef(function StepHead({ step, total, title, lead }, ref) {
+export const StepHead = forwardRef(function StepHead({ step, total, eyebrow, title, lead }, ref) {
   return (
     <Head>
-      <p>Passo {step} de {total}</p>
+      {/* Sem passo numerado, o sobretítulo ocupa o mesmo lugar */}
+      <p>{step ? `Passo ${step} de ${total}` : eyebrow}</p>
       <h1 ref={ref} tabIndex={-1}>{title}</h1>
       {lead && <p>{lead}</p>}
     </Head>

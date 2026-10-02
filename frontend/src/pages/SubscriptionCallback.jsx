@@ -1,287 +1,214 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { CheckCircle, XCircle, Clock, Loader } from 'lucide-react';
-import { toast } from 'sonner';
-
+import { RotateCw } from 'lucide-react';
 import { API_URL } from '../config';
-const PageContainer = styled.div`
-  min-height: 100vh;
-  background: linear-gradient(135deg, rgba(196, 32, 26, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-`;
+import AuthLayout from '../components/AuthLayout';
+import { PrimaryLink, StampLink } from '../components/talao';
+import { StepHead } from '../components/SignupParts';
+import { readPlanIntent, clearPlanIntent } from '../components/planParts';
 
-const Card = styled.div`
-  background: white;
-  border-radius: 24px;
-  padding: 3rem;
-  max-width: 600px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  text-align: center;
-`;
+/* Volta do Mercado Pago. Só diz "ativado" quando a assinatura já está no
+   plano que a pessoa foi pagar e não há upgrade pendente; até lá, consulta
+   a assinatura a cada 2 s (até 10 vezes). Quem confirma é o webhook. */
 
-const IconWrapper = styled.div`
-  width: 100px;
-  height: 100px;
-  background: ${props => {
-        if (props.$status === 'success') return 'rgba(34, 197, 94, 0.1)';
-        if (props.$status === 'error') return 'rgba(239, 68, 68, 0.1)';
-        return 'rgba(251, 146, 60, 0.1)';
-    }};
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 2rem;
-  color: ${props => {
-        if (props.$status === 'success') return '#22c55e';
-        if (props.$status === 'error') return '#ef4444';
-        return '#fb923c';
-    }};
-`;
+const ATTEMPTS = 10;
+const INTERVAL = 2000;
 
-const Title = styled.h1`
-  font-size: 2rem;
-  font-weight: 800;
+const Stamp = styled.p`
+  display: inline-block;
   margin-bottom: 1rem;
-  color: var(--text-primary);
+  padding: 0.2rem 0.6rem;
+  border: 2px solid ${({ $color }) => $color};
+  font-family: var(--f-impresso);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: ${({ $color }) => $color};
+  transform: rotate(-3deg);
 `;
 
-const Message = styled.p`
-  font-size: 1.125rem;
-  color: var(--text-secondary);
-  margin-bottom: 2rem;
-  line-height: 1.6;
-`;
+const Text = styled.div`
+  display: grid;
+  gap: 0.75rem;
+  line-height: 1.55;
 
-const Button = styled.button`
-  padding: 1.25rem 2rem;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 1.125rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 24px rgba(196, 32, 26, 0.3);
+  p:last-child {
+    color: var(--texto-2-papel);
   }
 `;
 
-const Info = styled.div`
-  background: var(--bg-secondary);
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  text-align: left;
+const Waiting = styled.p`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--texto-2-papel);
 
-  p {
-    margin: 0.5rem 0;
-    font-size: 0.95rem;
-    color: var(--text-secondary);
+  svg {
+    animation: girar 1.2s linear infinite;
+  }
 
-    strong {
-      color: var(--text-primary);
+  @keyframes girar {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    svg {
+      animation: none;
     }
   }
 `;
+
+const Actions = styled.div`
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 2rem;
+
+  @media (min-width: 521px) {
+    grid-template-columns: auto auto;
+    justify-content: start;
+  }
+`;
+
+// O que o Mercado Pago manda de volta na URL
+const readReturn = (params) => {
+  const status = params.get('collection_status') || params.get('status');
+  if (status === 'rejected') return 'rejected';
+  if (status === 'pending' || status === 'in_process') return 'review';
+  if (status === 'approved' || status === 'success' || params.get('preapproval_id')) return 'check';
+  return 'unknown';
+};
+
+// A assinatura já está no plano pago que a pessoa foi pagar?
+const isConfirmed = (sub, intended) => {
+  if (!sub || sub.status !== 'active' || sub.pending_plan) return false;
+  return intended ? sub.plan?.slug === intended : true;
+};
 
 export default function SubscriptionCallback() {
-    const [searchParams] = useSearchParams();
-    const [status, setStatus] = useState('loading'); // loading, success, error, pending
-    const [message, setMessage] = useState('');
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const kind = readReturn(params);
+  // checking | confirmed | slow | review | rejected | unknown
+  const [state, setState] = useState(kind === 'check' ? 'checking' : kind);
+  const [planName, setPlanName] = useState(null);
 
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            toast.error('Sessão expirada. Faça login novamente.');
-            navigate('/login');
-            return;
-        }
-
-        // Parâmetros do Mercado Pago
-        const collection_status = searchParams.get('collection_status');
-        const status_param = searchParams.get('status');
-        const preapproval_id = searchParams.get('preapproval_id');
-
-        // Função para iniciar polling de verificação
-        const startPolling = () => {
-            let attempts = 0;
-            const maxAttempts = 10;
-            const checkInterval = setInterval(async () => {
-                attempts++;
-                const isActive = await checkSubscriptionStatus(token);
-
-                if (isActive || attempts >= maxAttempts) {
-                    clearInterval(checkInterval);
-                    if (isActive) {
-                        setStatus('success');
-                        setMessage('Sua assinatura foi ativada com sucesso! Você já pode começar a receber solicitações de clientes.');
-                        toast.success('Assinatura ativada!');
-                    } else {
-                        setStatus('pending');
-                        setMessage('Pagamento processado! Sua assinatura será ativada em breve (até 48h). Você receberá uma notificação.');
-                    }
-                }
-            }, 2000);
-        };
-
-        // Determinar status baseado nos parâmetros
-        if (collection_status === 'approved' || status_param === 'approved') {
-            setStatus('success');
-            setMessage('Pagamento aprovado! Sua assinatura está sendo ativada. Aguarde alguns instantes...');
-            toast.success('Pagamento aprovado!');
-            startPolling();
-
-        } else if (collection_status === 'pending' || status_param === 'pending') {
-            setStatus('pending');
-            setMessage('Seu pagamento está em análise. Você receberá uma confirmação em breve.');
-            toast.info('Pagamento em análise');
-
-        } else if (collection_status === 'rejected' || status_param === 'rejected') {
-            setStatus('error');
-            setMessage('Seu pagamento foi rejeitado. Verifique os dados do cartão e tente novamente.');
-            toast.error('Pagamento rejeitado');
-
-        } else if (preapproval_id) {
-            // ASSINATURAS: Mercado Pago retorna apenas preapproval_id quando aprovado
-            // Se chegou aqui com preapproval_id, o pagamento foi processado
-            setStatus('success');
-            setMessage('Pagamento processado! Verificando ativação da sua assinatura...');
-            toast.success('Pagamento processado!');
-            startPolling();
-
-        } else {
-            setStatus('error');
-            setMessage('Houve um problema ao processar seu pagamento. Tente novamente ou entre em contato com o suporte.');
-            toast.error('Erro ao processar pagamento');
-        }
-    }, [searchParams, navigate]);
-
-    const checkSubscriptionStatus = async (token) => {
-        try {
-            const res = await fetch(`${API_URL}/subscriptions/my-subscription`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                console.log('Status da assinatura:', data);
-
-                // Retorna true se a assinatura está ativa
-                if (data.subscription && data.subscription.status === 'active') {
-                    return true;
-                }
-            }
-            return false;
-        } catch (error) {
-            console.error('Erro ao verificar status:', error);
-            return false;
-        }
-    };
-
-    const handleContinue = () => {
-        navigate('/dashboard');
-    };
-
-    const getIcon = () => {
-        switch (status) {
-            case 'success':
-                return <CheckCircle size={60} />;
-            case 'error':
-                return <XCircle size={60} />;
-            case 'pending':
-                return <Clock size={60} />;
-            default:
-                return <Loader size={60} className="spin" />;
-        }
-    };
-
-    const getTitle = () => {
-        switch (status) {
-            case 'success':
-                return 'Assinatura Ativada!';
-            case 'error':
-                return 'Ops! Algo deu errado';
-            case 'pending':
-                return 'Pagamento em Análise';
-            default:
-                return 'Processando...';
-        }
-    };
-
-    if (status === 'loading') {
-        return (
-            <PageContainer>
-                <Card>
-                    <IconWrapper $status="loading">
-                        <Loader size={60} style={{ animation: 'spin 1s linear infinite' }} />
-                    </IconWrapper>
-                    <Title>Processando...</Title>
-                    <Message>Aguarde enquanto confirmamos seu pagamento.</Message>
-                </Card>
-            </PageContainer>
-        );
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return undefined;
     }
+    if (kind !== 'check') return undefined;
 
-    return (
-        <PageContainer>
-            <Card>
-                <IconWrapper $status={status}>
-                    {getIcon()}
-                </IconWrapper>
+    const intended = readPlanIntent();
+    let attempts = 0;
+    let timer = null;
+    let cancelled = false;
 
-                <Title>{getTitle()}</Title>
-                <Message>{message}</Message>
+    const check = async () => {
+      attempts += 1;
+      try {
+        const res = await fetch(`${API_URL}/subscriptions/my-subscription`, { headers: { Authorization: `Bearer ${token}` } });
+        const sub = res.ok ? (await res.json()).subscription : null;
+        if (cancelled) return;
+        if (isConfirmed(sub, intended)) {
+          clearPlanIntent();
+          setPlanName(sub.plan?.name || null);
+          setState('confirmed');
+          return;
+        }
+      } catch {
+        // Falha de rede numa tentativa: tenta de novo na próxima
+      }
+      if (cancelled) return;
+      if (attempts >= ATTEMPTS) {
+        setState('slow');
+        return;
+      }
+      timer = setTimeout(check, INTERVAL);
+    };
 
-                {status === 'success' && (
-                    <Info>
-                        <p><strong>Próximos passos:</strong></p>
-                        <p>• Configure seu perfil e adicione seus serviços</p>
-                        <p>• Defina sua disponibilidade de horários</p>
-                        <p>• Comece a receber solicitações de clientes</p>
-                    </Info>
-                )}
+    check();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [kind, navigate]);
 
-                {status === 'pending' && (
-                    <Info>
-                        <p><strong>O que acontece agora?</strong></p>
-                        <p>• Seu pagamento está sendo processado</p>
-                        <p>• Você receberá um email de confirmação</p>
-                        <p>• Isso pode levar até 48 horas</p>
-                    </Info>
-                )}
+  const content = {
+    checking: {
+      title: 'Confirmando o pagamento',
+      body: <Waiting role="status"><RotateCw size={18} aria-hidden="true" /> Estamos esperando a confirmação do Mercado Pago. Leva alguns segundos.</Waiting>,
+    },
+    confirmed: {
+      stamp: { text: 'Pago', color: 'var(--sucesso)' },
+      title: planName ? `Plano ${planName} ativo` : 'Assinatura ativa',
+      body: (
+        <Text>
+          <p>O Mercado Pago confirmou o pagamento. Seu perfil já aparece na busca com os recursos do novo plano.</p>
+          <p>Você recebe a confirmação por e-mail. A cobrança se repete todo mês até você cancelar em Minha assinatura.</p>
+        </Text>
+      ),
+    },
+    slow: {
+      stamp: { text: 'Aguardando', color: 'var(--alerta)' },
+      title: 'O pagamento ainda não foi confirmado',
+      body: (
+        <Text>
+          <p>O Mercado Pago ainda não avisou que o pagamento foi aprovado. Isso costuma levar poucos minutos e, às vezes, algumas horas.</p>
+          <p>Você recebe um e-mail quando confirmar, e pode acompanhar em Minha assinatura. Enquanto isso, nada muda no seu plano atual.</p>
+        </Text>
+      ),
+    },
+    review: {
+      stamp: { text: 'Em análise', color: 'var(--alerta)' },
+      title: 'Pagamento em análise',
+      body: (
+        <Text>
+          <p>O Mercado Pago está analisando o pagamento. Quando aprovar, a assinatura é ativada sozinha e você recebe um e-mail.</p>
+          <p>Enquanto isso, nada muda no seu plano atual.</p>
+        </Text>
+      ),
+    },
+    rejected: {
+      stamp: { text: 'Recusado', color: 'var(--erro)' },
+      title: 'O pagamento foi recusado',
+      body: (
+        <Text>
+          <p>O Mercado Pago não aprovou o pagamento. Confira os dados do cartão ou tente outro cartão.</p>
+          <p>Nenhuma cobrança foi feita e o seu plano atual continua o mesmo.</p>
+        </Text>
+      ),
+    },
+    unknown: {
+      title: 'Não sabemos como terminou o pagamento',
+      body: (
+        <Text>
+          <p>Voltamos do Mercado Pago sem a resposta do pagamento. Se você concluiu, a confirmação chega por e-mail em alguns minutos.</p>
+          <p>Confira em Minha assinatura; de lá dá para concluir o pagamento ou recomeçar.</p>
+        </Text>
+      ),
+    },
+  }[state];
 
-                {status === 'error' && (
-                    <Info>
-                        <p><strong>O que fazer?</strong></p>
-                        <p>• Verifique os dados do seu cartão</p>
-                        <p>• Tente novamente com outro método de pagamento</p>
-                        <p>• Entre em contato com o suporte se o problema persistir</p>
-                    </Info>
-                )}
+  return (
+    <AuthLayout asideTitle="Seu plano no ContrataPro" asideLead="O pagamento é feito e confirmado pelo Mercado Pago.">
+      {content.stamp && <Stamp $color={content.stamp.color}>{content.stamp.text}</Stamp>}
+      <StepHead eyebrow="Assinatura" title={content.title} />
+      <div aria-live="polite">{content.body}</div>
 
-                <Button onClick={handleContinue}>
-                    {status === 'error' ? 'Tentar Novamente' : 'Ir para Dashboard'}
-                </Button>
-            </Card>
-
-            <style>{`
-                @keyframes spin {
-                    from { transform: rotate(0deg); }
-                    to { transform: rotate(360deg); }
-                }
-                .spin {
-                    animation: spin 1s linear infinite;
-                }
-            `}</style>
-        </PageContainer>
-    );
+      {state !== 'checking' && (
+        <Actions>
+          {state === 'confirmed' && <PrimaryLink to="/dashboard">Ir para o painel</PrimaryLink>}
+          {state === 'rejected' && <PrimaryLink to="/minha-assinatura">Tentar de novo</PrimaryLink>}
+          {['slow', 'review', 'unknown'].includes(state) && <PrimaryLink to="/minha-assinatura">Ver minha assinatura</PrimaryLink>}
+          <StampLink to={state === 'confirmed' ? '/minha-assinatura' : '/dashboard'}>
+            {state === 'confirmed' ? 'Ver minha assinatura' : 'Ir para o painel'}
+          </StampLink>
+        </Actions>
+      )}
+    </AuthLayout>
+  );
 }

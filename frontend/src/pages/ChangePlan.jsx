@@ -7,7 +7,7 @@ import { API_URL } from '../config';
 import { PrimaryButton, StampButton, FieldNote } from '../components/talao';
 import { PageHead, Panel, Notice } from '../components/dashboard/parts';
 import { parseLocalDate } from '../components/dashboard/utils';
-import { PlanList, PlanSheet, PlanHead, PlanItems, PlanTag, planItems, planPrice, sortPlans } from '../components/planParts';
+import { PlanList, PlanSheet, PlanHead, PlanItems, PlanTag, planItems, planPrice, sortPlans, rememberPlanIntent } from '../components/planParts';
 import { translateError } from '../components/apiErrors';
 
 /* Alterar plano (ProfessionalLayout): escolher a folha do plano e confirmar.
@@ -264,6 +264,7 @@ export default function ChangePlan() {
         return;
       }
       if (data.init_point) {
+        rememberPlanIntent(slug);
         window.location.href = data.init_point;
         return;
       }

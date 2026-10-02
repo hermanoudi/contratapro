@@ -1,564 +1,300 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useId } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { CreditCard, Check, Shield, X, Star, Zap, Crown } from 'lucide-react';
+import { Check, RotateCw, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-
 import { API_URL } from '../config';
+import AuthLayout from '../components/AuthLayout';
+import { PrimaryButton, StampButton, FieldNote } from '../components/talao';
+import { StepHead, FormError, FooterNote } from '../components/SignupParts';
+import { PlanList, PlanSheet, PlanHead, PlanItems, PlanTag, planItems, planPrice, sortPlans, rememberPlanIntent } from '../components/planParts';
+import { translateError } from '../components/apiErrors';
 
-// Detectar ambiente de desenvolvimento
+/* Escolha do plano para quem ainda não tem um em vigor (cadastro com plano
+   pago, assinatura cancelada ou vencida) e para quem está no Free.
+   ?plano=<slug> chega do cadastro com o plano já escolhido. */
+
 const isDev = import.meta.env.DEV;
 
-const PageContainer = styled.div`
-  min-height: 100vh;
-  background: linear-gradient(135deg, rgba(196, 32, 26, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
+const Summary = styled.div`
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: var(--papel-2);
+  border-top: 2px solid var(--grafica);
 
-  @media (max-width: 768px) {
-    padding: 1rem;
+  ul {
+    padding-left: 1.15rem;
+    display: grid;
+    gap: 0.35rem;
+    line-height: 1.5;
   }
 `;
 
-const Container = styled.div`
-  max-width: 1000px;
-  width: 100%;
-`;
-
-const Header = styled.div`
-  text-align: center;
-  margin-bottom: 3rem;
-`;
-
-const Title = styled.h1`
-  font-size: 2.5rem;
-  font-weight: 800;
-  margin-bottom: 1rem;
-  color: var(--text-primary);
-
-  @media (max-width: 768px) {
-    font-size: 1.75rem;
-  }
-`;
-
-const Subtitle = styled.p`
-  font-size: 1.125rem;
-  color: var(--text-secondary);
-  max-width: 600px;
-  margin: 0 auto;
-  line-height: 1.6;
-`;
-
-const PlansGrid = styled.div`
+const Actions = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
 
-  @media (max-width: 900px) {
-    grid-template-columns: 1fr;
-    max-width: 400px;
-    margin: 0 auto 2rem;
+  @media (min-width: 521px) {
+    grid-template-columns: auto auto;
+    justify-content: space-between;
+    align-items: center;
   }
 `;
 
-const PlanCard = styled.div`
-  background: white;
-  border-radius: 20px;
-  padding: 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border: 2px solid ${props => props.$featured ? 'var(--primary)' : 'var(--border)'};
-  position: relative;
-  transition: all 0.3s;
-
-  ${props => props.$featured && `
-    transform: scale(1.05);
-    box-shadow: 0 12px 40px rgba(196, 32, 26, 0.2);
-
-    @media (max-width: 900px) {
-      transform: none;
-      order: -1;
-    }
-  `}
+const Later = styled(Link)`
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--texto-2-papel);
+  text-underline-offset: 3px;
 
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+    color: var(--grafica);
   }
 `;
 
-const PopularBadge = styled.div`
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-`;
-
-const PlanIcon = styled.div`
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-  background: ${props => props.$color || 'rgba(196, 32, 26, 0.1)'};
-  color: ${props => props.$iconColor || 'var(--primary)'};
-`;
-
-const PlanName = styled.h3`
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-`;
-
-const PlanPrice = styled.div`
-  margin-bottom: 1.5rem;
-
-  .amount {
-    font-size: 2.5rem;
-    font-weight: 800;
-    color: var(--text-primary);
-
-    small {
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--text-secondary);
-    }
-  }
-
-  .period {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-  }
-
-  .trial-info {
-    font-size: 0.875rem;
-    color: #10b981;
-    font-weight: 600;
-  }
-`;
-
-const PlanFeatures = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0 0 1.5rem 0;
-
-  li {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.5rem 0;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-
-    svg {
-      color: #10b981;
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-  }
-`;
-
-const PlanButton = styled.button`
-  width: 100%;
+const DevBox = styled.div`
+  margin-top: 1.5rem;
   padding: 1rem;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+  border: 1.5px dashed var(--alerta);
 
-  ${props => props.$featured ? `
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    color: white;
-    border: none;
-
-    &:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(196, 32, 26, 0.3);
-    }
-  ` : `
-    background: white;
-    color: var(--text-primary);
-    border: 2px solid var(--border);
-
-    &:hover:not(:disabled) {
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-  `}
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  p {
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
   }
 `;
 
-const DevModeBox = styled.div`
-  margin: 2rem auto;
-  padding: 1.5rem;
-  max-width: 500px;
-  background: rgba(251, 146, 60, 0.1);
-  border-radius: 16px;
-  border: 2px dashed rgba(251, 146, 60, 0.3);
-  text-align: center;
+const Loading = styled.p`
+  padding: 2rem 0;
+  color: var(--texto-2-papel);
 `;
 
-const DevModeText = styled.p`
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  margin-bottom: 1rem;
+const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
-  strong {
-    color: #f59e0b;
-  }
-`;
-
-const DevButton = styled.button`
-  width: 100%;
-  padding: 1rem;
-  background: #f59e0b;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-
-  &:hover:not(:disabled) {
-    background: #d97706;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const SkipButton = styled.button`
-  display: block;
-  margin: 1.5rem auto 0;
-  padding: 0.75rem 1.5rem;
-  background: transparent;
-  color: var(--text-secondary);
-  border: none;
-  font-size: 0.9rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  &:hover {
-    color: var(--text-primary);
-  }
-`;
-
-const SecurityBadge = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 2rem;
-  padding: 1rem;
-  background: rgba(34, 197, 94, 0.05);
-  border-radius: 12px;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  max-width: 400px;
-  margin-left: auto;
-  margin-right: auto;
-
-  svg {
-    color: #22c55e;
-  }
-`;
-
-// Definicao dos planos
-const PLANS = [
-  {
-    id: 'free',
-    name: 'Free',
-    price: 0,
-    period: 'gratis permanente',
-    icon: Star,
-    iconColor: '#10b981',
-    iconBg: 'rgba(16, 185, 129, 0.1)',
-    features: [
-      '1 servico cadastrado',
-      'Ate 3 agendamentos por mes',
-      'Perfil publico',
-      'Agenda basica',
-      'Sem compromisso'
-    ],
-    buttonText: 'Comecar Gratis',
-    featured: false
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 19.90,
-    period: 'por mes',
-    icon: Zap,
-    iconColor: 'var(--primary)',
-    iconBg: 'rgba(196, 32, 26, 0.1)',
-    features: [
-      'Servicos ilimitados',
-      'Agendamentos ilimitados',
-      'Badge Profissional Ativo',
-      'Destaque intermediario na busca',
-      'Suporte por email'
-    ],
-    buttonText: 'Assinar Pro',
-    featured: true
-  },
-  {
-    id: 'premium',
-    name: 'Premium',
-    price: 39.90,
-    period: 'por mes',
-    icon: Crown,
-    iconColor: '#f59e0b',
-    iconBg: 'rgba(245, 158, 11, 0.1)',
-    features: [
-      'Tudo do Pro',
-      'Topo da busca',
-      'Selo Destaque',
-      'Relatorio de desempenho',
-      'Suporte prioritario'
-    ],
-    buttonText: 'Assinar Premium',
-    featured: false
-  }
-];
+async function loadSetup() {
+  const headers = authHeaders();
+  const [plansRes, meRes, subRes] = await Promise.all([
+    fetch(`${API_URL}/plans/`),
+    fetch(`${API_URL}/plans/me/features`, { headers }),
+    fetch(`${API_URL}/subscriptions/my-subscription`, { headers }),
+  ]);
+  if (!plansRes.ok || !meRes.ok) throw new Error('falha ao carregar os planos');
+  const sub = subRes.ok ? (await subRes.json()).subscription : null;
+  return { plans: sortPlans(await plansRes.json()), me: await meRes.json(), subscription: sub || null };
+}
 
 export default function SubscriptionSetup() {
-  const [loading, setLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [userName, setUserName] = useState('');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const uid = useId();
+  const headingRef = useRef(null);
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState({ status: 'loading' });
+  const [selected, setSelected] = useState(searchParams.get('plano'));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null); // { text, cpf }
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast.error('Voce precisa estar logado');
+    if (!localStorage.getItem('token')) {
       navigate('/login');
+      return undefined;
+    }
+    let cancelled = false;
+    loadSetup()
+      .then((data) => {
+        if (cancelled) return;
+        const sub = data.subscription;
+        // Quem já paga ou já tem um pagamento em andamento resolve em Minha assinatura
+        if (sub && (sub.pending_plan || (sub.status === 'active' && sub.plan_amount > 0) || sub.status === 'pending')) {
+          navigate('/minha-assinatura', { replace: true });
+          return;
+        }
+        setState({ status: 'ok', ...data });
+      })
+      .catch((e) => {
+        console.error('Falha ao carregar os planos', e);
+        if (!cancelled) setState({ status: 'error' });
+      });
+    return () => { cancelled = true; };
+  }, [attempt, navigate]);
+
+  if (state.status === 'loading') {
+    return <AuthLayout asideTitle="Seu plano no ContrataPro" wide><Loading role="status">Carregando os planos…</Loading></AuthLayout>;
+  }
+
+  if (state.status === 'error') {
+    return (
+      <AuthLayout asideTitle="Seu plano no ContrataPro" wide>
+        <StepHead eyebrow="Assinatura" title="Escolha o seu plano" />
+        <FormError>Não deu para carregar os planos agora. Pode ser a conexão ou uma instabilidade do nosso lado.</FormError>
+        <Actions>
+          <PrimaryButton type="button" onClick={() => { setState({ status: 'loading' }); setAttempt((n) => n + 1); }}>
+            <RotateCw size={18} aria-hidden="true" /> Tentar de novo
+          </PrimaryButton>
+        </Actions>
+      </AuthLayout>
+    );
+  }
+
+  const { plans, me } = state;
+  // No Free em vigor: o Free continua valendo até o pagamento confirmar (change-plan)
+  const onActiveFree = me.plan_slug === 'free';
+  const chosen = plans.find((p) => p.slug === selected && !(onActiveFree && p.slug === 'free')) || null;
+  const isPaid = !!chosen && chosen.price > 0;
+
+  const confirm = async (e) => {
+    e.preventDefault();
+    if (!chosen) {
+      setError({ text: 'Escolha um plano.' });
       return;
     }
-
-    const fetchUser = async () => {
-      try {
-        const res = await fetch(`${API_URL}/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUserName(data.name);
-
-          // Verificar se ja tem assinatura ativa
-          const subRes = await fetch(`${API_URL}/subscriptions/my-subscription`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (subRes.ok) {
-            const subData = await subRes.json();
-            if (subData.subscription && subData.subscription.status === 'active') {
-              toast.info('Voce ja possui uma assinatura ativa');
-              navigate('/dashboard');
-            }
-          }
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    fetchUser();
-  }, [navigate]);
-
-  const handleSelectPlan = async (plan) => {
-    setSelectedPlan(plan.id);
-    setLoading(true);
-    const token = localStorage.getItem('token');
-
+    setSaving(true);
+    setError(null);
     try {
-      // Usar endpoint unificado /subscribe/{plan_slug}
-      const res = await fetch(`${API_URL}/subscriptions/subscribe/${plan.id}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-
-        if (plan.id === 'free') {
-          // Plano Free ativado - redirecionar para dashboard
-          toast.success(data.message || 'Plano Free ativado com sucesso!');
-          navigate('/dashboard');
-        } else {
-          // Planos pagos - redirecionar para checkout do Mercado Pago
-          if (data.init_point) {
-            window.location.href = data.init_point;
-          } else {
-            toast.success(data.message);
-            navigate('/dashboard');
-          }
-        }
-      } else {
-        const error = await res.json();
-        toast.error(error.detail || 'Erro ao processar assinatura');
+      const path = onActiveFree && isPaid
+        ? `/subscriptions/change-plan/${chosen.slug}`
+        : `/subscriptions/subscribe/${chosen.slug}`;
+      const res = await fetch(`${API_URL}${path}`, { method: 'POST', headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const text = translateError(data.detail, 'Não deu para continuar agora. Tente de novo.');
+        setError({ text, cpf: /CPF/.test(text) });
+        return;
       }
-    } catch (error) {
-      console.error(error);
-      toast.error('Erro ao conectar com o servidor');
+      if (data.init_point) {
+        rememberPlanIntent(chosen.slug);
+        window.location.href = data.init_point;
+        return;
+      }
+      toast.success(isPaid ? 'Plano escolhido.' : 'Plano Free ativo. Você já aparece na busca.');
+      navigate('/dashboard');
+    } catch {
+      setError({ text: 'Não deu para falar com o servidor. Confira sua conexão e tente de novo.' });
     } finally {
-      setLoading(false);
-      setSelectedPlan(null);
+      setSaving(false);
     }
   };
 
-  const handleActivateManual = async () => {
-    setLoading(true);
-    const token = localStorage.getItem('token');
-
+  const activateDev = async () => {
+    setSaving(true);
     try {
-      const res = await fetch(`${API_URL}/subscriptions/activate-manual`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
+      const res = await fetch(`${API_URL}/subscriptions/activate-manual`, { method: 'POST', headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        const data = await res.json();
-        toast.success(data.message);
-        window.location.href = '/dashboard';
+        toast.success(data.message || 'Assinatura ativada (desenvolvimento).');
+        navigate('/dashboard');
       } else {
-        const error = await res.json();
-        toast.error(error.detail || 'Erro ao ativar assinatura');
+        setError({ text: translateError(data.detail, 'Não deu para ativar.') });
       }
-    } catch (error) {
-      console.error(error);
-      toast.error('Erro ao conectar com o servidor');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
-  };
-
-  const handleSkip = () => {
-    toast.info('Voce pode configurar sua assinatura depois no dashboard');
-    navigate('/dashboard');
   };
 
   return (
-    <PageContainer>
-      <Container>
-        <Header>
-          <Title>Escolha seu Plano</Title>
-          <Subtitle>
-            Ola{userName && `, ${userName}`}! Escolha o plano ideal para comecar a
-            receber clientes e expandir seus servicos.
-          </Subtitle>
-        </Header>
+    <AuthLayout
+      asideTitle="Seu plano no ContrataPro"
+      asideLead="Sem comissão sobre os serviços: você paga só o plano, se escolher um pago."
+      facts={[
+        { strong: 'Free para sempre:', text: 'o plano grátis não vence e não pede cartão.' },
+        { strong: 'Pagamento no Mercado Pago:', text: 'os dados do cartão ficam com o Mercado Pago, não com o ContrataPro.' },
+        { strong: 'Cancele quando quiser:', text: 'em Minha assinatura, e você usa até o fim do período pago.' },
+      ]}
+      wide
+    >
+      <form onSubmit={confirm} noValidate>
+        <StepHead
+          ref={headingRef}
+          eyebrow="Assinatura"
+          title="Escolha o seu plano"
+          lead={onActiveFree
+            ? 'Você está no Free. Os planos pagos dão mais serviços, agendamentos e destaque na busca.'
+            : 'Escolha o plano para o seu perfil aparecer na busca dos clientes.'}
+        />
 
-        <PlansGrid>
-          {PLANS.map((plan) => (
-            <PlanCard key={plan.id} $featured={plan.featured}>
-              {plan.featured && <PopularBadge>Mais Popular</PopularBadge>}
+        <PlanList>
+          <legend>Planos</legend>
+          {plans.map((plan) => {
+            const isCurrent = onActiveFree && plan.slug === 'free';
+            const on = chosen?.slug === plan.slug;
+            return (
+              <PlanSheet key={plan.id} $on={on} $off={isCurrent}>
+                <input
+                  type="radio"
+                  name={`${uid}-plano`}
+                  value={plan.slug}
+                  checked={on || (isCurrent && !chosen)}
+                  disabled={isCurrent}
+                  onChange={() => { setSelected(plan.slug); setError(null); }}
+                />
+                <PlanHead>
+                  <strong>{plan.name}</strong>
+                  <span>
+                    {plan.price === 0 ? 'Grátis' : planPrice(plan.price)}
+                    <small>{plan.price === 0 ? ' sem prazo' : ' por mês'}</small>
+                  </span>
+                </PlanHead>
+                {isCurrent && <PlanTag $tone="atual">Seu plano atual</PlanTag>}
+                <PlanItems>
+                  {planItems(plan).map((item) => <li key={item}><Check size={16} aria-hidden="true" /> {item}</li>)}
+                </PlanItems>
+              </PlanSheet>
+            );
+          })}
+        </PlanList>
 
-              <PlanIcon $color={plan.iconBg} $iconColor={plan.iconColor}>
-                <plan.icon size={28} />
-              </PlanIcon>
-
-              <PlanName>{plan.name}</PlanName>
-
-              <PlanPrice>
-                <div className="amount">
-                  {plan.price === 0 ? (
-                    <>Gratis</>
-                  ) : (
-                    <>
-                      R$ {plan.price.toFixed(2).replace('.', ',')}
-                    </>
-                  )}
-                </div>
-                <div className="period">{plan.period}</div>
-                {plan.id === 'free' && (
-                  <div className="trial-info">Sem cartao de credito</div>
-                )}
-              </PlanPrice>
-
-              <PlanFeatures>
-                {plan.features.map((feature, idx) => (
-                  <li key={idx}>
-                    <Check size={16} />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </PlanFeatures>
-
-              <PlanButton
-                $featured={plan.featured}
-                onClick={() => handleSelectPlan(plan)}
-                disabled={loading}
-              >
-                {loading && selectedPlan === plan.id ? (
-                  'Processando...'
-                ) : (
-                  <>
-                    {plan.id !== 'free' && <CreditCard size={18} />}
-                    {plan.buttonText}
-                  </>
-                )}
-              </PlanButton>
-            </PlanCard>
-          ))}
-        </PlansGrid>
-
-        {/* Botao de ativacao manual - APENAS DESENVOLVIMENTO */}
-        {isDev && (
-          <DevModeBox>
-            <DevModeText>
-              <strong>Modo Desenvolvimento:</strong> Como o sandbox do Mercado Pago
-              tem limitacoes, use este botao para ativar sua assinatura manualmente.
-            </DevModeText>
-            <DevButton onClick={handleActivateManual} disabled={loading}>
-              <Check size={20} />
-              {loading ? 'Ativando...' : 'Ativar Assinatura (DEV)'}
-            </DevButton>
-          </DevModeBox>
+        {chosen && (
+          <Summary aria-live="polite">
+            <ul>
+              {isPaid ? (
+                <>
+                  <li>Você vai para o Mercado Pago autorizar a assinatura de {planPrice(chosen.price)} por mês.</li>
+                  {onActiveFree
+                    ? <li>Você continua no Free, e na busca, até o Mercado Pago confirmar o pagamento.</li>
+                    : <li>Seu perfil passa a aparecer na busca quando o Mercado Pago confirmar o pagamento.</li>}
+                </>
+              ) : (
+                <li>O Free começa agora, sem cartão e sem prazo para acabar.</li>
+              )}
+            </ul>
+          </Summary>
         )}
 
-        <SkipButton onClick={handleSkip} disabled={loading}>
-          <X size={18} />
-          Configurar depois
-        </SkipButton>
+        {error && (
+          <FormError>
+            {error.text}
+            {error.cpf && <> <Link to="/profile" style={{ color: 'inherit' }}>Atualizar o perfil</Link></>}
+          </FormError>
+        )}
 
-        <SecurityBadge>
-          <Shield size={18} />
-          <span>Pagamento 100% seguro processado pelo Mercado Pago</span>
-        </SecurityBadge>
-      </Container>
-    </PageContainer>
+        <Actions>
+          <Later to="/dashboard">Decidir depois</Later>
+          <PrimaryButton type="submit" disabled={saving || !chosen}>
+            {saving
+              ? 'Enviando…'
+              : !chosen
+                ? 'Escolha um plano'
+                : isPaid
+                  ? <>Ir para o pagamento <ArrowRight size={20} aria-hidden="true" /></>
+                  : 'Ficar no Free'}
+          </PrimaryButton>
+        </Actions>
+      </form>
+
+      {/* Só em desenvolvimento: o sandbox do Mercado Pago não confirma pagamentos */}
+      {isDev && (
+        <DevBox>
+          <p><strong>Desenvolvimento:</strong> ativa a assinatura pendente sem passar pelo Mercado Pago. O backend só aceita com DEBUG=True.</p>
+          <StampButton type="button" onClick={activateDev} disabled={saving}>Ativar assinatura (dev)</StampButton>
+        </DevBox>
+      )}
+
+      <FooterNote>
+        <FieldNote as="span">Dúvidas sobre cobrança? <a href="mailto:contato@contratapro.com.br">contato@contratapro.com.br</a></FieldNote>
+      </FooterNote>
+    </AuthLayout>
   );
 }
