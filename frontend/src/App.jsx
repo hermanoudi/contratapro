@@ -12,7 +12,6 @@ import AdminDashboard from './pages/AdminDashboard';
 import AppointmentDetail from './pages/AppointmentDetail';
 import History from './pages/History';
 import SubscriptionSetup from './pages/SubscriptionSetup';
-import SubscriptionCheckout from './pages/SubscriptionCheckout';
 import SubscriptionCallback from './pages/SubscriptionCallback';
 import MySubscription from './pages/MySubscription';
 import ChangePlan from './pages/ChangePlan';
@@ -88,7 +87,6 @@ function App() {
           <Route path="/appointment/:id" element={<SharedLayout><AppointmentDetail /></SharedLayout>} />
           <Route path="/history" element={<SharedLayout><History /></SharedLayout>} />
           <Route path="/subscription/setup" element={<SubscriptionSetup />} />
-          <Route path="/subscription/checkout" element={<SubscriptionCheckout />} />
           <Route path="/subscription/callback" element={<SubscriptionCallback />} />
           <Route path="/subscription/manage" element={<ProfessionalLayout><MySubscription /></ProfessionalLayout>} />
           <Route path="/minha-assinatura" element={<ProfessionalLayout><MySubscription /></ProfessionalLayout>} />
