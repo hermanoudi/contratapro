@@ -299,6 +299,28 @@ async def suspend_professional(
     return {"message": f"Profissional {professional.name} suspenso com sucesso"}
 
 
+async def _status_after_reactivation(db: AsyncSession, professional: User) -> str:
+    """Status de assinatura que o profissional tem direito ao sair da suspensão."""
+    plan = None
+    if professional.subscription_plan_id:
+        plan = (await db.execute(
+            select(SubscriptionPlan).where(SubscriptionPlan.id == professional.subscription_plan_id)
+        )).scalar_one_or_none()
+    if plan is None:
+        return "inactive"
+    # Plano grátis: sempre ativo
+    if plan.price == 0:
+        return "active"
+    subscription = (await db.execute(
+        select(Subscription).where(Subscription.professional_id == professional.id)
+    )).scalar_one_or_none()
+    if subscription is None:
+        return "inactive"
+    if subscription.status in ("active", "pending", "cancelled"):
+        return subscription.status
+    return "inactive"
+
+
 @router.post("/professionals/{professional_id}/reactivate")
 async def reactivate_professional(
     professional_id: int,
@@ -321,10 +343,15 @@ async def reactivate_professional(
         raise HTTPException(status_code=404, detail="Profissional não encontrado")
 
     professional.is_suspended = False
-    professional.subscription_status = "active"
+    # Volta ao que o plano permite, não a "active" sempre: quem cancelou ou não
+    # pagou não pode reaparecer na busca só porque o admin tirou a suspensão
+    professional.subscription_status = await _status_after_reactivation(db, professional)
     await db.commit()
 
-    return {"message": f"Profissional {professional.name} reativado com sucesso"}
+    return {
+        "message": f"Profissional {professional.name} reativado com sucesso",
+        "subscription_status": professional.subscription_status
+    }
 
 
 @router.get("/subscriptions")

@@ -128,7 +128,7 @@ export default function ProfessionalsPanel() {
         <DialogText>
           {action?.kind === 'suspend'
             ? 'O perfil sai da busca e não recebe agendamentos até ser reativado. Os agendamentos já marcados continuam.'
-            : 'O perfil volta a ficar ativo e aparece na busca, mesmo que a assinatura dele não esteja paga. Confira em Assinaturas antes de reativar.'}
+            : 'A suspensão sai e o perfil volta à situação da assinatura dele: aparece na busca se estiver no Free ou com o plano pago em dia; se cancelou ou não pagou, continua fora.'}
         </DialogText>
         {error && <FieldNote role="alert" $tone="erro">{error}</FieldNote>}
         <DialogActions>
