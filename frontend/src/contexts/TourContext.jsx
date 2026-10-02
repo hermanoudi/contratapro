@@ -6,67 +6,12 @@
  * - Use useTour() hook nos componentes
  */
 
-import { createContext, useContext, useState, useCallback } from 'react';
-import Joyride, { STATUS, ACTIONS, EVENTS } from 'react-joyride';
-import { tourStepsProfessional, tourStepsClient, tourOptions } from '../config/tourConfig';
+import { useState, useCallback, lazy, Suspense } from 'react';
+import { TourContext } from './tour';
+import { tourStepsProfessional, tourStepsClient } from '../config/tourConfig';
 
-const TourContext = createContext(null);
-
-// Estilos personalizados do tooltip
-const customStyles = {
-  options: {
-    primaryColor: '#c4201a',
-    textColor: '#1f2937',
-    backgroundColor: '#ffffff',
-    overlayColor: 'rgba(0, 0, 0, 0.5)',
-    arrowColor: '#ffffff',
-    zIndex: 10000,
-  },
-  tooltip: {
-    borderRadius: '16px',
-    padding: '20px',
-    maxWidth: '340px',
-    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)',
-  },
-  tooltipTitle: {
-    fontSize: '18px',
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: '8px',
-  },
-  tooltipContent: {
-    fontSize: '14px',
-    lineHeight: '1.6',
-    color: '#4b5563',
-  },
-  buttonNext: {
-    backgroundColor: '#c4201a',
-    borderRadius: '10px',
-    padding: '10px 20px',
-    fontSize: '14px',
-    fontWeight: '600',
-  },
-  buttonBack: {
-    color: '#c4201a',
-    fontSize: '14px',
-    fontWeight: '500',
-  },
-  buttonClose: {
-    color: '#9ca3af',
-    top: '12px',
-    right: '12px',
-  },
-  buttonSkip: {
-    color: '#9ca3af',
-    fontSize: '13px',
-  },
-  spotlight: {
-    borderRadius: '12px',
-  },
-  beacon: {
-    display: 'none', // Desabilita o beacon pulsante
-  },
-};
+// O react-joyride só baixa quando um tour vai rodar (fora do pacote inicial)
+const GuidedTour = lazy(() => import('../components/GuidedTour'));
 
 export function TourProvider({ children }) {
   const [runTour, setRunTour] = useState(false);
@@ -145,22 +90,12 @@ export function TourProvider({ children }) {
     localStorage.removeItem('hasLoggedInBefore_client');
   }, []);
 
-  // Callback do Joyride
-  const handleJoyrideCallback = useCallback((data) => {
-    const { status, action, index, type } = data;
-
-    // Atualizar indice do step
-    if (type === EVENTS.STEP_AFTER) {
-      setStepIndex(index + (action === ACTIONS.PREV ? -1 : 1));
+  // Fim do tour (concluído ou pulado)
+  const handleTourEnd = useCallback(() => {
+    if (currentTourName) {
+      markTourCompleted(currentTourName);
     }
-
-    // Tour finalizado ou pulado
-    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
-      if (currentTourName) {
-        markTourCompleted(currentTourName);
-      }
-      stopTour();
-    }
+    stopTour();
   }, [currentTourName, markTourCompleted, stopTour]);
 
   const value = {
@@ -180,40 +115,17 @@ export function TourProvider({ children }) {
   return (
     <TourContext.Provider value={value}>
       {children}
-      <Joyride
-        steps={tourSteps}
-        run={runTour}
-        stepIndex={stepIndex}
-        callback={handleJoyrideCallback}
-        continuous
-        showProgress
-        showSkipButton
-        disableOverlayClose={false}
-        spotlightClicks
-        scrollToFirstStep
-        scrollOffset={100}
-        styles={customStyles}
-        locale={{
-          back: 'Voltar',
-          close: 'Fechar',
-          last: 'Finalizar',
-          next: 'Proximo',
-          skip: 'Pular tour',
-        }}
-        floaterProps={{
-          disableAnimation: true,
-        }}
-      />
+      {tourSteps.length > 0 && (
+        <Suspense fallback={null}>
+          <GuidedTour
+            steps={tourSteps}
+            run={runTour}
+            stepIndex={stepIndex}
+            onStep={setStepIndex}
+            onEnd={handleTourEnd}
+          />
+        </Suspense>
+      )}
     </TourContext.Provider>
   );
 }
-
-export function useTour() {
-  const context = useContext(TourContext);
-  if (!context) {
-    throw new Error('useTour deve ser usado dentro de TourProvider');
-  }
-  return context;
-}
-
-export default TourContext;

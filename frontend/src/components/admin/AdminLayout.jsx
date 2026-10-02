@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Power } from 'lucide-react';
 import { API_URL } from '../../config';
 import { ADMIN_TABS } from './adminParts';
-import { LayoutContainer, Overlay, Sidebar, MainContent, NavGroup, NavItem, ShellLogo, ShellTopBar } from '../AppShell';
+import { LayoutContainer, Overlay, Sidebar, MainContent, NavGroup, NavItem, MenuLink, ShellLogo, ShellTopBar } from '../AppShell';
 
 /* Moldura do painel do admin: o mesmo AppShell do profissional, com o
    menu das abas (?tab=) do /admin/dashboard. */
@@ -23,11 +23,6 @@ export default function AdminLayout({ active, children }) {
     return () => { cancelled = true; };
   }, []);
 
-  const go = (path) => {
-    navigate(path);
-    setOpen(false);
-  };
-
   const logout = () => {
     localStorage.removeItem('token');
     navigate('/login');
@@ -44,14 +39,14 @@ export default function AdminLayout({ active, children }) {
               const Icon = tab.icon;
               const current = location.pathname === '/admin/dashboard' && active === tab.key;
               return (
-                <NavItem
+                <MenuLink
                   key={tab.key}
-                  $active={current}
-                  aria-current={current ? 'page' : undefined}
-                  onClick={() => go(tab.key === 'overview' ? '/admin/dashboard' : `/admin/dashboard?tab=${tab.key}`)}
+                  active={current}
+                  to={tab.key === 'overview' ? '/admin/dashboard' : `/admin/dashboard?tab=${tab.key}`}
+                  onNavigate={() => setOpen(false)}
                 >
                   <Icon size={20} aria-hidden="true" /> <span>{tab.label}</span>
-                </NavItem>
+                </MenuLink>
               );
             })}
           </NavGroup>

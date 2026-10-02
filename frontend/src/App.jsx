@@ -1,30 +1,42 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import Home from './pages/Home';
-import Search from './pages/Search';
-import RegisterProfessional from './pages/RegisterProfessional';
-import RegisterClient from './pages/RegisterClient';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Booking from './pages/Booking';
-import ClientDashboard from './pages/ClientDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import AppointmentDetail from './pages/AppointmentDetail';
-import History from './pages/History';
-import SubscriptionSetup from './pages/SubscriptionSetup';
-import SubscriptionCallback from './pages/SubscriptionCallback';
-import MySubscription from './pages/MySubscription';
-import ChangePlan from './pages/ChangePlan';
-import ProfessionalProfile from './pages/ProfessionalProfile';
-import MyNotifications from './pages/MyNotifications';
-import ResetPassword from './pages/ResetPassword';
-import ReviewSubmit from './pages/ReviewSubmit';
-import ServiceCategory from './pages/ServiceCategory';
-import ProfessionalLayout from './components/ProfessionalLayout';
-import ClientLayout from './components/ClientLayout';
-import SharedLayout from './components/SharedLayout';
 import { TourProvider } from './contexts/TourContext';
 import { TalaoTokens } from './components/talao';
+
+// Só a Home vai no pacote inicial; o resto baixa quando a rota abre
+const Search = lazy(() => import('./pages/Search'));
+const RegisterProfessional = lazy(() => import('./pages/RegisterProfessional'));
+const RegisterClient = lazy(() => import('./pages/RegisterClient'));
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Booking = lazy(() => import('./pages/Booking'));
+const ClientDashboard = lazy(() => import('./pages/ClientDashboard'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const AppointmentDetail = lazy(() => import('./pages/AppointmentDetail'));
+const History = lazy(() => import('./pages/History'));
+const SubscriptionSetup = lazy(() => import('./pages/SubscriptionSetup'));
+const SubscriptionCallback = lazy(() => import('./pages/SubscriptionCallback'));
+const MySubscription = lazy(() => import('./pages/MySubscription'));
+const ChangePlan = lazy(() => import('./pages/ChangePlan'));
+const ProfessionalProfile = lazy(() => import('./pages/ProfessionalProfile'));
+const MyNotifications = lazy(() => import('./pages/MyNotifications'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const ReviewSubmit = lazy(() => import('./pages/ReviewSubmit'));
+const ServiceCategory = lazy(() => import('./pages/ServiceCategory'));
+const ProfessionalLayout = lazy(() => import('./components/ProfessionalLayout'));
+const ClientLayout = lazy(() => import('./components/ClientLayout'));
+const SharedLayout = lazy(() => import('./components/SharedLayout'));
+
+// Enquanto a página baixa: papel em branco e um aviso para leitor de tela
+function PageLoading() {
+  return (
+    <div role="status" style={{ minHeight: '100vh', background: 'var(--papel)' }}>
+      <span className="sr-only">Carregando a página…</span>
+    </div>
+  );
+}
 
 function App() {
   return (
@@ -51,7 +63,7 @@ function App() {
           },
           success: {
             style: {
-              borderTop: '3px solid #4caf73',
+              borderTop: '3px solid var(--sucesso)',
             },
           },
           error: {
@@ -67,6 +79,7 @@ function App() {
         }}
       />
       <div className="app-container">
+        <Suspense fallback={<PageLoading />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<Search />} />
@@ -92,6 +105,7 @@ function App() {
           <Route path="/profile" element={<ProfessionalLayout><ProfessionalProfile /></ProfessionalLayout>} />
           <Route path="/notifications" element={<SharedLayout><MyNotifications /></SharedLayout>} />
         </Routes>
+        </Suspense>
       </div>
     </Router>
     </TourProvider>

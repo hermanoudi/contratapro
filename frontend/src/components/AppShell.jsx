@@ -136,11 +136,27 @@ export const NavItem = styled.button`
     flex: none;
   }
 
+  text-decoration: none;
+
   &:hover {
     background: var(--papel);
     color: ${(props) => (props.$tone ? undefined : 'var(--grafica)')};
   }
+
+  &:focus-visible {
+    outline: 2px solid var(--carbono);
+    outline-offset: -2px;
+  }
 `;
+
+// Item que leva a uma página: link de verdade (abre em nova aba, mostra o endereço)
+export function MenuLink({ to, active = false, onNavigate, children, ...rest }) {
+  return (
+    <NavItem as={Link} to={to} $active={active} aria-current={active ? 'page' : undefined} onClick={onNavigate} {...rest}>
+      {children}
+    </NavItem>
+  );
+}
 
 const Bar = styled.header`
   position: sticky;

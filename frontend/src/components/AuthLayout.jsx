@@ -54,7 +54,8 @@ const LogoLink = styled(Link)`
   }
 `;
 
-const AsideTitle = styled.h2`
+// Frase de marca, não título de seção: o h1 é o do formulário
+const AsideTitle = styled.p`
   margin-top: 2.5rem;
   font-family: var(--f-impresso);
   font-weight: 800;

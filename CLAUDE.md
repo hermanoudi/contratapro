@@ -7,7 +7,7 @@ Marketplace brasileiro que conecta clientes a profissionais autonomos com agenda
 | Layer | Stack |
 |-------|-------|
 | Backend | Python 3.12, FastAPI, SQLAlchemy async, Pydantic, Alembic, bcrypt, python-jose |
-| Frontend | React 19, Vite 7, styled-components 6, React Router 7, framer-motion, lucide-react |
+| Frontend | React 19, Vite 7, styled-components 6, React Router 7, lucide-react |
 | Infra | Railway (backend + PostgreSQL), Vercel (frontend), Cloudinary (images), Resend (emails) |
 
 ## Quick Start

@@ -176,6 +176,7 @@ const Comment = styled.label`
     &:focus {
       outline: none;
       background-color: rgba(207, 224, 245, 0.35);
+      box-shadow: inset 0 -2.5px 0 var(--carbono);
     }
   }
 `;

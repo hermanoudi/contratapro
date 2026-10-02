@@ -6,9 +6,9 @@ import {
 } from 'lucide-react';
 import { API_URL } from '../config';
 import { toast } from 'sonner';
-import { useTour } from '../contexts/TourContext';
+import { useTour } from '../contexts/tour';
 import {
-    LayoutContainer, Overlay, Sidebar, MainContent, NavGroup, NavItem, ShellLogo, ShellTopBar,
+    LayoutContainer, Overlay, Sidebar, MainContent, NavGroup, NavItem, MenuLink, ShellLogo, ShellTopBar,
 } from './AppShell';
 
 export default function ProfessionalLayout({ children }) {
@@ -81,10 +81,7 @@ export default function ProfessionalLayout({ children }) {
 
     const isActive = (path) => location.pathname === path;
 
-    const go = (path) => {
-        navigate(path);
-        setIsSidebarOpen(false);
-    };
+    const closeMenu = () => setIsSidebarOpen(false);
 
     return (
         <LayoutContainer>
@@ -95,43 +92,43 @@ export default function ProfessionalLayout({ children }) {
 
                 <nav style={{ flex: 1 }} data-tour="sidebar-nav" aria-label="Menu do profissional">
                     <NavGroup>
-                        <NavItem
-                            $active={isActive('/dashboard') && !location.search}
-                            onClick={() => go('/dashboard')}
+                        <MenuLink
+                            active={isActive('/dashboard') && !location.search}
+                            to="/dashboard" onNavigate={closeMenu}
                             data-tour="nav-dashboard"
                         >
                             <CalendarIcon size={20} aria-hidden="true" /> <span>Painel</span>
-                        </NavItem>
-                        <NavItem
-                            $active={location.search.includes('tab=services')}
-                            onClick={() => go('/dashboard?tab=services')}
+                        </MenuLink>
+                        <MenuLink
+                            active={location.search.includes('tab=services')}
+                            to="/dashboard?tab=services" onNavigate={closeMenu}
                             data-tour="nav-services"
                         >
                             <Briefcase size={20} aria-hidden="true" /> <span>Serviços</span>
-                        </NavItem>
-                        <NavItem
-                            $active={location.search.includes('tab=schedule')}
-                            onClick={() => go('/dashboard?tab=schedule')}
+                        </MenuLink>
+                        <MenuLink
+                            active={location.search.includes('tab=schedule')}
+                            to="/dashboard?tab=schedule" onNavigate={closeMenu}
                             data-tour="nav-schedule"
                         >
                             <Clock size={20} aria-hidden="true" /> <span>Horários</span>
-                        </NavItem>
-                        <NavItem $active={isActive('/history')} onClick={() => go('/history')}>
+                        </MenuLink>
+                        <MenuLink active={isActive('/history')} to="/history" onNavigate={closeMenu}>
                             <HistoryIcon size={20} aria-hidden="true" /> <span>Histórico</span>
-                        </NavItem>
-                        <NavItem $active={isActive('/notifications')} onClick={() => go('/notifications')}>
+                        </MenuLink>
+                        <MenuLink active={isActive('/notifications')} to="/notifications" onNavigate={closeMenu}>
                             <Bell size={20} aria-hidden="true" /> <span>Notificações</span>
-                        </NavItem>
-                        <NavItem
-                            $active={isActive('/subscription/manage') || isActive('/minha-assinatura') || isActive('/alterar-plano')}
-                            onClick={() => go('/subscription/manage')}
+                        </MenuLink>
+                        <MenuLink
+                            active={isActive('/subscription/manage') || isActive('/minha-assinatura') || isActive('/alterar-plano')}
+                            to="/subscription/manage" onNavigate={closeMenu}
                             data-tour="nav-subscription"
                         >
                             <CreditCard size={20} aria-hidden="true" /> <span>Assinatura</span>
-                        </NavItem>
-                        <NavItem $active={isActive('/profile')} onClick={() => go('/profile')}>
+                        </MenuLink>
+                        <MenuLink active={isActive('/profile')} to="/profile" onNavigate={closeMenu}>
                             <User size={20} aria-hidden="true" /> <span>Meu perfil</span>
-                        </NavItem>
+                        </MenuLink>
                     </NavGroup>
 
                     <NavGroup>

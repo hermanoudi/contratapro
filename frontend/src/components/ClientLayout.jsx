@@ -4,9 +4,9 @@ import {
     Calendar, ChevronLeft, LogOut, History as HistoryIcon, Bell, HelpCircle
 } from 'lucide-react';
 import { API_URL } from '../config';
-import { useTour } from '../contexts/TourContext';
+import { useTour } from '../contexts/tour';
 import {
-    LayoutContainer, Overlay, Sidebar, MainContent, NavGroup, NavItem, ShellLogo, ShellTopBar,
+    LayoutContainer, Overlay, Sidebar, MainContent, NavGroup, NavItem, MenuLink, ShellLogo, ShellTopBar,
 } from './AppShell';
 
 export default function ClientLayout({ children }) {
@@ -60,10 +60,7 @@ export default function ClientLayout({ children }) {
 
     const isActive = (path) => location.pathname === path;
 
-    const go = (path) => {
-        navigate(path);
-        setIsSidebarOpen(false);
-    };
+    const closeMenu = () => setIsSidebarOpen(false);
 
     return (
         <LayoutContainer>
@@ -75,26 +72,26 @@ export default function ClientLayout({ children }) {
                 <nav style={{ flex: 1 }} data-tour="client-nav" aria-label="Minha área">
                     <NavGroup>
                         <p>Minha área</p>
-                        <NavItem
-                            $active={isActive('/my-appointments')}
-                            onClick={() => go('/my-appointments')}
+                        <MenuLink
+                            active={isActive('/my-appointments')}
+                            to="/my-appointments" onNavigate={closeMenu}
                             data-tour="client-appointments"
                         >
                             <Calendar size={20} aria-hidden="true" /> <span>Meus agendamentos</span>
-                        </NavItem>
-                        <NavItem $active={isActive('/history')} onClick={() => go('/history')}>
+                        </MenuLink>
+                        <MenuLink active={isActive('/history')} to="/history" onNavigate={closeMenu}>
                             <HistoryIcon size={20} aria-hidden="true" /> <span>Histórico</span>
-                        </NavItem>
-                        <NavItem $active={isActive('/notifications')} onClick={() => go('/notifications')}>
+                        </MenuLink>
+                        <MenuLink active={isActive('/notifications')} to="/notifications" onNavigate={closeMenu}>
                             <Bell size={20} aria-hidden="true" /> <span>Notificações</span>
-                        </NavItem>
+                        </MenuLink>
                     </NavGroup>
                 </nav>
 
                 <NavGroup>
-                    <NavItem onClick={() => go('/')}>
+                    <MenuLink to="/" onNavigate={closeMenu}>
                         <ChevronLeft size={20} aria-hidden="true" /> <span>Voltar para o início</span>
-                    </NavItem>
+                    </MenuLink>
                     <NavItem onClick={handleRestartTour}>
                         <HelpCircle size={20} aria-hidden="true" /> <span>Ver tour guiado</span>
                     </NavItem>
