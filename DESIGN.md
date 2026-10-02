@@ -17,6 +17,7 @@ colors:
   texto-2-azul: "#22385e"
   papel-2: "#f6f4ef"
   regua: "rgba(23, 23, 27, 0.14)"
+  controle: "#8b8590"
   sucesso: "#1d6b3a"
   alerta: "#8a5300"
   erro: "#9e1712"
@@ -32,6 +33,12 @@ typography:
     fontSize: "clamp(2rem, 4.2vw, 3.25rem)"
     fontWeight: 800
     lineHeight: 1
+    letterSpacing: "-0.01em"
+  page-title:
+    fontFamily: "'Barlow Condensed', 'Arial Narrow', sans-serif"
+    fontSize: "clamp(1.9rem, 3.5vw, 2.5rem)"
+    fontWeight: 800
+    lineHeight: 1.05
     letterSpacing: "-0.01em"
   title:
     fontFamily: "'Barlow Condensed', 'Arial Narrow', sans-serif"
@@ -72,6 +79,7 @@ spacing:
   section-head: "clamp(2rem, 4vw, 3rem)"
   card: "1.25rem"
   via: "clamp(1.25rem, 3vw, 2rem)"
+  panel: "clamp(1rem, 2.5vw, 1.5rem)"
 components:
   button-primary:
     backgroundColor: "{colors.grafica}"
@@ -99,10 +107,23 @@ components:
     typography: "{typography.hand}"
     rounded: "{rounded.none}"
     padding: "0.9rem 0.5rem 0.2rem"
+  field-box:
+    backgroundColor: "{colors.papel}"
+    textColor: "{colors.nanquim}"
+    typography: "{typography.body}"
+    rounded: "{rounded.btn}"
+    padding: "0 1rem"
+    height: "52px"
+  field-box-readonly:
+    backgroundColor: "{colors.papel-2}"
+    textColor: "{colors.texto-2}"
   topbar:
     backgroundColor: "{colors.papel}"
     textColor: "{colors.nanquim}"
     height: "56px"
+  sidebar:
+    backgroundColor: "{colors.papel-2}"
+    textColor: "{colors.nanquim}"
   cartao:
     backgroundColor: "{colors.papel}"
     textColor: "{colors.nanquim}"
@@ -113,11 +134,26 @@ components:
     textColor: "{colors.nanquim}"
     rounded: "{rounded.none}"
     padding: "{spacing.via}"
+  panel:
+    backgroundColor: "{colors.papel}"
+    textColor: "{colors.nanquim}"
+    rounded: "{rounded.none}"
+    padding: "{spacing.panel}"
+  notice:
+    backgroundColor: "{colors.papel-2}"
+    textColor: "{colors.nanquim}"
+    rounded: "{rounded.none}"
+    padding: "0.9rem 1rem"
 ---
 
 # Design System: ContrataPro
 
-> **Scope.** This system is derived from the shipped Home (`/`, `frontend/src/pages/Home.jsx`), the first surface built in this world. It is the target system for ContrataPro. Every other surface (dashboards, booking, profile, auth, admin) has **not migrated yet** and still runs on the legacy blue/indigo + Inter tokens in `frontend/src/index.css` (`:root --primary #2563eb` etc.). Those legacy tokens are incumbent code, not the design system; do not extend them on new work and do not copy them into this world. The Talão tokens currently live as CSS custom properties on the Home's `Page` styled component, not on `:root`; migrating a surface means lifting them to a shared scope first.
+> **Scope.** Every surface of ContrataPro now runs in this world, in one of two registers.
+>
+> - **Full talão** for the public flow, where the client decides whether to trust a stranger: Home, Search, Category, the professional's profile and booking (`/p/:slug`), and the review page.
+> - **Contained register** for everything a person operates: entry pages (login, signups, new password), the logged-in areas of client and professional, subscription, and admin. It keeps the talão's ink and type and drops the vias, seams, tilt and handwriting.
+>
+> All tokens are written to `:root` once, by `TalaoTokens` in `frontend/src/components/talao/tokens.js`, the single source. `index.css` keeps the old variable names (`--primary`, `--border`…) only as a bridge to these tokens, so older styles render in the world. The legacy blue/indigo palette and Inter are gone: never bring them back.
 
 ## Overview
 
@@ -127,45 +163,57 @@ The product is dressed as the carbon-copy order pad (talão de pedido/orçamento
 
 Density is that of a paper form: generous section padding, ruled lines instead of boxes, and tables and lists that read as printed rows. Sheets meet at a perforated seam (a scalloped tear edge) rather than a straight divider. State is carried by the stroke, not by fills: a solid rule is printed, a dashed rule is the tear line, a hand-drawn X marks a choice, and focus re-inks the rule in carbon blue over a faint blue wash on the line being written.
 
+The contained register is the same pad seen at the counter, once the order is in the drawer. The ink, type, square corners, ruled rows and printed labels are the same. The paper is white and off-white (papel, papel-2), rules are neutral régua, nothing is tilted, and nothing is handwritten. A professional checking the week's agenda, or an admin reading a table, sees the gráfica's print, not its sales sheet.
+
 Motion is small and physical: the city from the CEP writes itself in by a left-to-right clip reveal (700ms), a checkbox's X draws in two strokes (220ms, second delayed 160ms), a professional card lifts and tilts slightly on hover, and buttons press 1px down. All of it is disabled under `prefers-reduced-motion`.
 
 **Key Characteristics:**
-- Flat paper vias as full-bleed section colors, joined by a perforated seam.
-- One printing ink (gráfica red) for all print: rules, labels, numbers, stamps, primary actions.
-- Handwriting (Caveat, carbon blue) only for what a person writes: input values, the resolved city, marginal notes.
+- Flat paper vias as full-bleed section colors, joined by a perforated seam (full talão).
+- One printing ink (gráfica red) for all print: rules, labels, numbers, stamps, primary actions, in both registers.
+- Handwriting (Caveat, carbon blue) only for what a person writes: input values, the resolved city, marginal notes. Not used in the contained register.
 - Condensed, heavy printed display type (Barlow Condensed 800) over a plain humanist text face (Barlow).
-- Square paper geometry; the only rounding is a 2px press on buttons.
-- Slight hand-placed rotation on physical objects (the talão, stamps, notes).
+- Square paper geometry; the only rounding is a 2px press on buttons and fields.
+- Slight hand-placed rotation on physical objects (the talão, stamps, notes); status stamps keep it in the contained register.
 
 ## Colors
 
-A four-paper stock (yellow, white, pink, blue) printed in one red and written in one blue, with near-black ink for reading.
+A four-paper stock (yellow, white, pink, blue) printed in one red and written in one blue, with near-black ink for reading, plus a neutral counter-paper and three status inks for operating.
 
 ### Primary
-- **Vermelho de Gráfica** (grafica): the single printing ink. Primary buttons, stamp buttons, every structural rule (2px solid under headers, 6px top rule on a via, 5px foot on a card), form labels, item numerals, prices, the appointment count on the talão, links, the star rating fill, and the logo (the Home uses a one-ink gráfica version, `contratapro-logo-grafica.png`; other surfaces still use the legacy blue file). Its hover/pressed ink is **Gráfica Escura** (grafica-escura).
+- **Vermelho de Gráfica** (grafica): the single printing ink. Primary buttons, stamp buttons, every structural rule (2px solid under headers, 6px top rule on a via, 5px foot on a card, 2px top rule on a panel), form labels, item numerals, prices, the appointment count on the talão, links, the star rating fill, and the one-ink logo (`contratapro-logo-grafica.png`) on every surface and e-mail. Its hover/pressed ink is **Gráfica Escura** (grafica-escura), which also prints small labels (`FieldLabel`, Passo N de M).
 - **Pauta** (pauta): the same red at 55% alpha, used only for decorative ruled lines: table row rules, list rules, FAQ dividers, card-foot rules. Never text, and never the only boundary of a control (it measures 2.7:1 on white); a field's resting underline uses full gráfica.
 
 ### Secondary
-- **Azul-Carbono** (carbono): the handwriting ink. Input values and caret, the resolved city, the drawn X in a checkbox, marginal notes (ViaNote), check marks in the "O combinado" list, the focus ring, and the focused field's underline. Placeholders are not handwriting: they are printed in texto-2 (see Inputs).
+- **Azul-Carbono** (carbono): the handwriting ink. Input values and caret on the talão, the resolved city, the drawn X in a checkbox, marginal notes (ViaNote), check marks in factual lists, the focus ring and the focused field's inset rule in both registers. In the contained register it also marks the "Agendado" state, the ink of what a person booked.
 
 ### Tertiary (the paper stock)
-- **Via Amarela** (amarela): the hero sheet and text selection highlight; also the monogram fill on a card without a photo.
+- **Via Amarela** (amarela): the hero sheet and text selection highlight; also the monogram and avatar fill (the photo frame) in both registers, and today's underline in the weekly agenda.
 - **Via Rosa** (rosa): the client via and the professionals section (Mesa).
-- **Via Azul** (azul): the professional via; at 55% alpha, the wash behind a focused field on the talão.
+- **Via Azul** (azul): the professional via; at 55% alpha, the wash behind a focused field; in the agenda, the wash of a booked slot.
 
 ### Neutral
-- **Papel** (papel): the white sheet; page background, the talão, cards, the blank notice sheet, topbar, footer.
+- **Papel** (papel): the white sheet; page background, the talão, cards, panels, dialogs, topbar, footer.
+- **Papel do Balcão** (papel-2): the contained register's off-white. Sidebar, notices, read-only fields, auth asides, unavailable plan sheets, the hatch of a blocked slot, the inline reason and pending boxes.
+- **Régua** (regua): nanquim at 14%, the neutral rule of the contained register: panel borders, card frames, the line under tabs. Decorative only.
+- **Controle** (controle): the boundary of a boxed field or an unselected plan sheet, at 3:1 so a control is visible without ink.
 - **Nanquim** (nanquim): headings, body text, icons in the topbar, photo frame.
-- **Texto Secundário** (texto-2 and its per-paper variants): secondary text is re-inked per sheet so it stays in family and legible: default on white, **texto-2-amarela** on the hero, **texto-2-rosa** on pink, **texto-2-azul** on blue. Set it by overriding `--texto-2` on the section or via, never by hardcoding.
+- **Texto Secundário** (texto-2 and its per-paper variants): secondary text is re-inked per sheet so it stays in family and legible: default on white and papel-2, **texto-2-amarela** on the hero, **texto-2-rosa** on pink, **texto-2-azul** on blue. Set it by overriding `--texto-2` on the section or via, never by hardcoding.
+
+### Status
+- **Sucesso** (sucesso): done and good: Concluído, Ativa, Pago, a passed password rule, "Retomar atendimentos".
+- **Alerta** (alerta): waiting or reversible: Pendente, Suspenso, Em análise, scheduled cancellation or plan change, "Suspender atendimentos".
+- **Erro** (erro): ended or refused: Cancelado, Recusado, Vencido, a destructive dialog's top rule. The same value as gráfica-escura, so an error never looks like a button.
 
 ### Named Rules
-**The One Ink Rule.** Everything printed is gráfica red; everything written is carbon blue. No third accent. Status red (errors) is the same gráfica ink.
+**The One Ink Rule.** Everything printed is gráfica red; everything written is carbon blue. No third accent. Status inks are for state words only, never for decoration or actions.
 
-**The Paper Is the Color Rule.** Color arrives as whole flat sheets of paper, edge to edge. No tinted cards floating on a neutral page, no color washes, no gradient fills.
+**The Paper Is the Color Rule.** Color arrives as whole flat sheets of paper, edge to edge. No tinted cards floating on a neutral page, no color washes, no gradient fills. The contained register has no colored paper at all.
 
-**The Small Print Rule.** Red text smaller than about 18px regular / 14px bold sits on papel or amarela only (5.88:1 and 4.68:1). On rosa and azul, gráfica at small sizes falls below 4.5:1 (4.19:1 and 4.38:1), so small red text there is set in **gráfica-escura** instead: via table heads and item numerals, via stamps, and links in the rosa professionals section.
+**The Word Carries the State Rule.** A status is always a word in its ink (Agendado, Pendente, Cancelado), sometimes framed as a stamp; never a colored dot, pill or icon alone.
 
-**The Seam Sync Rule.** The perforated seam draws its scallops in an SVG data URI that cannot read CSS variables, so the paper hexes are repeated in a `PAPER` map beside it. That map is a mirror of the paper tokens, not a second palette; change both together.
+**The Small Print Rule.** Red text smaller than about 18px regular / 14px bold sits on papel, papel-2 or amarela only (5.88:1 and 4.68:1). On rosa and azul, gráfica at small sizes falls below 4.5:1 (4.19:1 and 4.38:1), so small red text there is set in **gráfica-escura** instead: via table heads and item numerals, via stamps, and links in the rosa professionals section.
+
+**The Seam Sync Rule.** The perforated seam draws its scallops in an SVG data URI that cannot read CSS variables, so the paper hexes are repeated in the `PAPER` map beside it. That map is a mirror of the paper tokens, not a second palette; change both together.
 
 ## Typography
 
@@ -176,246 +224,156 @@ A four-paper stock (yellow, white, pink, blue) printed in one red and written in
 **Character:** Barlow Condensed is the gráfica's type: heavy, narrow, printed. Barlow is its plain reading partner. Caveat is the customer's pen and never sets anything the gráfica would have printed.
 
 ### Hierarchy
-- **Display** (800, clamp(2.6rem, 6.4vw, 5.25rem), 0.95, -0.015em, balanced): the single page title (hero h1).
-- **Headline** (800, clamp(2rem, 4.2vw, 3.25rem), 1, -0.01em, balanced): section titles.
-- **Title** (700–800, 1.2–2.2rem, ~1.05): via titles (800, clamp(1.7rem, 3vw, 2.2rem)), list titles, FAQ heading and notice-sheet headings (700, 1.5rem), card names (700, 1.45rem), plan names in the via's plan table (700, 1.2rem).
+- **Display** (800, clamp(2.6rem, 6.4vw, 5.25rem), 0.95, -0.015em, balanced): the single page title on full-talão pages (hero h1).
+- **Headline** (800, clamp(2rem, 4.2vw, 3.25rem), 1, -0.01em, balanced): section titles on full-talão pages.
+- **Page title** (800, clamp(1.9rem, 3.5vw, 2.5rem), 1.05): the one h1 of a contained page (`PageHead`, `StepHead`), with one supporting line under it in texto-2.
+- **Title** (700–800, 1.2–2.2rem, ~1.05): via titles (800, clamp(1.7rem, 3vw, 2.2rem)), panel and section headings (700, 1.35rem), dialog titles (800, 1.65–1.85rem), card names (700, 1.45rem), plan names (800, 1.5rem), appointment titles in rows (700, 1.2–1.25rem).
 - **Lead** (400, clamp(1.05rem, 1.4vw, 1.2rem), 1.55, max 60ch): the one supporting paragraph under a heading, in texto-2.
-- **Body** (400, 1rem, 1.5–1.6, 62–68ch): running text, table cells, FAQ answers.
-- **Label** (Barlow Condensed 600, 0.95rem, 0.08em, uppercase, gráfica): printed form labels on the talão and vias only: field labels ("SERVIÇO:"), fieldset legend ("MAIS PEDIDOS (ESCOLHA UM):"), table column heads ("PASSO / COMO FUNCIONA"), via stamps.
-- **Fine print** (Barlow Condensed 500–600, 0.95–1rem, 0.02–0.03em, sentence case): printed lines that must be read, not scanned: the appointment-count caption and the reassurance line on the talão's tear line (gráfica-escura). Kept at 0.95rem or larger; nothing on the page is set below that.
-- **Action** (Barlow Condensed 700, 1.1rem, 0.05em, uppercase): button text; nav links use 600, 1.1rem, 0.03em, sentence case.
-- **Hand** (Caveat 700, 1.45–1.75rem, 1.2): input values (1.75rem), resolved city (1.5rem), marginal notes (1.45rem). Never placeholders.
+- **Body** (400, 1rem, 1.5–1.6, 62–68ch): running text, table cells, FAQ answers. On phones the body never shrinks below 15px.
+- **Label** (Barlow Condensed 600, 0.95rem, 0.08em, uppercase, gráfica or gráfica-escura): printed form labels: field labels ("SERVIÇO:", `FieldLabel`), fieldset legends, table column heads, ruled-list terms (`dt`), via stamps, "Passo N de M".
+- **Fine print** (Barlow Condensed 500–600, 0.95–1rem, 0.02–0.03em, sentence case): printed lines that must be read, not scanned, such as the talão's tear line. Kept at 0.95rem or larger; nothing on any page is set below that, except the 0.9rem slug and sub-notes of the admin.
+- **Action** (Barlow Condensed 700, 1.1rem, 0.05em, uppercase): button text; nav and menu items use 600, 1.1–1.15rem, 0.03em, sentence case.
+- **Hand** (Caveat 700, 1.45–1.75rem, 1.2): input values on the talão (1.75rem), resolved city (1.5rem), marginal notes (1.45rem). Never placeholders, never in the contained register.
 
 ### Named Rules
 **The Printed vs. Written Rule.** If the gráfica would have printed it, it is Barlow Condensed; if a person would have written it, it is Caveat in carbon blue. Caveat never sets headings, buttons, or labels.
 
-**The Numbers Are Printed Rule.** Numbering, prices, and item numerals are Barlow Condensed with `tabular-nums`.
+**The Numbers Are Printed Rule.** Numbering, prices, dates, counts and admin figures are Barlow Condensed (or Barlow in tables) with `tabular-nums`.
+
+**The Display Guard Rule.** `index.css` shrinks h1–h3 with `!important` on phones for legacy markup. Every world heading carries `data-display`, which exempts it; without it, a Display or Page title collapses on mobile.
 
 ## Layout
 
-Content sits in a 1200px max-width column with a fluid side gutter (clamp(1rem, 4vw, 2.5rem)); section color runs full-bleed behind it. Sections breathe at clamp(3.5rem, 8vw, 6.5rem) vertical padding, with clamp(2rem, 4vw, 3rem) between a section head and its content. A section head is a Headline plus one Lead, nothing above the headline.
+Full-talão pages sit in a 1200px max-width column with a fluid side gutter (clamp(1rem, 4vw, 2.5rem)); section color runs full-bleed behind it. Sections breathe at clamp(3.5rem, 8vw, 6.5rem) vertical padding, with clamp(2rem, 4vw, 3rem) between a section head and its content. A section head is a Headline plus one Lead, nothing above the headline. Two consecutive sections on the same paper do not add their padding; the second starts at 0 top padding.
 
-Breakpoints are content-driven, not a fixed scale: topbar nav switches at 860px; the hero goes two-column (text left, talão right in a 32rem column) at 960px; the canhoto stub appears at 560px; professional cards go 2-up at 640px and 3-up at 1040px; the talão's checklist shows 4 shortcuts at every width so the submit stays in the first viewport. Below 560px the hero drops its Lead paragraph and tightens its top padding and gaps: the talão explains the task itself, and the submit must end inside a 360×640 screen (it measures 634px with count and checklist showing). Mobile order in the hero, in the DOM and in tab order alike, is title, talão, then the professional call.
+Contained pages sit inside one of two frames:
+- **AppShell** (logged-in areas and admin): a papel-2 sidebar closed by a 2px gráfica rule on the right, with a sticky 64px topbar (56px on phones). Up to 768px the sidebar becomes an off-canvas drawer over a scrim. Content is a single column: `PageHead`, then panels at `spacing.panel` padding. Reading panels (detail, subscription, profile, forms) cap at 44–46rem; tables and agendas take the full width.
+- **AuthLayout** (entry pages and the subscription flow): two halves from 969px, a papel-2 aside of true facts on the left and the form on the right; on phones only the form, under a logo and a gráfica rule.
 
-The Home's page order puts proof before explanation: hero with talão, the professionals (Mesa), "O combinado", the professional via ("Você oferece serviços?"), a short FAQ, footer. There is no client via: the hero and "O combinado" already cover the client. The FAQ keeps only questions "O combinado" does not answer. Two consecutive sections on the same paper do not add their padding; the second starts at 0 top padding. The Mesa section always renders: cards when there are professionals, blank ruled cards while loading, a notice sheet on error or when there is nobody yet. Plan prices are not on the Home: the professional via stops at "grátis, sem cartão", and the signup flow presents the plans. The section's Lead (how profiles and reviews work) always shows, since it is true with or without data.
+Breakpoints are content-driven, not a fixed scale: topbar nav switches at 860px; the hero goes two-column at 960px; the canhoto stub appears at 560px; professional cards go 2-up at 640px and 3-up at 1040px; ruled `dl` detail lines collapse to one column under 480px, where action rows also stack with the primary on top. Below 560px the hero drops its Lead so the talão's submit ends inside a 360×640 screen.
 
-The 56px topbar is the only sticky element. Touch targets are at least 44px (menu toggle, checklist items, footer links); primary buttons are 48px, the talão submit 54px.
+The 360px rule: no page scrolls sideways at 360px wide. Wide content scrolls inside its own frame (`TableScroll`), never the page. Touch targets are at least 44px; primary buttons are 48px, the talão submit 54px. Only the topbar is sticky.
 
 ### Named Rules
 **The Perforated Seam Rule.** Two different paper sheets meet at the perforated seam (12px tall, 18px scallop tile, radius 5.5px) drawn in the upper sheet's color over the lower sheet's color. Never a straight line or a gradient fade between vias.
 
+**The State Stays in Place Rule.** A section never disappears when its data fails, is loading or is empty. It shows a loading line, a notice that says what happened with "Tentar de novo", or an empty state that names the next step, in the same place the content would be.
+
 ## Elevation & Depth
 
-Paper lies flat. Depth is reserved for the two objects that are physically separate sheets resting on the page, and it is soft and cast downward like paper on a table, never a hard offset block. Everything else separates by paper color and printed rules.
+Paper lies flat. Depth is reserved for objects that are physically separate sheets resting on the page, and it is soft and cast downward like paper on a table, never a hard offset block. Everything else separates by paper color and printed rules.
 
 ### Shadow Vocabulary
 - **Talão on the table** (`box-shadow: 0 22px 36px -18px rgba(23, 23, 27, 0.45), 0 2px 4px rgba(23, 23, 27, 0.12)`): the order pad in the hero.
 - **Card on pink paper** (`box-shadow: 0 16px 28px -18px rgba(107, 38, 56, 0.55), 0 1px 3px rgba(107, 38, 56, 0.18)`): professional cards and the notice sheet that replaces them; the shadow is tinted with the paper's own ink (texto-2-rosa), not grey.
+- **Sheet over the desk** (`box-shadow: 0 24px 48px -20px rgba(23, 23, 27, 0.55), 0 2px 6px rgba(23, 23, 27, 0.15)`): every native `<dialog>`, over a nanquim scrim at 45%.
+- **Drawer** (`box-shadow: 16px 0 40px -20px rgba(23, 23, 27, 0.5)`): the AppShell sidebar only while it is open on phones.
 
 ### Named Rules
-**The Loose Sheet Rule.** Only a loose sheet on top of another sheet casts a shadow, and its shadow is tinted by the paper under it. Vias, tables, and printed boxes stay flat.
+**The Loose Sheet Rule.** Only a loose sheet on top of another sheet casts a shadow, and its shadow is tinted by the paper under it. Vias, panels, tables and printed boxes stay flat.
 
 ## Shapes
 
-Geometry is square paper. Every container, sheet, card, via, table, and photo frame has square corners (0px). The only rounding is 2px on buttons, the slight softness of a pressed rubber stamp, and the full circle of a single-choice mark, the printed "( )" of a paper form.
+Geometry is square paper. Every container, sheet, card, via, panel, table, dialog and photo frame has square corners (0px). The only rounding is 2px on buttons and boxed fields, the slight softness of a pressed rubber stamp, and the full circle of a single-choice mark, the printed "( )" of a paper form.
 
-Borders are printing: 2px solid gráfica for frames and header rules (including the rule that opens the footer, which holds only the brand line, links and legal line; it does not repeat "O combinado"), 1.5px pauta for ruled rows, 2px dashed gráfica for tear lines (the canhoto edge, the talão's tear line, the divider inside the footer). Weight carries meaning: a 6px top rule opens a via, a 5px bottom rule closes a card or notice sheet.
+Borders are printing: 2px solid gráfica for frames and header rules, 1.5px pauta for ruled rows, 2px dashed gráfica for tear lines (the canhoto edge, the talão's tear line, the footer divider). Weight carries meaning: a 6px top rule opens a via, a 5px bottom rule closes a card or notice sheet, a 2px gráfica top rule opens a panel, a 4px top rule opens a dialog (erro instead of gráfica when the action is destructive). In the contained register the neutral frame is 1.5px régua; a selected sheet re-inks it to 2px gráfica.
 
-Physical objects are placed by hand at a slight angle: the talão at -1.2deg (desktop only), via stamps at -4deg, marginal notes at -1deg, a card tilts -0.4deg as it lifts on hover.
+Physical objects are placed by hand at a slight angle: the talão at -1.2deg (desktop only), via stamps at -4deg, marginal notes at -1deg, a card tilts -0.4deg as it lifts on hover, and a status stamp sits at -3deg.
 
 ## Components
 
 ### Where the code lives
-Shared pieces live in `frontend/src/components/talao/`. Pages import them from the barrel (`import { TalaoPage, Display, PrimaryButton } from '../components/talao'`).
-- **Tokens:** `tokens.js` is the single source. `TalaoTokens`, mounted once in `App.jsx`, writes every token to `:root` as a CSS variable (`--grafica`, `--carbono`, `--f-impresso`, `--texto-2-rosa`…). The `PAPER` hex map from the same file feeds SVGs, such as the seam, that can't read variables. Declaring the tokens changes nothing visually; a page joins the world only by wrapping itself in `TalaoPage`.
-- **Legacy bridge (contained register):** pages not yet migrated still read the old names (`--primary`, `--text-secondary`, `--bg-secondary`, `--border`, `--font-sans`…). `index.css` now points them at talão tokens:
-  - `--primary` and `--accent` → gráfica. Keeping them equal flattens the old gradients.
-  - `--bg-secondary` → papel-2, `--border` → régua, `--success`/`--error` → sucesso/erro.
-  - Body text is Barlow; h1–h4 are Barlow Condensed.
-  - `.btn-primary` is the flat printed button.
+- **`components/talao/`** — the world's shared kit, imported from the barrel. `tokens.js` (`TalaoTokens`, `PAPER`), `TalaoPage`/`Wrap`/`paperSurface`, type (`Display`, `Lead`, `Hand`), buttons, `Field`/`FormError`, `TextInput` (`FieldLabel`, `InputBox`, `TextInput`, `FieldNote`), `Seam`, `ProCard`/`CardsGrid`/`BlankCard`, `TalaoSheet` and its parts, `useCep`/`CepField`, `NoticeSheet`, `ResultsBar`, `TrustNote`, `SiteHeader`, `SiteFooter`, `whatsappLink`.
+- **`components/AppShell.jsx`** (+ `ProfessionalLayout`, `ClientLayout`, `admin/AdminLayout`) and **`components/AuthLayout.jsx`** — the two contained frames.
+- **`components/dashboard/`** — contained pieces: `parts.js` (`PageHead`, `Panel`, `Notice`, `IconButton`, `Fieldset`, `Choices`), `listParts.js` (filters, counts, empty lists), `AppointmentRow`, `Pager`, the agenda and its dialogs, `utils.js` (status map, local dates).
+- **`components/admin/`** — `adminParts.js` (`Table`, `TableScroll`, `Figures`, `useAdminResource`), `AdminDialog`, one panel per tab.
+- **Forms** — `SignupParts.jsx` (`StepHead`, `TextField`, `AddressFields`), `signupUtils.js`, `PasswordInput.jsx`, `PhotoPicker.jsx`, `planParts.js`, `apiErrors.js` (`translateError` for English or unaccented backend messages).
+- **E-mails** — `backend/app/services/notifications/templates.py`: the one-ink logo over a 2px gráfica rule, a papel-2 page, an info box with a gráfica top rule, a square gráfica button, a dashed tear line before the footer, statuses in sucesso/alerta/erro.
 
-  New colours go in `tokens.js`, never in `index.css`. The contained register uses papel and papel-2 surfaces with neutral régua rules. It keeps gráfica for action and carbono for focus, and uses no vias, seams, tilt or handwriting.
-- **Logged-in shell (contained register):** `components/AppShell.jsx`, used by `ProfessionalLayout` and `ClientLayout`. `SharedLayout` picks one of the two.
-  - **Sidebar:** papel-2, closed on the right by a 2px gráfica rule, like the red margin of an order pad. It carries the one-ink logo.
-  - **Menu items:** Barlow Condensed 600 at 1.15rem, 48px rows, groups separated by pauta. The active item is gráfica, 700 and underlined 2px at 5px offset, the same underline as the Home's topbar links. No pills and no coloured side bars.
-  - **Top bar:** sticky, 64px (56 on mobile), papel, closed by a 2px gráfica rule. On mobile it holds the menu toggle and the logo. The user shows as a 2px nanquim frame on amarela with the initial, the same frame as the ProCard photo.
-  - **State colours:** "Suspender atendimentos" is in alerta and "Retomar" in sucesso, never in the action red. While a professional is suspended, the top bar shows "Atendimentos suspensos" ("Suspenso" on phones) in alerta on every page.
-- **Entry pages (contained register):** `components/AuthLayout.jsx` frames login, and later the signups and the new-password page.
-  - **Desktop aside:** papel-2 with the gráfica margin rule, the one-ink logo, a Barlow Condensed headline and a ruled list of true facts drawn from PRODUCT.md (carbono checks, pauta rules). Never feature claims like "verificados" or "tempo real".
-  - **Mobile:** the aside collapses to a logo over a gráfica rule.
-- **Contained fields:** `components/talao/TextInput.js` holds `FieldLabel` (printed gráfica-escura caps), `InputBox` (optional leading icon), `TextInput` and `FieldNote`.
-  - `TextInput` is a square box: 1.5px `--controle` border (3:1), 52px tall. Focus is the talão focus: an azul wash with a carbono inset rule.
-  - Errors are written under the form in gráfica with `role="alert"`, not only in a toast.
-- **Dialogs:** use native `<dialog>` with `showModal()`, so Esc and focus trapping come for free. The sheet is papel with a 4px gráfica top rule and square corners. Content renders only while open (see `ForgotPasswordModal`).
-- **Signups (contained register):** `components/SignupParts.jsx` and `components/signupUtils.js`.
-  - **Step header:** printed "Passo N de M" in gráfica-escura caps over the h1. Focus moves to the h1 on every step change.
-  - **Fields:** `TextField` is label, input and its own error in one piece.
-  - **Address:** `AddressFields` looks the CEP up at `${API_URL}/cep/`. Its status line reads "Consultando…", "Endereço em…", or not found/offline. When the lookup fails, Cidade and UF become editable, so a CEP outage never blocks a signup.
-  - **Actions:** "Voltar" as a stamp beside the primary. Under 480px they stack with the primary on top.
-  - **Validation:** errors are written under each field and the first invalid field takes focus. Toasts are only for what happens after navigation.
-  - **Backend messages:** `translateError` maps the ones that arrive in English or without accents.
-- **Password field:** `components/PasswordInput.jsx`, used by the signups, the new-password page and admin.
-  - **Rules:** they sit in an inline list under the field and tick in sucesso as they are met. The field is never red while the person is typing; it turns sucesso only when every rule passes.
-  - **Eye toggle:** reachable by Tab.
-  - **Generated password:** shown in a papel-2 box with a sucesso rule and a copy button, in monospace so l, I and 1 don't get confused.
-- **Plan choice:** each plan is a papel sheet holding a real radio. The chosen one gets a 2px gráfica frame; the others a 1.5px controle frame. Plan items come from the plan record (services, bookings/month, search priority, badge label), never hardcoded marketing ("mais popular", emoji).
-- **Profile and booking (`/p/:slug`, full talão):**
-  - **Amarela via:** the professional, with the photo in the ProCard frame (larger), name as h1 and a meta row. The row holds category, city, the real rating or "Ainda sem avaliações", and the plan badge as a stamp. The description keeps line breaks; WhatsApp is a stamp link.
-  - **"Pedido de agendamento" talão (straight):**
-    - Services as printed-circle radios with price on the right ("A combinar" when there is none).
-    - The calendar restyled in printed type. Days off and past days are struck through and disabled; the selected day is filled in gráfica.
-    - Hour slots as printed boxes that turn handwritten carbono when chosen.
-    - Region/address notices, and a handwritten "Seu pedido" summary.
-    - The red submit ("Entrar para agendar" when logged out), then the tear line: "Agendar não cobra nada…".
-  - **Rosa via:** the reviews, followed by `TrustNote`.
-  - **Success:** the "Via do cliente", an azul via with a talão stamped AGENDADO in sucesso and the details written by hand.
-- **Review (`/avaliar/:token`, full talão):**
-  - **Sheet:** an amarela via holding an "Avaliação do serviço" talão.
-  - **Rating:** five printed gráfica stars, real radios that respond to the arrow keys, with the rating word written by hand.
-  - **Name:** the handwritten talão `Field`.
-  - **Comment:** a ruled textarea whose lines follow the 2.2rem line height of the handwriting.
-  - **Tear line:** "Cada serviço agendado recebe uma avaliação só…".
-- **Professional dashboard (`pages/Dashboard.jsx` + `components/dashboard/`, contained register):** one h1 per tab (Agenda da semana / Meus serviços / Horários de atendimento).
-  - **Panels:** papel with a régua border and a 2px gráfica top rule.
-  - **Weekly agenda:**
-    - Sunday-based, built from local dates.
-    - A grid on desktop and a per-day list on mobile.
-    - Cell states: Livre (papel), Agendado (azul wash, carbono name, a `<button>` to the appointment), Bloqueado (hatched papel-2 with a labelled X to remove), no service (papel-2).
-    - Today's column has an amarela underline, and a legend sits above the grid.
-    - Cancelled appointments never occupy a slot.
-  - **Lists and forms:** services as cards with a gráfica foot rule; working hours as a ruled list; block time in a native `<dialog>`.
-  - **Premium summary:** a ruled list, not icon stat cards.
-  - **Notices:** the inactive subscription shows as an inline alerta notice, never a fixed bar over the shell.
-- **Client area (`pages/ClientDashboard.jsx`, contained register):** tabs are links (`/my-appointments`, `?tab=conta`).
-  - **Appointments:** grouped as Próximos (ascending) and Anteriores (descending). Each row links to the detail page with a printed day block (number plus month), the service, date and professional, and a status word in its colour.
-  - **Minha conta:** a form with the signup `TextField`/`AddressFields`. A CEP lookup refills city and UF, and errors show inline.
-- **Filtered lists (`pages/History.jsx`, `pages/MyNotifications.jsx`, contained register):** built from shared pieces.
-  - **Shared pieces:** `components/dashboard/listParts.js` (FilterPanel, FilterGrid, Shortcuts/Chip, FilterActions, ResultCount, EmptyList), `AppointmentRow.jsx` (the same row as Meus agendamentos) and `Pager.jsx`.
-  - **Filters:** a form whose draft state only takes effect on "Filtrar". "Limpar" resets both the draft and the applied filters. Dates use native inputs and are checked for start ≤ end.
-  - **Pagination:** Anterior / "Página X de Y" / Próxima, which fits at 360px.
-  - **History:** period shortcuts (7 dias, 30 dias, 90 dias, 12 meses) as square chips with `aria-pressed`.
-  - **Notifications:** each row shows the type as a printed label, the title, the appointment details and the delivery state (Enviado / Na fila / Não foi enviado), and links to the appointment.
-- **Subscription (`pages/MySubscription.jsx`, `pages/ChangePlan.jsx`, contained register):**
-  - **Plan sheets:** `components/planParts.js` holds PlanList, PlanSheet (radio sheets, a gráfica frame when chosen, papel-2 when unavailable), PlanHead, PlanTag, PlanItems, `planItems`, `planPrice` and `sortPlans`. They are shared with the professional signup. Plans always come from `GET /plans/`.
-  - **Minha assinatura:** a receipt panel with "Plano X" and a status stamp. Ruled lines show Valor, Próxima cobrança or Termina em, Último pagamento and Inclui.
-    - Pending payment, a scheduled cancellation and a scheduled plan change each show as a papel-2 box with an alerta border and a single undo or finish action. The page never offers an action the backend rejects in that state.
-    - Cancelling opens a native `<dialog>` with ruled reason radios.
-  - **Alterar plano:** choose a plan, then confirm.
-    - The current plan and Free (after a paid plan) are disabled and tagged.
-    - A summary panel says what will actually happen: an upgrade goes to Mercado Pago and stays pending until paid; a downgrade is scheduled for the next billing date.
-    - The button names the action ("Ir para o pagamento" or "Agendar a troca").
-- **Meu perfil (`pages/ProfessionalProfile.jsx`, contained register):** a single form panel with four sections (Foto, Contato, O seu trabalho, Endereço), each headed by a gráfica rule.
-  - **Photo:** `components/PhotoPicker.jsx`, shared with signup, uses the yellow ProCard frame, so the professional sees what clients see.
-  - **E-mail:** read-only (papel-2 field with a régua border, via `TextInput[readonly]`), because it is the login.
-  - **Errors:** shown inline, and focus moves to the first field with a problem. "Ver minha página" opens `/p/:slug`.
-  - **Saving:** `PUT /users/me` only accepts FormData, so it uses `profileFormData` from signupUtils.
-- **Pending upgrade (Minha assinatura):** a papel-2 box with an alerta border, "Upgrade para X aguardando pagamento", offering Concluir o pagamento and Desistir do upgrade. The current plan stays in force until Mercado Pago confirms.
-- **Subscription flow (`SubscriptionSetup.jsx`, `SubscriptionCallback.jsx`, contained register inside `AuthLayout`):**
-  - **Setup:** the planParts sheets fed from `/plans/`. `?plano=<slug>` comes from signup with the plan preselected, and the current Free plan is tagged and disabled.
-    - The summary says what happens: a user on Free stays on Free, and in search, until Mercado Pago confirms; a user without a plan appears once it confirms.
-    - One primary button names the action, next to a quiet "Decidir depois" link. Users who already pay are sent to Minha assinatura.
-  - **Callback:** a status stamp (Pago, Aguardando, Em análise, Recusado) over the heading.
-    - It reports success only when the subscription is already on the plan the person went to pay for, which is stored in sessionStorage via `rememberPlanIntent` and has no pending upgrade.
-    - Until then it shows "Confirmando o pagamento" and checks every 2 s, up to 10 times, cancelling the polling on unmount.
-  - `StepHead` accepts an `eyebrow` in place of "Passo X de Y".
-- **Admin (`pages/AdminDashboard.jsx` + `components/admin/`, contained register):** `AdminLayout` reuses the AppShell, and each `?tab=` (Visão geral, Profissionais, Clientes, Assinaturas, Categorias, Minha senha) is its own component that loads its own data (`useAdminResource`, with loading and error states).
-  - **Figures:** a ruled `Figures` list (label left, Barlow Condensed number right) instead of icon stat cards.
-  - **Tables:** the pautada `Table` sits inside a `TableScroll` (`position: relative`, so the sr-only header stays contained), which scrolls inside the panel; the page never scrolls sideways at 360px.
-  - **Statuses:** shown as a word in its colour.
-  - **Destructive actions:** suspend, reactivate and category delete go through `AdminDialog`, a native `<dialog>` with an erro top rule when the action is destructive, with errors shown inline.
-  - **Revenue:** the sum of paid active subscriptions that will renew. It was "active × R$ 50".
-- **Appointment detail (`pages/AppointmentDetail.jsx`, contained register):** a receipt-like panel headed "Agendamento nº", with a status stamp (bordered, -3deg, colour plus word).
-  - **Lines:** a ruled `dl` with gráfica labels (one column below 480px). It shows the other party first, then service, day and time, and addresses (the client also sees the professional's).
-  - **Actions:** WhatsApp to the other party (outlined gráfica), Marcar como concluído (pro only, primary), then Cancelar and Suspender as stamp buttons.
-  - **Reason:** cancelling or suspending opens an inline papel-2 form. The reason needs 5 or more letters, and the error stays inside that form.
-- **E-mails (`backend/app/services/notifications/templates.py`):** the same single ink.
-  - Red logo image (`contratapro.com.br/logo.png`) on white over a 2px gráfica rule.
-  - 2px gráfica frame, papel-2 page, info box with a gráfica top rule, dashed tear line before the footer.
-  - Square gráfica button.
-  - Statuses in sucesso/alerta/erro. No gradients or indigo.
-- **Backend messages:** `components/apiErrors.js` (`translateError`) maps the English or unaccented messages from signup, reset, booking, the dashboard and the appointment detail.
-- **Surface:** `TalaoPage` sets the font, ink, paper, `::selection` and focus ring, and holds `font-size: 1rem` against the mobile body shrink in `index.css`. `Wrap` is the 1200px column. `paperSurface('rosa')` paints a via and tints `--texto-2` for it. Every sheet of papel resting on a coloured via resets `--texto-2` via `cardSheet`.
-- **Components:**
-  - Type: `Display` (always carries `data-display`, so the mobile `!important` heading rule never shrinks it), `Lead`, `Hand`.
-  - Buttons: `PrimaryButton`/`PrimaryLink` and `StampButton`/`StampLink`, with a disabled state.
-  - Fields: `Field` + `FormError`.
-  - Seam: `Seam`.
-  - Cards: `ProCard` + `CardsGrid` + `BlankCard`, with the price rules in `pricing.js`. `ProCard` is an `article` whose name link stretches over the whole card (`::after`); keyboard focus outlines the card via `:has()`. Two opt-in props:
-    - `badge`: the plan's `badge_label`, stamped on the top edge like a via stamp. Only Search passes it.
-    - `contactHref`: an outlined WhatsApp action that sits above the stretched link.
-  - CEP: `useCep` (the lookup and its states, remembered in localStorage), with `CepField` for the field, its status line and the city written in by hand.
-  - `NoticeSheet` + `NoticeActions`: the sheet that takes the cards' place on error or empty, used by Home, Search and ServiceCategory.
-  - `ResultsBar` + `ResultsCount`: the count row above a results grid, closed by a gráfica rule.
-  - `TrustNote`: the "O ContrataPro não verifica os profissionais…" line under any list of cards.
-  - `whatsappLink`: the prefilled WhatsApp message for a card's contact action.
-  - Page frame: `SiteHeader` (owns the `/auth/me` session and the mobile menu) and `SiteFooter`.
-- **Talão shell (promoted):** `components/talao/TalaoSheet.jsx` holds `TalaoSheet`, `Canhoto`, `TalaoBody`, `TalaoHead`, `TalaoBrand`, `SubmitRow` and `Perforation`, plus the printed single-choice circle `PrintedCircle` with its hand-drawn `HandCross`.
-  - `$tilt` rotates the sheet -1.2deg on desktop. Only the Home uses it; a sheet holding a form or a calendar stays straight.
-- **Still local to the Home:** the category-shortcut radiogroup behaviour (`CheckItem`), the steps table, the combinado panel and the FAQ. Promote one to `components/talao/` the first time a second page needs it; don't copy it.
-- **Search (`/search`):**
-  - The request sits on the amarela via as an untilted sheet: Serviço, CEP and Buscar in one row from 900px.
-  - The h1 restates the request ("Diarista em Uberlândia").
-  - Results sit on rosa, below a toolbar with the count ("X de Y" while filters are on) and multi-select filters.
-  - Multi-select filters are printed squares (`aria-pressed`), because the circle means single choice.
-  - The URL (`service`, `city`, `cep`) is the request.
-- **Category (`/servicos/:categoria`):** the SEO entry page.
-  - Amarela intro: a printed breadcrumb, the h1 "{Categoria} em {cidade}", an honest lead and the region line. The region line offers "Ver todas as cidades" when a city is saved, and "Buscar perto de você" (to Search) when none is.
-  - Rosa cards, same states as Search.
-  - Papel "Outras categorias" as a ruled printed list: 2 columns, 3 from 760px.
-  - No stats row and no invented ratings: every number on the page comes from the API.
+Promote a local piece to a shared file the first time a second page needs it; never copy it.
 
 ### Buttons
 Printed and decisive, like the gráfica's red block.
 - **Shape:** near-square (2px), 2px border in the same ink as the fill.
-- **Primary:** gráfica fill, papel text, uppercase Barlow Condensed 700, 48px min height, 0 1.4rem padding, optional trailing arrow icon. Use it for the one main action in a sheet.
-- **Stamp (secondary):** transparent with gráfica text and 2px gráfica border; inverts to a gráfica fill on hover. Used for "Sou profissional" in the topbar (compact padding, still 44px tall) and for the secondary action on a notice sheet ("Preencher o pedido", "Sou profissional, quero me cadastrar"). Rendered as a link or, when it triggers an in-page action, as a button with the same look.
-- **Hover / Focus / Active:** hover darkens to gráfica-escura (160ms, ease-out `cubic-bezier(0.22, 1, 0.36, 1)`); focus is a 2px carbono outline at 3px offset; active presses 1px down.
+- **Primary:** gráfica fill, papel text, uppercase Barlow Condensed 700, 48px min height, 0 1.4rem padding, optional icon. The one main action in a sheet, panel or dialog, labelled with what it does ("Ir para o pagamento", "Agendar a troca", "Salvar o perfil"), never "OK" or "Confirmar" alone.
+- **Stamp (secondary):** transparent with gráfica text and 2px gráfica border; inverts to a gráfica fill on hover. Secondary and reversible actions: Voltar, Cancelar, Suspender, Limpar, Alterar o plano. Rendered as a link or a button with the same look.
+- **Outline link:** the stamp's look on an external `<a>` (WhatsApp, Mercado Pago), with an icon that says where it goes.
+- **Quiet link:** a plain underlined line in texto-2 for "do it later" exits ("Decidir depois", "Agora não"); never styled as a button.
+- **Icon button:** 44px square, régua frame, icon only, always with an `aria-label` naming the object ("Excluir Diarista").
+- **Hover / Focus / Active:** hover darkens to gráfica-escura (160ms, `var(--ease-out)` = cubic-bezier(0.22, 1, 0.36, 1)); focus is a 2px carbono outline at 3px offset; active presses 1px down; disabled is 0.4–0.5 opacity with a not-allowed cursor.
 
-### Chips: Printed Checklist
-The "mais pedidos" choices are a printed checklist, not pills: a 1.3rem printed circle with a 2px gráfica border beside a Barlow 500 label, 44px row height, two columns. It sits directly under the Serviço field it fills (before CEP and the submit), with at most 4 items, and only when real categories came back from the API. It is a single choice and says so in its legend ("escolha um"): semantically a `radiogroup` of `role="radio"` buttons with roving tabindex, one tab stop, arrow keys moving focus only among the visible items (Space/Enter chooses), so arrowing never overwrites what was typed. Selecting writes that service into the field and draws a carbon-blue X in two strokes inside the circle; selecting it again gives back whatever the person had typed. Hover turns the label red.
+### Chips
+- **Printed checklist (talão, single choice):** a 1.3rem printed circle with a 2px gráfica border beside a Barlow 500 label, 44px rows, two columns, at most 4 items, only when real categories came back. A `radiogroup` with roving tabindex; choosing draws a carbon-blue X in two strokes and writes the service into the field.
+- **Printed squares (multi-select filters, Search):** square marks with `aria-pressed`, because the circle means single choice.
+- **Period chips (contained):** square 40px chips with a régua frame that fill gráfica when pressed (`aria-pressed`), used for date shortcuts.
 
 ### Cards / Containers
-- **Cartão (professional card):** papel, square, 1.25rem padding, 5px gráfica bottom rule, tinted paper shadow; 64px square photo with a 2px nanquim frame (amarela monogram when no photo); a "No ContrataPro desde {mês de ano}" line from the professional's real `created_at` (omitted when missing or invalid; no other trust signal is invented), then one talão line under a 1.5px pauta rule with the service the professional registered and its price (the professional's first service defines the unit (hora or dia) and the line shows the lowest price among services in that same unit, "a partir de" when there are several, R$ in Barlow Condensed 700 tabular gráfica-escura, "/hora" or "/dia" in texto-2; title only when there is no price; no line when there are no services); foot row under another pauta rule with the rating and an uppercase "Ver perfil e avaliações" link (the next step is checking the person out, not booking). Missing name falls back to "Profissional"; a rating that is not a positive number shows "Ainda sem avaliações". Hover lifts 3px and tilts -0.4deg (200ms). Loading state is a blank ruled card, never a grey shimmer.
-- **Notice sheet (MesaAviso):** what the professionals section shows instead of cards when the API fails or there is nobody yet, so the section never disappears. It sits inside the cards grid, spanning the full row (two columns at 1040px+, with one blank ruled card beside it so the row reads as empty slots, not a void). A papel sheet card shadow and 5px gráfica foot, a Title-sized heading that states the fact plainly ("Os perfis não carregaram agora."), one short paragraph in texto-2 that names the recovery, and actions: primary for the fix ("Tentar de novo" with a rotate icon), stamp for the alternative. Only the heading and paragraph sit inside `role="status"`; the actions stay outside it. The heading says "Quem atende em {cidade}" only for professionals whose city matches the visitor's exactly.
-- **Via:** a whole paper sheet (rosa or azul) with a 6px gráfica top rule, a title over a 2px red rule, and a rotated stamp in the corner that states a fact, never paperwork jargon ("Grátis", "Sem cartão"; not "1ª via"). The Home now uses only the professional via, full width, with its title as the section's h2. It carries a ruled steps table (Passo | Como funciona, numbered rows), a handwritten note and one action ("Quero oferecer serviços"). It stops at free: no plan table on the Home.
-- **Printed box:** 2px gráfica frame on the current paper, no fill, no shadow (the "O combinado" panel).
+- **Cartão (professional card):** papel, square, 1.25rem padding, 5px gráfica bottom rule, tinted paper shadow; 64px square photo with a 2px nanquim frame (amarela monogram when no photo); "No ContrataPro desde {mês de ano}" from the real `created_at`; one talão line with the first registered service and its lowest price in the same unit; a foot row with the real rating or "Ainda sem avaliações" and "Ver perfil e avaliações". Hover lifts 3px and tilts -0.4deg. Loading is a blank ruled card, never a grey shimmer.
+- **Notice sheet (full talão):** what a cards section shows on error or empty, spanning the row: a heading that states the fact, one paragraph naming the recovery, a primary fix and a stamp alternative.
+- **Via:** a whole paper sheet (rosa or azul) with a 6px gráfica top rule, a title over a 2px red rule, and a rotated stamp that states a fact ("Grátis", "Sem cartão").
+- **Printed box:** 2px gráfica frame on the current paper, no fill, no shadow.
+- **Panel (contained):** papel, 1.5px régua frame, 2px gráfica top rule, `spacing.panel` padding. Panels hold a form, a list or a receipt; one panel per topic, stacked with 1.5rem between.
+- **Receipt panel (contained):** a panel whose head prints the record ("Agendamento nº 5", "Plano Pro") over a 2px gráfica rule, with a status stamp at the right, then a ruled `dl` of gráfica `dt` labels and values. Used for the appointment detail and the subscription.
+- **Notice (contained):** papel-2 with a 1.5px border in the state's ink (alerta, erro, or régua), an icon and one sentence, and its action beside it. Inline in the content, never fixed over the shell. Pending, scheduled and reason boxes use the same papel-2 with an alerta or erro border.
+- **Plan sheet:** a papel sheet holding a real radio, 1.5px controle frame; the chosen one gets a 2px gráfica frame, the unavailable one papel-2 with a printed tag ("Seu plano atual"). Items come from the plan record, never marketing ("mais popular", emoji).
 
 ### Inputs / Fields
-- **Style:** a ruled line, not a box. A Barlow Condensed uppercase red label ("SERVIÇO:") sits on the same baseline as a borderless transparent input; the value is Caveat 700 1.75rem in carbono. The placeholder is printed, not written: Barlow 400 1.05rem in texto-2, phrased as an example ("ex.: eletricista, diarista"), so an empty field never looks filled in. The field's only boundary is a 1.5px full-gráfica underline (pauta would fail 3:1 for a control boundary). The field row bleeds 0.5rem past the text on each side so the focus wash has room.
-- **Focus:** the row takes an azul wash at 55% alpha and the underline turns carbono with an inset 2.5px shadow (`box-shadow: inset 0 -2.5px 0 carbono`), so focus is unmistakable without shifting layout; 160ms ease-out, off under reduced motion. The input itself has no outline.
-- **Status / Error:** helper and status text below in Barlow 0.95rem texto-2; errors in gráfica ink; a confirmed city writes itself in by hand with a check.
+- **Ruled field (full talão):** a ruled line, not a box. A Barlow Condensed uppercase red label on the same baseline as a borderless input; the value is Caveat 700 1.75rem in carbono. The placeholder is printed, not written: Barlow 400 1.05rem in texto-2, phrased as an example ("ex.: eletricista, diarista"). The only boundary is a 1.5px full-gráfica underline.
+- **Boxed field (contained):** `TextInput`, a 52px box with a 1.5px controle border and 2px corners, a `FieldLabel` in gráfica-escura caps above it and an optional leading icon. Selects, dates and textareas reuse it (`as="select"`, `type="date"`, `as="textarea"`). Read-only fields switch to papel-2 with a régua border and texto-2 text, and carry a `FieldNote` saying why ("O e-mail é o seu login").
+- **Focus (both):** an azul wash at 35–55% alpha and a carbono inset rule (`box-shadow: inset 0 -2.5px 0 carbono`), 160ms ease-out, off under reduced motion. No outline glow.
+- **Status / Error:** helper and status text below in Barlow 0.95rem texto-2 (`FieldNote`); errors in gráfica ink with `role="alert"`, written under the field or the form, and the first invalid field takes focus. Toasts only confirm what already happened; they never carry an error the person must act on.
 
 ### Navigation
-Papel topbar, 56px, sticky, closed by a 2px gráfica bottom rule. Links are Barlow Condensed 600 1.1rem nanquim; hover turns them red and draws a 2px underline at 5px offset. The stamp button sits at the end. Below 860px the links collapse into a full-width panel of 48px rows separated by pauta rules, closed by Esc; the stamp stays visible beside the menu toggle.
+- **Topbar (full talão):** papel, 56px, sticky, closed by a 2px gráfica bottom rule. Links in Barlow Condensed 600 1.1rem nanquim; hover turns them red and draws a 2px underline at 5px offset. Below 860px they collapse into a full-width panel of 48px rows separated by pauta, closed by Esc; the "Sou profissional" stamp stays visible.
+- **AppShell menu (contained):** Barlow Condensed 600 1.15rem in 48px rows, groups separated by pauta. The active item is gráfica, 700, underlined 2px at 5px offset, with `aria-current="page"`. No pills, no colored side bars. State items use status inks ("Suspender atendimentos" alerta, "Retomar" sucesso), never the action red.
+- **Tabs (contained):** links in Barlow Condensed over a régua line; the current one is gráfica with a 3px gráfica underline.
+- **Pager:** Anterior / "Página X de Y" / Próxima, which fits at 360px whatever the page count.
+
+### Dialogs
+Native `<dialog>` with `showModal()`, so Esc and focus trapping come for free. Papel, square, a 4px gráfica top rule (erro for destructive actions), the "Sheet over the desk" shadow. Content renders only while open, so labels and ids are never duplicated on the page. The title asks the real question ("Suspender Carla Mendes?"); one paragraph says what will happen; errors show inside the dialog; Voltar (stamp) beside the action (primary).
+
+### Lists and Tables
+- **Ruled rows:** lists are rows over 1.5px pauta rules under a 2px gráfica head rule. The appointment row prints the day as a block (number in Barlow Condensed 800 over the month), then the service, date, person and status word.
+- **Ruled figures:** numbers in a `dl` grid, label left and a Barlow Condensed 800 number right, over pauta rules. Never icon stat cards.
+- **Tables:** printed column heads in gráfica-escura caps over a 2px gráfica rule, pauta row rules, `th scope="col"`, row hover in papel-2. Wide tables sit in `TableScroll` (relative, scrolls inside the panel, keyboard-focusable).
+
+### Status Stamp
+The record's state as a rubber stamp: a 2px border and uppercase Barlow Condensed 800 in the status ink, rotated -3deg (Agendado, Concluído, Ativa, Pendente, Pago, Recusado). Used once per record head; inside lists the state is a plain colored word.
 
 ### Talão (signature component)
-The primary search form is the order pad itself: a papel sheet with a 2px gráfica frame, rotated -1.2deg on desktop, carrying the table shadow. A blank canhoto stub, marked only by its dashed edge, runs down the left from 560px; it carries no text, because printed words on it read as something to act on. The head prints the brand and "Pedido de serviço" left and, only when the API returns a real appointment count above zero, one line of fine print under "Pedido de serviço", full width, in gráfica-escura, with only the number in bold tabular figures ("**1.234** agendamentos já feitos no ContrataPro"). It is never dressed as an order number: no big red figure in the corner, no "Nº", no zero padding, no count-plus-one. With no real count, the head carries no number at all. Order down the sheet: Serviço field, printed checklist, CEP field with its status line, the red submit, then a dashed tear line that prints the reassurance that matters at the moment of submitting: that it is only a search, it is free, and payment is direct ("Buscar não compromete nada: você só vê quem atende. Grátis para quem contrata, e o pagamento você combina direto com o profissional."). The sheet keeps its "Pedido de serviço" name; the tear line removes the fear of committing. An incomplete CEP on submit does not search without the region: the CEP status line turns into an error ("Faltam N números do CEP. Complete ou apague para buscar só pelo serviço.") and focus moves to the CEP.
+The primary search form is the order pad itself: a papel sheet with a 2px gráfica frame, rotated -1.2deg on desktop, carrying the table shadow. A blank canhoto stub, marked only by its dashed edge, runs down the left from 560px; it carries no text. The head prints the brand and "Pedido de serviço" and, only when the API returns a real appointment count above zero, one line of fine print with the number in bold tabular figures. It is never dressed as an order number. Order down the sheet: Serviço field, printed checklist, CEP field with its status line, the red submit, then a dashed tear line that prints the reassurance that matters at the moment of submitting: that it is only a search, it is free, and payment is direct. An incomplete CEP turns its status line into an error and takes focus. The booking talão on `/p/:slug` and the review talão reuse the shell (`TalaoSheet`) untilted, because they hold forms and a calendar.
 
 ### Share Image
-`frontend/public/og-image.jpg` (1200×630) is the talão world as a social preview: amarela paper, the one-ink logo, the hero title in Barlow Condensed 800, a tilted talão filled in by hand ("eletricista", "seu bairro") with the red submit and the "Grátis para quem contrata." tear line, and a perforated seam at the foot. `og:image` and `twitter:image` both point to it. `public/logo.png` is the official logo file for Schema.org. Its source is `frontend/design/og-image.html` (the talão drawn in HTML with the real fonts; the CEP field shows a numeric example); regenerate the JPEG from it when the hero copy changes.
+`frontend/public/og-image.jpg` (1200×630) is the talão world as a social preview: amarela paper, the one-ink logo, the hero title in Barlow Condensed 800, a tilted talão filled in by hand, and a perforated seam at the foot. Its source is `frontend/design/og-image.html`; regenerate the JPEG from it when the hero copy changes.
 
 ### Perforated Seam (signature component)
 See the Perforated Seam Rule. It is the only divider between sections of different paper.
 
+### Known Gaps
+- The guided tour (`contexts/TourContext.jsx`, react-joyride) still has the legacy styling: rounded 10–16px tooltip and buttons, grey Tailwind-style text. Its button is already gráfica. Bring it into the contained register (square, Barlow Condensed title, nanquim/texto-2 text) next time it is touched.
+
 ## Do's and Don'ts
 
 ### Do:
-- **Do** give each section a whole flat paper color (amarela, papel, rosa, azul) and join different papers with the perforated seam.
-- **Do** print every rule, label, number, and primary action in gráfica red, and write every user value and marginal note in Caveat carbon blue.
-- **Do** re-ink secondary text per paper by overriding `--texto-2` (texto-2-amarela / -rosa / -azul) on the section.
+- **Do** pick the register by the person's job: full talão where a client decides whether to trust someone (Home, Search, Category, profile/booking, review); contained everywhere a person operates.
+- **Do** give each full-talão section a whole flat paper color (amarela, papel, rosa, azul) and join different papers with the perforated seam.
+- **Do** print every rule, label, number, and primary action in gráfica red, and write every user value and marginal note in Caveat carbon blue (full talão only).
+- **Do** re-ink secondary text per paper by overriding `--texto-2` on the section.
 - **Do** use ruled lines (1.5px pauta) for rows and fields, and let stroke carry state: solid printed, dashed tear, drawn X for chosen, carbono underline for focus.
-- **Do** keep corners square; buttons alone take 2px.
-- **Do** place physical objects (the talão, stamps, notes) at a slight hand angle, and keep all motion off under `prefers-reduced-motion`.
-- **Do** keep numbering and counts tied to real API data, and omit them entirely when the data is missing.
-- **Do** keep a section in place when its data fails or is empty: show a notice sheet that says what happened and offers the next action.
-- **Do** print placeholders (Barlow, texto-2, "ex.: …"); handwriting is reserved for what the person actually wrote.
+- **Do** keep corners square; buttons and boxed fields alone take 2px.
+- **Do** show every state as a word in its status ink, and every destructive or billing action behind a native `<dialog>` that says what will happen.
+- **Do** keep a section in place when its data fails, loads or is empty, and say what happened with a way forward.
+- **Do** keep numbering, counts, ratings and prices tied to real API data, and omit them entirely when the data is missing.
+- **Do** keep all motion off under `prefers-reduced-motion`, and every page free of sideways scroll at 360px.
 
 ### Don't:
-- **Don't** use a gradient as a color fill or a fade between sections; the only gradient in the world is the repeating ruled-line pattern of a blank card.
-- **Don't** introduce a second accent color or reuse the legacy blue/indigo (`#2563eb` family) or Inter on Talão surfaces.
+- **Don't** use a gradient as a color fill or a fade between sections; the only gradients are repeating line patterns (a blank card's ruling, a blocked slot's hatch, the review textarea's lines).
+- **Don't** introduce a second accent color or reuse the legacy blue/indigo (`#2563eb` family), glass, pills or Inter anywhere.
+- **Don't** bring vias, seams, tilt or handwriting into the contained register, except the status stamp's -3deg.
 - **Don't** set small red text on rosa or azul.
-- **Don't** put the uppercase tracked label style above section headings as a kicker or eyebrow; it belongs to printed form labels on the talão and vias only.
+- **Don't** put the uppercase tracked label style above section headings as a kicker; it belongs to printed form labels, table heads and the step/eyebrow line of `StepHead`.
 - **Don't** use Caveat for headings, buttons, or labels.
-- **Don't** give flat vias, tables, or printed boxes a shadow, and never use a hard offset shadow; only loose sheets cast a soft, paper-tinted one.
-- **Don't** round cards or containers.
-- **Don't** print decorative words that look like instructions or controls (a labelled canhoto, "destaque aqui", a blank "Nº ______", an invented order number, "1ª via"); every printed word on the talão either labels a field or tells the person something true.
+- **Don't** give flat vias, panels, tables, or printed boxes a shadow, and never use a hard offset shadow; only loose sheets (talão, cards on rosa, dialogs, the open drawer) cast a soft one.
+- **Don't** round cards, panels, dialogs or containers.
+- **Don't** use icon stat cards, colored status dots or pills; numbers are ruled figures and states are words.
+- **Don't** print claims the product can't back ("verificados", "mais popular", "suporte dedicado", invented ratings or counts), or decorative words that look like instructions (a labelled canhoto, "Nº ______", "1ª via").

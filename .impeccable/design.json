@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-30T00:25:58Z",
+  "generatedAt": "2026-10-02T04:30:44+00:00",
   "title": "Design System: ContrataPro",
   "extensions": {
     "scope": "Derived from the shipped Home (frontend/src/pages/Home.jsx). Other surfaces have not migrated and still use the legacy blue/indigo + Inter tokens in frontend/src/index.css. Talão tokens live on the Home's Page styled component, not :root.",
@@ -139,6 +139,96 @@
         "role": "neutral",
         "displayName": "Texto Secundário na Azul",
         "canonical": "#22385e"
+      },
+      "papel-2": {
+        "role": "neutral",
+        "displayName": "Papel do Balcão",
+        "canonical": "#f6f4ef",
+        "tonalRamp": [
+          "#312b1c",
+          "#584d32",
+          "#7f6f48",
+          "#a5915f",
+          "#bbac86",
+          "#d1c7ad",
+          "#e5e0d1",
+          "#f6f4ef"
+        ]
+      },
+      "regua": {
+        "role": "neutral",
+        "displayName": "Régua",
+        "canonical": "rgba(23, 23, 27, 0.14)",
+        "tonalRamp": [
+          "#232329",
+          "#3f3f4a",
+          "#5b5b6b",
+          "#78788c",
+          "#9999a8",
+          "#babac4",
+          "#d8d8de",
+          "#f1f1f3"
+        ]
+      },
+      "controle": {
+        "role": "neutral",
+        "displayName": "Controle",
+        "canonical": "#8b8590",
+        "tonalRamp": [
+          "#262428",
+          "#454248",
+          "#645f68",
+          "#837c88",
+          "#a19ca5",
+          "#c0bcc2",
+          "#dbdadd",
+          "#f2f2f3"
+        ]
+      },
+      "sucesso": {
+        "role": "status",
+        "displayName": "Sucesso",
+        "canonical": "#1d6b3a",
+        "tonalRamp": [
+          "#103c21",
+          "#1d6c3b",
+          "#2a9c55",
+          "#3aca70",
+          "#6bd793",
+          "#9be4b6",
+          "#c7f0d6",
+          "#ebfaf0"
+        ]
+      },
+      "alerta": {
+        "role": "status",
+        "displayName": "Alerta",
+        "canonical": "#8a5300",
+        "tonalRamp": [
+          "#4c2e00",
+          "#8a5300",
+          "#c77800",
+          "#ff9b05",
+          "#ffb442",
+          "#ffcc80",
+          "#ffe3b8",
+          "#fff5e5"
+        ]
+      },
+      "erro": {
+        "role": "status",
+        "displayName": "Erro",
+        "canonical": "#9e1712",
+        "tonalRamp": [
+          "#450a08",
+          "#7c120e",
+          "#b31a14",
+          "#e5261f",
+          "#ec5b56",
+          "#f2908d",
+          "#f8c1bf",
+          "#fce9e8"
+        ]
       }
     },
     "typographyMeta": {
@@ -173,6 +263,10 @@
       "hand": {
         "displayName": "Handwriting",
         "purpose": "What a person writes: input values, the resolved city, marginal notes. Never placeholders, headings, buttons or labels."
+      },
+      "page-title": {
+        "displayName": "Page title",
+        "purpose": "The one h1 of a contained page (PageHead, StepHead), with one supporting line in texto-2."
       }
     },
     "shadows": [
@@ -185,6 +279,16 @@
         "name": "card-on-rosa",
         "value": "0 16px 28px -18px rgba(107, 38, 56, 0.55), 0 1px 3px rgba(107, 38, 56, 0.18)",
         "purpose": "Professional cards on pink paper; tinted by the paper's own ink."
+      },
+      {
+        "name": "sheet-over-desk",
+        "value": "0 24px 48px -20px rgba(23, 23, 27, 0.55), 0 2px 6px rgba(23, 23, 27, 0.15)",
+        "purpose": "Every native <dialog>, over a nanquim scrim at 45%."
+      },
+      {
+        "name": "drawer",
+        "value": "16px 0 40px -20px rgba(23, 23, 27, 0.5)",
+        "purpose": "The AppShell sidebar only while it is open on phones."
       }
     ],
     "motion": [
@@ -238,6 +342,18 @@
       {
         "name": "hero-compact",
         "value": "559px (max)"
+      },
+      {
+        "name": "stack",
+        "value": "480px (max)"
+      },
+      {
+        "name": "shell-drawer",
+        "value": "768px (max)"
+      },
+      {
+        "name": "auth-2col",
+        "value": "969px"
       }
     ],
     "seam": {
@@ -317,38 +433,91 @@
       "description": "Replaces the professional cards when the API fails or nobody is registered yet, so the section never disappears: plain statement, recovery, actions.",
       "html": "<div class=\"ds-aviso\"><div role=\"status\"><h3>Os perfis não carregaram agora.</h3><p>Pode ser a sua conexão ou uma instabilidade do nosso lado. Tente de novo, ou preencha o pedido lá em cima.</p></div><div class=\"ds-aviso-acoes\"><button class=\"ds-aviso-primary\" type=\"button\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8\"/><path d=\"M21 3v5h-5\"/></svg>Tentar de novo</button><button class=\"ds-aviso-stamp\" type=\"button\">Preencher o pedido</button></div></div>",
       "css": ".ds-aviso { max-width: 40rem; padding: 1.5rem 1.75rem; background: #ffffff; border-bottom: 5px solid #c4201a; box-shadow: 0 16px 28px -18px rgba(107, 38, 56, 0.55), 0 1px 3px rgba(107, 38, 56, 0.18); font-family: Barlow, system-ui, sans-serif; } .ds-aviso h3 { margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 1.5rem; line-height: 1.05; color: #17171b; } .ds-aviso p { margin: 0.6rem 0 0; max-width: 60ch; line-height: 1.55; color: #4a4550; } .ds-aviso-acoes { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.25rem; } .ds-aviso-primary, .ds-aviso-stamp { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 48px; padding: 0 1.4rem; border-radius: 2px; border: 2px solid #c4201a; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; transition: background 160ms cubic-bezier(0.22, 1, 0.36, 1), color 160ms; } .ds-aviso-primary { background: #c4201a; color: #ffffff; } .ds-aviso-primary:hover { background: #9e1712; border-color: #9e1712; } .ds-aviso-stamp { background: transparent; color: #c4201a; } .ds-aviso-stamp:hover { background: #c4201a; color: #ffffff; } .ds-aviso-primary:focus-visible, .ds-aviso-stamp:focus-visible { outline: 2px solid #2e3a9e; outline-offset: 3px; } .ds-aviso-primary:active, .ds-aviso-stamp:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Boxed Field",
+      "kind": "input",
+      "refersTo": "field-box",
+      "description": "The contained register field: printed label above a square 52px box, carbono focus.",
+      "html": "<label class=\"ds-box-label\" for=\"ds-box\">Nome do serviço</label><input id=\"ds-box\" class=\"ds-box-input\" placeholder=\"ex.: faxina completa\"><p class=\"ds-box-note\">Aparece no seu perfil.</p>",
+      "css": ".ds-box-label { display: block; margin-bottom: 0.4rem; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 0.95rem; letter-spacing: 0.08em; text-transform: uppercase; color: #9e1712; } .ds-box-input { width: 100%; min-height: 52px; padding: 0 1rem; background: #ffffff; border: 1.5px solid #8b8590; border-radius: 2px; font-family: 'Barlow', system-ui, sans-serif; font-size: 1.05rem; color: #17171b; transition: border-color 160ms, box-shadow 160ms, background-color 160ms; } .ds-box-input::placeholder { color: #4a4550; } .ds-box-input:focus, .ds-box-input:focus-visible { outline: none; border-color: #2e3a9e; background: rgba(207, 224, 245, 0.35); box-shadow: inset 0 -2.5px 0 #2e3a9e; } .ds-box-note { margin-top: 0.4rem; font-family: 'Barlow', system-ui, sans-serif; font-size: 0.95rem; color: #4a4550; }"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "The contained sheet: papel, régua frame, gráfica top rule; holds a form, list or receipt.",
+      "html": "<section class=\"ds-panel\"><h2>Horários de atendimento</h2><ul><li><b>Segunda</b><span>08:00 às 14:00</span></li><li><b>Terça</b><span>08:00 às 14:00</span></li></ul></section>",
+      "css": ".ds-panel { max-width: 30rem; background: #ffffff; border: 1.5px solid rgba(23, 23, 27, 0.14); border-top: 2px solid #c4201a; padding: 1.25rem; color: #17171b; font-family: 'Barlow', system-ui, sans-serif; } .ds-panel h2 { margin: 0 0 0.75rem; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 1.35rem; } .ds-panel ul { list-style: none; margin: 0; padding: 0; border-top: 2px solid #c4201a; } .ds-panel li { display: flex; justify-content: space-between; padding: 0.7rem 0.25rem; border-bottom: 1.5px solid rgba(196, 32, 26, 0.55); } .ds-panel b { font-weight: 600; } .ds-panel span { font-variant-numeric: tabular-nums; color: #4a4550; }"
+    },
+    {
+      "name": "Notice",
+      "kind": "card",
+      "refersTo": "notice",
+      "description": "Inline state notice in the contained register: papel-2, border in the state ink, one sentence and its action.",
+      "html": "<div class=\"ds-notice\"><p><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 8v4\"/><path d=\"M12 16h.01\"/></svg><span>Sua assinatura não está ativa, então seu perfil não aparece nas buscas.</span></p><button class=\"ds-notice-btn\">Ativar assinatura</button></div>",
+      "css": ".ds-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; padding: 0.9rem 1rem; background: #f6f4ef; border: 1.5px solid #8a5300; font-family: 'Barlow', system-ui, sans-serif; color: #17171b; } .ds-notice p { flex: 1 1 16rem; display: flex; gap: 0.5rem; margin: 0; line-height: 1.5; } .ds-notice svg { flex: none; margin-top: 0.15rem; color: #8a5300; } .ds-notice-btn { min-height: 44px; padding: 0 1.1rem; background: transparent; border: 2px solid #c4201a; border-radius: 2px; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.05em; text-transform: uppercase; color: #c4201a; cursor: pointer; transition: background-color 160ms, color 160ms; } .ds-notice-btn:hover { background: #c4201a; color: #ffffff; } .ds-notice-btn:focus-visible { outline: 2px solid #2e3a9e; outline-offset: 3px; }"
+    },
+    {
+      "name": "Status Stamp",
+      "kind": "custom",
+      "refersTo": "status",
+      "description": "The record's state as a rubber stamp at -3deg: border and word in the status ink.",
+      "html": "<div class=\"ds-stamps\"><strong class=\"ds-stamp ds-ok\">Concluído</strong><strong class=\"ds-stamp ds-wait\">Pendente</strong><strong class=\"ds-stamp ds-end\">Cancelado</strong><strong class=\"ds-stamp ds-book\">Agendado</strong></div>",
+      "css": ".ds-stamps { display: flex; flex-wrap: wrap; gap: 1rem; padding: 0.5rem; } .ds-stamp { display: inline-block; padding: 0.15rem 0.55rem; border: 2px solid currentColor; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 1rem; letter-spacing: 0.1em; text-transform: uppercase; transform: rotate(-3deg); } .ds-ok { color: #1d6b3a; } .ds-wait { color: #8a5300; } .ds-end { color: #9e1712; } .ds-book { color: #2e3a9e; }"
+    },
+    {
+      "name": "Dialog",
+      "kind": "custom",
+      "refersTo": "dialog",
+      "description": "Native <dialog> sheet: papel, 4px top rule (erro when destructive), soft desk shadow, the real question as title.",
+      "html": "<div class=\"ds-dialog\" role=\"dialog\" aria-labelledby=\"ds-dlg-t\"><div class=\"ds-dialog-head\"><h2 id=\"ds-dlg-t\">Suspender Carla Mendes?</h2><button aria-label=\"Fechar\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></button></div><p>O perfil sai da busca e não recebe agendamentos até ser reativado.</p><div class=\"ds-dialog-actions\"><button class=\"ds-dlg-back\">Voltar</button><button class=\"ds-dlg-go\">Suspender</button></div></div>",
+      "css": ".ds-dialog { width: min(30rem, 100%); padding: 1.5rem 1.5rem 1.75rem; background: #ffffff; border-top: 4px solid #9e1712; box-shadow: 0 24px 48px -20px rgba(23, 23, 27, 0.55), 0 2px 6px rgba(23, 23, 27, 0.15); color: #17171b; font-family: 'Barlow', system-ui, sans-serif; } .ds-dialog-head { display: flex; justify-content: space-between; gap: 1rem; } .ds-dialog h2 { margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 1.65rem; line-height: 1.1; } .ds-dialog-head button { width: 44px; height: 44px; margin: -0.5rem -0.5rem 0 0; background: none; border: none; color: #17171b; cursor: pointer; } .ds-dialog-head button:hover { color: #c4201a; } .ds-dialog p { margin: 0.5rem 0 0; line-height: 1.55; color: #4a4550; } .ds-dialog-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.5rem; } .ds-dialog-actions button { flex: 1 1 9rem; min-height: 48px; border: 2px solid #c4201a; border-radius: 2px; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; transition: background-color 160ms, color 160ms; } .ds-dlg-back { background: transparent; color: #c4201a; } .ds-dlg-back:hover { background: #c4201a; color: #ffffff; } .ds-dlg-go { background: #c4201a; color: #ffffff; } .ds-dlg-go:hover { background: #9e1712; border-color: #9e1712; } .ds-dialog-actions button:focus-visible { outline: 2px solid #2e3a9e; outline-offset: 3px; }"
+    },
+    {
+      "name": "AppShell Menu",
+      "kind": "nav",
+      "refersTo": "sidebar",
+      "description": "Logged-in menu: papel-2 sidebar closed by a gráfica margin rule; active item in gráfica, underlined.",
+      "html": "<nav class=\"ds-shell\" aria-label=\"Menu\"><a class=\"ds-shell-item\" aria-current=\"page\" href=\"#\">Painel</a><a class=\"ds-shell-item\" href=\"#\">Serviços</a><a class=\"ds-shell-item\" href=\"#\">Horários</a><a class=\"ds-shell-item ds-shell-alerta\" href=\"#\">Suspender atendimentos</a></nav>",
+      "css": ".ds-shell { width: 15rem; padding: 1rem 0.75rem; background: #f6f4ef; border-right: 2px solid #c4201a; display: flex; flex-direction: column; } .ds-shell-item { display: flex; align-items: center; min-height: 48px; padding: 0 0.75rem; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 1.15rem; letter-spacing: 0.03em; color: #17171b; text-decoration: none; } .ds-shell-item:hover { color: #c4201a; } .ds-shell-item[aria-current='page'] { background: #ffffff; color: #c4201a; font-weight: 700; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; } .ds-shell-item:focus-visible { outline: 2px solid #2e3a9e; outline-offset: 2px; } .ds-shell-alerta { margin-top: 0.75rem; border-top: 1.5px solid rgba(196, 32, 26, 0.55); color: #8a5300; }"
     }
   ],
   "narrative": {
     "northStar": "Talão de Orçamento",
-    "overview": "The product is dressed as the carbon-copy order pad (talão de pedido/orçamento) that every Brazilian autônomo keeps in the van or the toolbox. Whole sections are flat sheets of colored paper, the \"vias\": yellow, white, pink, blue. Everything printed by the gráfica is in a single red ink: rules, labels, numbering, stamps, primary buttons. Everything filled in by a person is carbon blue in a handwriting face. Near-black nanquim carries headings and running text. The effect is warm and local, a thing from the neighbourhood rather than a SaaS product, which is the tone PRODUCT.md commits to.\n\nDensity is that of a paper form: generous section padding, ruled lines instead of boxes, and tables and lists that read as printed rows. Sheets meet at a perforated seam (a scalloped tear edge) rather than a straight divider. State is carried by the stroke, not by fills: a solid rule is printed, a dashed rule is the tear line, a hand-drawn X marks a choice, and focus re-inks the rule in carbon blue over a faint blue wash on the line being written.\n\nMotion is small and physical: the city from the CEP writes itself in by a left-to-right clip reveal (700ms), a checkbox's X draws in two strokes (220ms, second delayed 160ms), a professional card lifts and tilts slightly on hover, and buttons press 1px down. All of it is disabled under `prefers-reduced-motion`.",
+    "overview": "The product is dressed as the carbon-copy order pad (talão de pedido/orçamento) that every Brazilian autônomo keeps in the van or the toolbox. Whole sections are flat sheets of colored paper, the \"vias\": yellow, white, pink, blue. Everything printed by the gráfica is in a single red ink: rules, labels, numbering, stamps, primary buttons. Everything filled in by a person is carbon blue in a handwriting face. Near-black nanquim carries headings and running text. The effect is warm and local, a thing from the neighbourhood rather than a SaaS product, which is the tone PRODUCT.md commits to.\n\nDensity is that of a paper form: generous section padding, ruled lines instead of boxes, and tables and lists that read as printed rows. Sheets meet at a perforated seam (a scalloped tear edge) rather than a straight divider. State is carried by the stroke, not by fills: a solid rule is printed, a dashed rule is the tear line, a hand-drawn X marks a choice, and focus re-inks the rule in carbon blue over a faint blue wash on the line being written.\n\nThe contained register is the same pad seen at the counter, once the order is in the drawer. The ink, type, square corners, ruled rows and printed labels are the same. The paper is white and off-white (papel, papel-2), rules are neutral régua, nothing is tilted, and nothing is handwritten. A professional checking the week's agenda, or an admin reading a table, sees the gráfica's print, not its sales sheet.\n\nMotion is small and physical: the city from the CEP writes itself in by a left-to-right clip reveal (700ms), a checkbox's X draws in two strokes (220ms, second delayed 160ms), a professional card lifts and tilts slightly on hover, and buttons press 1px down. All of it is disabled under `prefers-reduced-motion`.",
     "keyCharacteristics": [
-      "Flat paper vias as full-bleed section colors, joined by a perforated seam.",
-      "One printing ink (gráfica red) for all print: rules, labels, numbers, stamps, primary actions.",
-      "Handwriting (Caveat, carbon blue) only for what a person writes: input values, the resolved city, marginal notes.",
+      "Flat paper vias as full-bleed section colors, joined by a perforated seam (full talão).",
+      "One printing ink (gráfica red) for all print: rules, labels, numbers, stamps, primary actions, in both registers.",
+      "Handwriting (Caveat, carbon blue) only for what a person writes: input values, the resolved city, marginal notes. Not used in the contained register.",
       "Condensed, heavy printed display type (Barlow Condensed 800) over a plain humanist text face (Barlow).",
-      "Square paper geometry; the only rounding is a 2px press on buttons.",
-      "Slight hand-placed rotation on physical objects (the talão, stamps, notes)."
+      "Square paper geometry; the only rounding is a 2px press on buttons and fields.",
+      "Slight hand-placed rotation on physical objects (the talão, stamps, notes); status stamps keep it in the contained register."
     ],
     "rules": [
       {
         "name": "The One Ink Rule",
-        "body": "Everything printed is gráfica red; everything written is carbon blue. No third accent. Status red (errors) is the same gráfica ink.",
+        "body": "Everything printed is gráfica red; everything written is carbon blue. No third accent. Status inks are for state words only, never for decoration or actions.",
         "section": "colors"
       },
       {
         "name": "The Paper Is the Color Rule",
-        "body": "Color arrives as whole flat sheets of paper, edge to edge. No tinted cards floating on a neutral page, no color washes, no gradient fills.",
+        "body": "Color arrives as whole flat sheets of paper, edge to edge. No tinted cards floating on a neutral page, no color washes, no gradient fills. The contained register has no colored paper at all.",
+        "section": "colors"
+      },
+      {
+        "name": "The Word Carries the State Rule",
+        "body": "A status is always a word in its ink (Agendado, Pendente, Cancelado), sometimes framed as a stamp; never a colored dot, pill or icon alone.",
         "section": "colors"
       },
       {
         "name": "The Small Print Rule",
-        "body": "Red text smaller than about 18px regular / 14px bold sits on papel or amarela only (5.88:1 and 4.68:1). On rosa and azul, gráfica at small sizes falls below 4.5:1 (4.19:1 and 4.38:1), so small red text there is set in **gráfica-escura** instead: via table heads and item numerals, via stamps, and links in the rosa professionals section.",
+        "body": "Red text smaller than about 18px regular / 14px bold sits on papel, papel-2 or amarela only (5.88:1 and 4.68:1). On rosa and azul, gráfica at small sizes falls below 4.5:1 (4.19:1 and 4.38:1), so small red text there is set in **gráfica-escura** instead: via table heads and item numerals, via stamps, and links in the rosa professionals section.",
         "section": "colors"
       },
       {
         "name": "The Seam Sync Rule",
-        "body": "The perforated seam draws its scallops in an SVG data URI that cannot read CSS variables, so the paper hexes are repeated in a `PAPER` map beside it. That map is a mirror of the paper tokens, not a second palette; change both together.",
+        "body": "The perforated seam draws its scallops in an SVG data URI that cannot read CSS variables, so the paper hexes are repeated in the `PAPER` map beside it. That map is a mirror of the paper tokens, not a second palette; change both together.",
         "section": "colors"
       },
       {
@@ -358,7 +527,12 @@
       },
       {
         "name": "The Numbers Are Printed Rule",
-        "body": "Numbering, prices, and item numerals are Barlow Condensed with `tabular-nums`.",
+        "body": "Numbering, prices, dates, counts and admin figures are Barlow Condensed (or Barlow in tables) with `tabular-nums`.",
+        "section": "typography"
+      },
+      {
+        "name": "The Display Guard Rule",
+        "body": "`index.css` shrinks h1–h3 with `!important` on phones for legacy markup. Every world heading carries `data-display`, which exempts it; without it, a Display or Page title collapses on mobile.",
         "section": "typography"
       },
       {
@@ -367,31 +541,39 @@
         "section": "layout"
       },
       {
+        "name": "The State Stays in Place Rule",
+        "body": "A section never disappears when its data fails, is loading or is empty. It shows a loading line, a notice that says what happened with \"Tentar de novo\", or an empty state that names the next step, in the same place the content would be.",
+        "section": "layout"
+      },
+      {
         "name": "The Loose Sheet Rule",
-        "body": "Only a loose sheet on top of another sheet casts a shadow, and its shadow is tinted by the paper under it. Vias, tables, and printed boxes stay flat.",
+        "body": "Only a loose sheet on top of another sheet casts a shadow, and its shadow is tinted by the paper under it. Vias, panels, tables and printed boxes stay flat.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "**Do** give each section a whole flat paper color (amarela, papel, rosa, azul) and join different papers with the perforated seam.",
-      "**Do** print every rule, label, number, and primary action in gráfica red, and write every user value and marginal note in Caveat carbon blue.",
-      "**Do** re-ink secondary text per paper by overriding `--texto-2` (texto-2-amarela / -rosa / -azul) on the section.",
-      "**Do** use ruled lines (1.5px pauta) for rows and fields, and let stroke carry state: solid printed, dashed tear, drawn X for chosen, carbono underline for focus.",
-      "**Do** keep corners square; buttons alone take 2px.",
-      "**Do** place physical objects (the talão, stamps, notes) at a slight hand angle, and keep all motion off under `prefers-reduced-motion`.",
-      "**Do** keep numbering and counts tied to real API data, and omit them entirely when the data is missing.",
-      "**Do** keep a section in place when its data fails or is empty: show a notice sheet that says what happened and offers the next action.",
-      "**Do** print placeholders (Barlow, texto-2, \"ex.: …\"); handwriting is reserved for what the person actually wrote."
+      "Do pick the register by the person's job: full talão where a client decides whether to trust someone (Home, Search, Category, profile/booking, review); contained everywhere a person operates.",
+      "Do give each full-talão section a whole flat paper color (amarela, papel, rosa, azul) and join different papers with the perforated seam.",
+      "Do print every rule, label, number, and primary action in gráfica red, and write every user value and marginal note in Caveat carbon blue (full talão only).",
+      "Do re-ink secondary text per paper by overriding `--texto-2` on the section.",
+      "Do use ruled lines (1.5px pauta) for rows and fields, and let stroke carry state: solid printed, dashed tear, drawn X for chosen, carbono underline for focus.",
+      "Do keep corners square; buttons and boxed fields alone take 2px.",
+      "Do show every state as a word in its status ink, and every destructive or billing action behind a native `<dialog>` that says what will happen.",
+      "Do keep a section in place when its data fails, loads or is empty, and say what happened with a way forward.",
+      "Do keep numbering, counts, ratings and prices tied to real API data, and omit them entirely when the data is missing.",
+      "Do keep all motion off under `prefers-reduced-motion`, and every page free of sideways scroll at 360px."
     ],
     "donts": [
-      "**Don't** use a gradient as a color fill or a fade between sections; the only gradient in the world is the repeating ruled-line pattern of a blank card.",
-      "**Don't** introduce a second accent color or reuse the legacy blue/indigo (`#2563eb` family) or Inter on Talão surfaces.",
-      "**Don't** set small red text on rosa or azul.",
-      "**Don't** put the uppercase tracked label style above section headings as a kicker or eyebrow; it belongs to printed form labels on the talão and vias only.",
-      "**Don't** use Caveat for headings, buttons, or labels.",
-      "**Don't** give flat vias, tables, or printed boxes a shadow, and never use a hard offset shadow; only loose sheets cast a soft, paper-tinted one.",
-      "**Don't** round cards or containers.",
-      "**Don't** print decorative words that look like instructions or controls (a labelled canhoto, \"destaque aqui\", a blank \"Nº ______\", an invented order number, \"1ª via\"); every printed word on the talão either labels a field or tells the person something true."
+      "Don't use a gradient as a color fill or a fade between sections; the only gradients are repeating line patterns (a blank card's ruling, a blocked slot's hatch, the review textarea's lines).",
+      "Don't introduce a second accent color or reuse the legacy blue/indigo (`#2563eb` family), glass, pills or Inter anywhere.",
+      "Don't bring vias, seams, tilt or handwriting into the contained register, except the status stamp's -3deg.",
+      "Don't set small red text on rosa or azul.",
+      "Don't put the uppercase tracked label style above section headings as a kicker; it belongs to printed form labels, table heads and the step/eyebrow line of `StepHead`.",
+      "Don't use Caveat for headings, buttons, or labels.",
+      "Don't give flat vias, panels, tables, or printed boxes a shadow, and never use a hard offset shadow; only loose sheets (talão, cards on rosa, dialogs, the open drawer) cast a soft one.",
+      "Don't round cards, panels, dialogs or containers.",
+      "Don't use icon stat cards, colored status dots or pills; numbers are ruled figures and states are words.",
+      "Don't print claims the product can't back (\"verificados\", \"mais popular\", \"suporte dedicado\", invented ratings or counts), or decorative words that look like instructions (a labelled canhoto, \"Nº ______\", \"1ª via\")."
     ]
   }
 }
