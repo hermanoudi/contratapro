@@ -239,27 +239,14 @@ export default function RegisterProfessional() {
             });
           }
 
-          // 4. Atribuir plano selecionado
+          // 4. Todo cadastro nasce no Free; plano pago só entra pelo pagamento
           const selectedPlanData = plans.find((p) => p.id === selectedPlan);
-          if (selectedPlanData) {
-            await fetch(`${API_URL}/plans/me/change-plan`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${loginData.access_token}`
-              },
-              body: JSON.stringify({ new_plan_slug: selectedPlanData.slug })
-            });
-          }
-
-          // 5. Redirecionar baseado no plano
-          const isFreePlan = selectedPlanData?.slug === 'free';
-          if (isFreePlan) {
+          if (!selectedPlanData || selectedPlanData.slug === 'free') {
             toast.success('Cadastro feito. Seu plano Free já está ativo.');
             navigate('/dashboard');
           } else {
-            toast.success('Cadastro feito. Agora é só configurar o pagamento do plano.');
-            navigate('/subscription/setup');
+            toast.success(`Cadastro feito. Falta só o pagamento do ${selectedPlanData.name}.`);
+            navigate(`/subscription/setup?plano=${selectedPlanData.slug}`);
           }
         } else {
           toast.warning('Cadastro feito, mas não deu para entrar automaticamente. Entre com seu e-mail e senha.');

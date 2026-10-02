@@ -101,6 +101,14 @@ async def change_plan(
     if not new_plan:
         raise HTTPException(status_code=404, detail="Plano não encontrado")
 
+    # Plano pago só entra pelo pagamento (/subscriptions/subscribe ou change-plan,
+    # confirmados pelo webhook do Mercado Pago). Aqui só o grátis.
+    if new_plan.price > 0:
+        raise HTTPException(
+            status_code=403,
+            detail="Planos pagos são ativados pelo pagamento no Mercado Pago."
+        )
+
     # Não pode voltar para free após ter tido plano pago
     if new_plan.slug == 'free' and current_user.subscription_plan_id:
         result2 = await db.execute(

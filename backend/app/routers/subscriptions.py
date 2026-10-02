@@ -1030,6 +1030,9 @@ async def debug_subscription_checkout(
     Debug: Tenta criar uma assinatura diretamente via API
     e retorna informações detalhadas sobre o que está acontecendo.
     """
+    # Só em desenvolvimento: em produção isto ativaria plano sem pagamento
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="Not Found")
     if not current_user.is_professional:
         raise HTTPException(status_code=403, detail="Apenas profissionais")
 
@@ -1215,6 +1218,9 @@ async def activate_subscription_manual(
     APENAS PARA DESENVOLVIMENTO/TESTE
     Ativa manualmente uma assinatura pending (simula pagamento aprovado)
     """
+    # Só em desenvolvimento: em produção isto ativaria plano sem pagamento
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="Not Found")
     if not current_user.is_professional:
         raise HTTPException(
             status_code=403,
