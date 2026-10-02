@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-02T04:30:44+00:00",
+  "generatedAt": "2026-10-02T11:39:37+00:00",
   "title": "Design System: ContrataPro",
   "extensions": {
     "scope": "Derived from the shipped Home (frontend/src/pages/Home.jsx). Other surfaces have not migrated and still use the legacy blue/indigo + Inter tokens in frontend/src/index.css. Talão tokens live on the Home's Page styled component, not :root.",
@@ -531,8 +531,8 @@
         "section": "typography"
       },
       {
-        "name": "The Display Guard Rule",
-        "body": "`index.css` shrinks h1–h3 with `!important` on phones for legacy markup. Every world heading carries `data-display`, which exempts it; without it, a Display or Page title collapses on mobile.",
+        "name": "The Own Size Rule",
+        "body": "Every heading sets its own size with a `clamp()` (Display, Headline, Page title) or a fixed rem (Title); there is no global mobile override. A new heading that relies on browser defaults is a bug.",
         "section": "typography"
       },
       {
@@ -561,7 +561,7 @@
       "Do show every state as a word in its status ink, and every destructive or billing action behind a native `<dialog>` that says what will happen.",
       "Do keep a section in place when its data fails, loads or is empty, and say what happened with a way forward.",
       "Do keep numbering, counts, ratings and prices tied to real API data, and omit them entirely when the data is missing.",
-      "Do keep all motion off under `prefers-reduced-motion`, and every page free of sideways scroll at 360px."
+      "Do keep all motion off under `prefers-reduced-motion` (including the 1px button press), and every page free of sideways scroll at 360px without hiding overflow on `html`/`body`."
     ],
     "donts": [
       "Don't use a gradient as a color fill or a fade between sections; the only gradients are repeating line patterns (a blank card's ruling, a blocked slot's hatch, the review textarea's lines).",

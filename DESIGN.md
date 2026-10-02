@@ -229,7 +229,7 @@ A four-paper stock (yellow, white, pink, blue) printed in one red and written in
 - **Page title** (800, clamp(1.9rem, 3.5vw, 2.5rem), 1.05): the one h1 of a contained page (`PageHead`, `StepHead`), with one supporting line under it in texto-2.
 - **Title** (700–800, 1.2–2.2rem, ~1.05): via titles (800, clamp(1.7rem, 3vw, 2.2rem)), panel and section headings (700, 1.35rem), dialog titles (800, 1.65–1.85rem), card names (700, 1.45rem), plan names (800, 1.5rem), appointment titles in rows (700, 1.2–1.25rem).
 - **Lead** (400, clamp(1.05rem, 1.4vw, 1.2rem), 1.55, max 60ch): the one supporting paragraph under a heading, in texto-2.
-- **Body** (400, 1rem, 1.5–1.6, 62–68ch): running text, table cells, FAQ answers. On phones the body never shrinks below 15px.
+- **Body** (400, 1rem, 1.5–1.6, 62–68ch): running text, table cells, FAQ answers. On phones the root body size is 15px.
 - **Label** (Barlow Condensed 600, 0.95rem, 0.08em, uppercase, gráfica or gráfica-escura): printed form labels: field labels ("SERVIÇO:", `FieldLabel`), fieldset legends, table column heads, ruled-list terms (`dt`), via stamps, "Passo N de M".
 - **Fine print** (Barlow Condensed 500–600, 0.95–1rem, 0.02–0.03em, sentence case): printed lines that must be read, not scanned, such as the talão's tear line. Kept at 0.95rem or larger; nothing on any page is set below that, except the 0.9rem slug and sub-notes of the admin.
 - **Action** (Barlow Condensed 700, 1.1rem, 0.05em, uppercase): button text; nav and menu items use 600, 1.1–1.15rem, 0.03em, sentence case.
@@ -240,7 +240,7 @@ A four-paper stock (yellow, white, pink, blue) printed in one red and written in
 
 **The Numbers Are Printed Rule.** Numbering, prices, dates, counts and admin figures are Barlow Condensed (or Barlow in tables) with `tabular-nums`.
 
-**The Display Guard Rule.** `index.css` shrinks h1–h3 with `!important` on phones for legacy markup. Every world heading carries `data-display`, which exempts it; without it, a Display or Page title collapses on mobile.
+**The Own Size Rule.** Every heading sets its own size with a `clamp()` (Display, Headline, Page title) or a fixed rem (Title); there is no global mobile override. A new heading that relies on browser defaults is a bug.
 
 ## Layout
 
@@ -325,7 +325,7 @@ Printed and decisive, like the gráfica's red block.
 
 ### Navigation
 - **Topbar (full talão):** papel, 56px, sticky, closed by a 2px gráfica bottom rule. Links in Barlow Condensed 600 1.1rem nanquim; hover turns them red and draws a 2px underline at 5px offset. Below 860px they collapse into a full-width panel of 48px rows separated by pauta, closed by Esc; the "Sou profissional" stamp stays visible.
-- **AppShell menu (contained):** Barlow Condensed 600 1.15rem in 48px rows, groups separated by pauta. The active item is gráfica, 700, underlined 2px at 5px offset, with `aria-current="page"`. No pills, no colored side bars. State items use status inks ("Suspender atendimentos" alerta, "Retomar" sucesso), never the action red.
+- **AppShell menu (contained):** Barlow Condensed 600 1.15rem in 48px rows, groups separated by pauta. Items that go to a page are real links (`MenuLink`), so they open in a new tab and show their address; the active one is gráfica, 700, underlined 2px at 5px offset, with `aria-current="page"`. Items that do something (suspend, tour, sign out) stay buttons. No pills, no colored side bars. State items use status inks ("Suspender atendimentos" alerta, "Retomar" sucesso), never the action red.
 - **Tabs (contained):** links in Barlow Condensed over a régua line; the current one is gráfica with a 3px gráfica underline.
 - **Pager:** Anterior / "Página X de Y" / Próxima, which fits at 360px whatever the page count.
 
@@ -349,8 +349,8 @@ The primary search form is the order pad itself: a papel sheet with a 2px gráfi
 ### Perforated Seam (signature component)
 See the Perforated Seam Rule. It is the only divider between sections of different paper.
 
-### Known Gaps
-- The guided tour (`contexts/TourContext.jsx`, react-joyride) still has the legacy styling: rounded 10–16px tooltip and buttons, grey Tailwind-style text. Its button is already gráfica. Bring it into the contained register (square, Barlow Condensed title, nanquim/texto-2 text) next time it is touched.
+### Guided Tour
+`components/GuidedTour.jsx` (react-joyride), loaded only when a tour runs. A papel sheet with a 4px gráfica top rule, square corners and the "Sheet over the desk" shadow; Barlow Condensed 800 title, texto-2 body, a primary "Próximo (N de M)" and an underlined "Pular o tour". Step copy (`config/tourConfig.js`) describes the real screens and never claims what the product does not do.
 
 ## Do's and Don'ts
 
@@ -364,7 +364,7 @@ See the Perforated Seam Rule. It is the only divider between sections of differe
 - **Do** show every state as a word in its status ink, and every destructive or billing action behind a native `<dialog>` that says what will happen.
 - **Do** keep a section in place when its data fails, loads or is empty, and say what happened with a way forward.
 - **Do** keep numbering, counts, ratings and prices tied to real API data, and omit them entirely when the data is missing.
-- **Do** keep all motion off under `prefers-reduced-motion`, and every page free of sideways scroll at 360px.
+- **Do** keep all motion off under `prefers-reduced-motion` (including the 1px button press), and every page free of sideways scroll at 360px without hiding overflow on `html`/`body`.
 
 ### Don't:
 - **Don't** use a gradient as a color fill or a fade between sections; the only gradients are repeating line patterns (a blank card's ruling, a blocked slot's hatch, the review textarea's lines).

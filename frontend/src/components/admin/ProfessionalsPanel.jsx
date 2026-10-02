@@ -103,7 +103,7 @@ export default function ProfessionalsPanel() {
                     <td>
                       <StampButton
                         type="button"
-                        style={{ minHeight: 40, padding: '0 0.8rem', fontSize: '0.98rem' }}
+                        style={{ minHeight: 44, padding: '0 0.8rem', fontSize: '0.98rem' }}
                         onClick={() => { setError(''); setAction({ kind: p.is_suspended ? 'reactivate' : 'suspend', prof: p }); }}
                         aria-label={`${p.is_suspended ? 'Reativar' : 'Suspender'} ${p.name}`}
                       >

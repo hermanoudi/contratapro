@@ -27,6 +27,14 @@ const buttonBase = css`
     opacity: 0.55;
     transform: none;
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+
+    &:active {
+      transform: none;
+    }
+  }
 `;
 
 // Tinta cheia de gráfica: a ação principal da tela

@@ -36,6 +36,7 @@ const Header = styled.div`
 
 const ProgressTrack = styled.div`
   width: 100%;
+  overflow: hidden;
   height: 6px;
   background: var(--papel-2);
   border: 1px solid var(--regua);
@@ -44,9 +45,11 @@ const ProgressTrack = styled.div`
 
 const ProgressFill = styled.div`
   height: 100%;
-  width: ${(props) => props.$percent}%;
+  width: 100%;
   background: var(--grafica);
-  transition: width 400ms var(--ease-out);
+  transform: scaleX(${(props) => props.$percent / 100});
+  transform-origin: left;
+  transition: transform 400ms var(--ease-out);
 
   @media (prefers-reduced-motion: reduce) {
     transition: none;

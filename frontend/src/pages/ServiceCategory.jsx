@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { ArrowRight, MapPin, RotateCw } from 'lucide-react';
-import SEOHead, { POPULAR_CATEGORIES } from '../components/SEO/SEOHead';
+import SEOHead from '../components/SEO/SEOHead';
+import { POPULAR_CATEGORIES } from '../components/SEO/seoData';
 import StructuredData from '../components/SEO/StructuredData';
 import { API_URL } from '../config';
 import {

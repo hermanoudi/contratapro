@@ -48,7 +48,7 @@ export const Shortcuts = styled.div`
 `;
 
 export const Chip = styled.button`
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 0.85rem;
   background: ${({ 'aria-pressed': on }) => (on ? 'var(--grafica)' : 'var(--papel)')};
   border: 1.5px solid ${({ 'aria-pressed': on }) => (on ? 'var(--grafica)' : 'var(--regua)')};

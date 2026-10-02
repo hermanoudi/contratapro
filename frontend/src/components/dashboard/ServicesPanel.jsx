@@ -199,7 +199,7 @@ function ServiceCard({ service, onDelete, onUpdate }) {
     <Card>
       {service.image_url ? (
         <Photo>
-          <img src={service.image_url} alt={`Foto do serviço ${service.title}`} />
+          <img src={service.image_url} alt={`Foto do serviço ${service.title}`} loading="lazy" decoding="async" width="320" height="200" />
           <IconButton type="button" onClick={handleRemoveImage} disabled={uploading} aria-label={`Tirar a foto de ${service.title}`}>
             <X size={18} aria-hidden="true" />
           </IconButton>

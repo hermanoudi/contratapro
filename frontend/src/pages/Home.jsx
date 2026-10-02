@@ -4,7 +4,8 @@ import styled from 'styled-components';
 import { RotateCw, ArrowRight, Check, Plus } from 'lucide-react';
 import { API_URL } from '../config';
 import StructuredData from '../components/SEO/StructuredData';
-import SEOHead, { SEO_CONFIGS } from '../components/SEO/SEOHead';
+import SEOHead from '../components/SEO/SEOHead';
+import { SEO_CONFIGS } from '../components/SEO/seoData';
 import {
   TalaoPage,
   Wrap,
