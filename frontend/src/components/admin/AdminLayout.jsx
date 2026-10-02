@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Clock, Power } from 'lucide-react';
+import { Power } from 'lucide-react';
 import { API_URL } from '../../config';
 import { ADMIN_TABS } from './adminParts';
 import { LayoutContainer, Overlay, Sidebar, MainContent, NavGroup, NavItem, ShellLogo, ShellTopBar } from '../AppShell';
@@ -54,11 +54,6 @@ export default function AdminLayout({ active, children }) {
                 </NavItem>
               );
             })}
-          </NavGroup>
-          <NavGroup>
-            <NavItem $active={location.pathname === '/admin/trials'} onClick={() => go('/admin/trials')}>
-              <Clock size={20} aria-hidden="true" /> <span>Usuários em trial</span>
-            </NavItem>
           </NavGroup>
         </nav>
         <NavGroup>

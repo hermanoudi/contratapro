@@ -16,7 +16,6 @@ import SubscriptionCallback from './pages/SubscriptionCallback';
 import MySubscription from './pages/MySubscription';
 import ChangePlan from './pages/ChangePlan';
 import ProfessionalProfile from './pages/ProfessionalProfile';
-import AdminTrials from './pages/AdminTrials';
 import MyNotifications from './pages/MyNotifications';
 import ResetPassword from './pages/ResetPassword';
 import ReviewSubmit from './pages/ReviewSubmit';
@@ -83,7 +82,6 @@ function App() {
           <Route path="/my-appointments" element={<ClientLayout><ClientDashboard /></ClientLayout>} />
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/trials" element={<AdminTrials />} />
           <Route path="/appointment/:id" element={<SharedLayout><AppointmentDetail /></SharedLayout>} />
           <Route path="/history" element={<SharedLayout><History /></SharedLayout>} />
           <Route path="/subscription/setup" element={<SubscriptionSetup />} />
