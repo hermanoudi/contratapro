@@ -48,12 +48,24 @@ async def get_admin_dashboard(
     )
     subscription_stats = {status: count for status, count in result.all()}
 
-    # Faturamento mensal (profissionais ativos * R$ 50)
+    # Profissionais visíveis na busca (inclui o Free, que é ativo sem pagar)
     active_professionals = subscription_stats.get('active', 0)
-    monthly_revenue = active_professionals * 50.00
 
-    # Faturamento anual projetado
-    annual_revenue = monthly_revenue * 12
+    # Receita mensal recorrente: só assinaturas pagas ativas que vão renovar
+    # (cancelamento agendado já parou a cobrança no Mercado Pago)
+    paying = and_(
+        Subscription.status == 'active',
+        Subscription.plan_amount > 0,
+        Subscription.scheduled_cancellation_date.is_(None)
+    )
+    result = await db.execute(
+        select(func.coalesce(func.sum(Subscription.plan_amount), 0), func.count(Subscription.id)).where(paying)
+    )
+    monthly_revenue, paying_subscribers = result.one()
+    monthly_revenue = round(float(monthly_revenue), 2)
+
+    # Projeção anual se nada mudar
+    annual_revenue = round(monthly_revenue * 12, 2)
 
     # Profissionais por estado
     result = await db.execute(
@@ -109,7 +121,8 @@ async def get_admin_dashboard(
         .where(
             and_(
                 extract('month', Subscription.created_at) == current_month,
-                extract('year', Subscription.created_at) == current_year
+                extract('year', Subscription.created_at) == current_year,
+                Subscription.plan_amount > 0
             )
         )
     )
@@ -128,12 +141,6 @@ async def get_admin_dashboard(
         )
     )
     cancellations_this_month = result.scalar()
-
-    # Faturamento diário (média por dia)
-    daily_revenue = round(active_professionals * (50.00 / 30), 2)
-
-    # Faturamento semanal (média por semana)
-    weekly_revenue = round(active_professionals * (50.00 / 4.33), 2)
 
     # Profissionais mais recentes (últimos 10)
     result = await db.execute(
@@ -157,11 +164,9 @@ async def get_admin_dashboard(
             "cancellations_this_month": cancellations_this_month
         },
         "revenue": {
-            "daily": daily_revenue,
-            "weekly": weekly_revenue,
             "monthly": monthly_revenue,
             "annual_projected": annual_revenue,
-            "per_professional": 50.00
+            "paying_subscribers": paying_subscribers
         },
         "last_appointment": {
             "date": last_appointment.date.isoformat() if last_appointment else None,
@@ -340,6 +345,9 @@ async def list_all_subscriptions(
         query = select(Subscription).options(
             selectinload(Subscription.professional)
         )
+
+        # Linha "free" só guarda upgrade pendente de quem está no Free: não é assinatura
+        query = query.where(Subscription.status != 'free')
 
         if status:
             query = query.where(Subscription.status == status)
