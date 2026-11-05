@@ -1,11 +1,12 @@
 import { useState, useId } from 'react';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Clock } from 'lucide-react';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { API_URL } from '../config';
 import ForgotPasswordModal from '../components/ForgotPasswordModal';
 import AuthLayout, { AuthTitle, AuthLead } from '../components/AuthLayout';
+import { Notice } from '../components/dashboard/parts';
 import { PrimaryButton, StampButton, FieldLabel, InputBox, TextInput, FieldNote } from '../components/talao';
 
 // Só o que o ContrataPro faz de fato (PRODUCT.md): nada de "verificados"
@@ -97,6 +98,11 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const id = useId();
+  const from = typeof location.state?.from === 'string'
+    && location.state.from.startsWith('/') && !location.state.from.startsWith('/login')
+    ? location.state.from
+    : null;
+  const expired = !!location.state?.expired;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -116,18 +122,17 @@ export default function Login() {
         localStorage.setItem('token', data.access_token);
         toast.success('Login realizado com sucesso!');
 
-        // Verificar se há uma rota de origem (de onde o usuário veio)
-        const from = location.state?.from;
-
+        // Volta para onde a pessoa estava (sessão vencida, agendamento); as molduras
+        // logadas já mandam cada perfil para a sua área se o endereço não for dele
         const payload = JSON.parse(atob(data.access_token.split('.')[1]));
-        if (payload.is_admin) {
+        if (from) {
+          navigate(from, { replace: true });
+        } else if (payload.is_admin) {
           navigate('/admin');
         } else if (payload.is_professional) {
           navigate('/dashboard');
         } else {
-          // Se veio de outra página (ex: booking), volta para lá
-          // Senão, vai para a Home
-          navigate(from || '/');
+          navigate('/');
         }
       } else {
         // O backend responde 401 em inglês; o resto já vem em português
@@ -150,6 +155,15 @@ export default function Login() {
     >
       <AuthTitle>Entre na sua conta</AuthTitle>
       <AuthLead>Use o e-mail e a senha do seu cadastro.</AuthLead>
+
+      {expired && (
+        <Notice $tone="alerta" role="status" style={{ marginTop: '1.25rem', marginBottom: 0 }}>
+          <p>
+            <Clock size={20} aria-hidden="true" />
+            Sua sessão terminou. Entre de novo para voltar de onde parou.
+          </p>
+        </Notice>
+      )}
 
       <form onSubmit={handleLogin}>
         <Group>

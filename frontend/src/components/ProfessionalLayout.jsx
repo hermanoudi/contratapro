@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
     Calendar as CalendarIcon, Briefcase, Clock, Power,
@@ -7,8 +7,10 @@ import {
 import { API_URL } from '../config';
 import { toast } from 'sonner';
 import { useTour } from '../contexts/tour';
+import { SkipLink } from './talao';
+import { goToLogin, useSessionExpiry } from '../session';
 import {
-    LayoutContainer, Overlay, Sidebar, MainContent, NavGroup, NavItem, MenuLink, ShellLogo, ShellTopBar,
+    LayoutContainer, Overlay, Sidebar, MainContent, ShellContent, NavGroup, NavItem, MenuLink, ShellLogo, ShellTopBar,
 } from './AppShell';
 
 export default function ProfessionalLayout({ children }) {
@@ -17,11 +19,12 @@ export default function ProfessionalLayout({ children }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { startWelcomeTour, startTour } = useTour();
+    useSessionExpiry();
 
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) {
-            navigate('/login');
+            goToLogin(navigate, location);
             return;
         }
 
@@ -43,6 +46,8 @@ export default function ProfessionalLayout({ children }) {
             }
         };
         fetchUser();
+        // Só na entrada: trocar de aba do painel não refaz a checagem
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [navigate]);
 
     // Iniciar tour de boas-vindas no primeiro acesso
@@ -66,16 +71,31 @@ export default function ProfessionalLayout({ children }) {
         navigate('/login');
     };
 
+    // Clique duplo não pode suspender e retomar de uma vez
+    const togglingRef = useRef(false);
+
     const toggleSuspension = async () => {
+        if (togglingRef.current) return;
+        togglingRef.current = true;
         const token = localStorage.getItem('token');
-        const res = await fetch(`${API_URL}/users/toggle-suspension`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
+        const wasSuspended = !!user?.is_suspended;
+        try {
+            const res = await fetch(`${API_URL}/users/toggle-suspension`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.status === 401) return; // sessão vencida: o login assume
+            if (!res.ok) throw new Error(String(res.status));
             const data = await res.json();
             setUser(prev => ({ ...prev, is_suspended: data.is_suspended }));
             toast.success(data.is_suspended ? 'Atendimentos suspensos' : 'Atendimentos retomados');
+        } catch {
+            // O menu fica como estava: nada mudou no servidor
+            toast.error(wasSuspended
+                ? 'Não deu para retomar os atendimentos agora. Tente de novo em instantes.'
+                : 'Não deu para suspender os atendimentos agora. Tente de novo em instantes.');
+        } finally {
+            togglingRef.current = false;
         }
     };
 
@@ -85,6 +105,7 @@ export default function ProfessionalLayout({ children }) {
 
     return (
         <LayoutContainer>
+            <SkipLink />
             <Overlay $isOpen={isSidebarOpen} onClick={() => setIsSidebarOpen(false)} />
 
             <Sidebar $isOpen={isSidebarOpen}>
@@ -157,7 +178,7 @@ export default function ProfessionalLayout({ children }) {
                     onToggleMenu={() => setIsSidebarOpen(!isSidebarOpen)}
                     suspended={!!user?.is_suspended}
                 />
-                {children}
+                <ShellContent>{children}</ShellContent>
             </MainContent>
         </LayoutContainer>
     );

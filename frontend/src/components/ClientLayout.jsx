@@ -5,8 +5,10 @@ import {
 } from 'lucide-react';
 import { API_URL } from '../config';
 import { useTour } from '../contexts/tour';
+import { SkipLink } from './talao';
+import { goToLogin, useSessionExpiry } from '../session';
 import {
-    LayoutContainer, Overlay, Sidebar, MainContent, NavGroup, NavItem, MenuLink, ShellLogo, ShellTopBar,
+    LayoutContainer, Overlay, Sidebar, MainContent, ShellContent, NavGroup, NavItem, MenuLink, ShellLogo, ShellTopBar,
 } from './AppShell';
 
 export default function ClientLayout({ children }) {
@@ -15,11 +17,12 @@ export default function ClientLayout({ children }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { startWelcomeTour, startTour } = useTour();
+    useSessionExpiry();
 
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) {
-            navigate('/login');
+            goToLogin(navigate, location);
             return;
         }
 
@@ -37,6 +40,8 @@ export default function ClientLayout({ children }) {
             }
         };
         fetchUser();
+        // Só na entrada: trocar de aba do painel não refaz a checagem
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [navigate]);
 
     // Iniciar tour de boas-vindas no primeiro acesso
@@ -64,6 +69,7 @@ export default function ClientLayout({ children }) {
 
     return (
         <LayoutContainer>
+            <SkipLink />
             <Overlay $isOpen={isSidebarOpen} onClick={() => setIsSidebarOpen(false)} />
 
             <Sidebar $isOpen={isSidebarOpen}>
@@ -108,7 +114,7 @@ export default function ClientLayout({ children }) {
                     isMenuOpen={isSidebarOpen}
                     onToggleMenu={() => setIsSidebarOpen(!isSidebarOpen)}
                 />
-                {children}
+                <ShellContent>{children}</ShellContent>
             </MainContent>
         </LayoutContainer>
     );

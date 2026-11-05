@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useId } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { Check, RotateCw, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { API_URL } from '../config';
+import { goToLogin, useSessionExpiry } from '../session';
 import AuthLayout from '../components/AuthLayout';
 import { PrimaryButton, StampButton, FieldNote } from '../components/talao';
 import { StepHead, FormError, FooterNote } from '../components/SignupParts';
@@ -88,6 +89,8 @@ async function loadSetup() {
 
 export default function SubscriptionSetup() {
   const navigate = useNavigate();
+  const location = useLocation();
+  useSessionExpiry();
   const [searchParams] = useSearchParams();
   const uid = useId();
   const headingRef = useRef(null);
@@ -99,7 +102,7 @@ export default function SubscriptionSetup() {
 
   useEffect(() => {
     if (!localStorage.getItem('token')) {
-      navigate('/login');
+      goToLogin(navigate, location);
       return undefined;
     }
     let cancelled = false;
@@ -119,7 +122,7 @@ export default function SubscriptionSetup() {
         if (!cancelled) setState({ status: 'error' });
       });
     return () => { cancelled = true; };
-  }, [attempt, navigate]);
+  }, [attempt, navigate, location]);
 
   if (state.status === 'loading') {
     return <AuthLayout asideTitle="Seu plano no ContrataPro" wide><Loading role="status">Carregando os planos…</Loading></AuthLayout>;

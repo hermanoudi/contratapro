@@ -3,7 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Power } from 'lucide-react';
 import { API_URL } from '../../config';
 import { ADMIN_TABS } from './adminParts';
-import { LayoutContainer, Overlay, Sidebar, MainContent, NavGroup, NavItem, MenuLink, ShellLogo, ShellTopBar } from '../AppShell';
+import { SkipLink } from '../talao';
+import { useSessionExpiry } from '../../session';
+import { LayoutContainer, Overlay, Sidebar, MainContent, ShellContent, NavGroup, NavItem, MenuLink, ShellLogo, ShellTopBar } from '../AppShell';
 
 /* Moldura do painel do admin: o mesmo AppShell do profissional, com o
    menu das abas (?tab=) do /admin/dashboard. */
@@ -13,6 +15,7 @@ export default function AdminLayout({ active, children }) {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  useSessionExpiry();
 
   useEffect(() => {
     let cancelled = false;
@@ -30,6 +33,7 @@ export default function AdminLayout({ active, children }) {
 
   return (
     <LayoutContainer>
+      <SkipLink />
       <Overlay $isOpen={open} onClick={() => setOpen(false)} />
       <Sidebar $isOpen={open}>
         <ShellLogo />
@@ -59,7 +63,7 @@ export default function AdminLayout({ active, children }) {
       </Sidebar>
       <MainContent>
         <ShellTopBar user={user} onLogout={logout} isMenuOpen={open} onToggleMenu={() => setOpen((o) => !o)} />
-        {children}
+        <ShellContent>{children}</ShellContent>
       </MainContent>
     </LayoutContainer>
   );

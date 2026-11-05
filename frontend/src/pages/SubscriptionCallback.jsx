@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { RotateCw } from 'lucide-react';
 import { API_URL } from '../config';
+import { goToLogin, useSessionExpiry } from '../session';
 import AuthLayout from '../components/AuthLayout';
 import { PrimaryLink, StampLink } from '../components/talao';
 import { StepHead } from '../components/SignupParts';
@@ -88,6 +89,8 @@ const isConfirmed = (sub, intended) => {
 
 export default function SubscriptionCallback() {
   const navigate = useNavigate();
+  const location = useLocation();
+  useSessionExpiry();
   const [params] = useSearchParams();
   const kind = readReturn(params);
   // checking | confirmed | slow | review | rejected | unknown
@@ -97,7 +100,7 @@ export default function SubscriptionCallback() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
-      navigate('/login');
+      goToLogin(navigate, location);
       return undefined;
     }
     if (kind !== 'check') return undefined;
@@ -135,7 +138,7 @@ export default function SubscriptionCallback() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [kind, navigate]);
+  }, [kind, navigate, location]);
 
   const content = {
     checking: {

@@ -71,6 +71,12 @@ summary:focus-visible,
   outline-offset: 3px;
 }
 
+/* Regiões que só recebem foco por script (alvo do "Pular para o conteúdo", título de erro) não ganham moldura */
+[tabindex="-1"]:focus,
+[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
 /* Barra de rolagem */
 ::-webkit-scrollbar {
   width: 8px;

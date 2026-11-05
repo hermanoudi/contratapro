@@ -6,6 +6,7 @@ import { API_URL } from '../../config';
 import logoImage from '../../assets/contratapro-logo-grafica.png';
 import { Wrap } from './TalaoPage';
 import { StampLink } from './buttons';
+import SkipLink from './SkipLink';
 
 /* Topo das páginas públicas: logo em uma cor, conta à direita, menu em gaveta no celular. */
 
@@ -174,10 +175,8 @@ export default function SiteHeader() {
     fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
       .then(setUserInfo)
-      .catch(() => {
-        localStorage.removeItem('token');
-        setUserInfo(null);
-      });
+      // Sessão vencida já apaga o token (session.js); falha de rede não desloga ninguém
+      .catch(() => setUserInfo(null));
   }, []);
 
   // Esc fecha o menu mobile
@@ -221,34 +220,37 @@ export default function SiteHeader() {
     );
 
   return (
-    <Topbar>
-      <TopbarInner>
-        <Logo to="/" aria-label="ContrataPro, página inicial">
-          <img src={logoImage} alt="" width="120" height="34" />
-        </Logo>
+    <>
+      <SkipLink />
+      <Topbar>
+        <TopbarInner>
+          <Logo to="/" aria-label="ContrataPro, página inicial">
+            <img src={logoImage} alt="" width="120" height="34" />
+          </Logo>
 
-        <TopNav aria-label="Conta">{accountLinks()}</TopNav>
+          <TopNav aria-label="Conta">{accountLinks()}</TopNav>
 
-        <MobileActions>
-          {!userInfo && <TopStamp to="/register-pro">Sou profissional</TopStamp>}
-          <MenuToggle
-            ref={menuToggleRef}
-            type="button"
-            aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
-            aria-expanded={menuOpen}
-            aria-controls="menu-mobile"
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            {menuOpen ? <X size={26} aria-hidden="true" /> : <Menu size={26} aria-hidden="true" />}
-          </MenuToggle>
-        </MobileActions>
-      </TopbarInner>
+          <MobileActions>
+            {!userInfo && <TopStamp to="/register-pro">Sou profissional</TopStamp>}
+            <MenuToggle
+              ref={menuToggleRef}
+              type="button"
+              aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+              aria-expanded={menuOpen}
+              aria-controls="menu-mobile"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              {menuOpen ? <X size={26} aria-hidden="true" /> : <Menu size={26} aria-hidden="true" />}
+            </MenuToggle>
+          </MobileActions>
+        </TopbarInner>
 
-      {menuOpen && (
-        <MobilePanel id="menu-mobile" aria-label="Menu">
-          {accountLinks(closeMenu)}
-        </MobilePanel>
-      )}
-    </Topbar>
+        {menuOpen && (
+          <MobilePanel id="menu-mobile" aria-label="Menu">
+            {accountLinks(closeMenu)}
+          </MobilePanel>
+        )}
+      </Topbar>
+    </>
   );
 }

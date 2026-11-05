@@ -1,9 +1,11 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import Home from './pages/Home';
 import { TourProvider } from './contexts/TourContext';
 import { TalaoTokens } from './components/talao';
+import ErrorBoundary from './components/ErrorBoundary';
+import RouteTitle from './components/SEO/RouteTitle';
 
 // Só a Home vai no pacote inicial; o resto baixa quando a rota abre
 const Search = lazy(() => import('./pages/Search'));
@@ -25,6 +27,7 @@ const MyNotifications = lazy(() => import('./pages/MyNotifications'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const ReviewSubmit = lazy(() => import('./pages/ReviewSubmit'));
 const ServiceCategory = lazy(() => import('./pages/ServiceCategory'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 const ProfessionalLayout = lazy(() => import('./components/ProfessionalLayout'));
 const ClientLayout = lazy(() => import('./components/ClientLayout'));
 const SharedLayout = lazy(() => import('./components/SharedLayout'));
@@ -36,6 +39,12 @@ function PageLoading() {
       <span className="sr-only">Carregando a página…</span>
     </div>
   );
+}
+
+// Uma página que quebra não derruba o app: a próxima navegação recomeça do zero
+function RouteBoundary({ children }) {
+  const { pathname } = useLocation();
+  return <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>;
 }
 
 function App() {
@@ -78,7 +87,9 @@ function App() {
           },
         }}
       />
+      <RouteTitle />
       <div className="app-container">
+        <RouteBoundary>
         <Suspense fallback={<PageLoading />}>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -104,8 +115,10 @@ function App() {
           <Route path="/alterar-plano" element={<ProfessionalLayout><ChangePlan /></ProfessionalLayout>} />
           <Route path="/profile" element={<ProfessionalLayout><ProfessionalProfile /></ProfessionalLayout>} />
           <Route path="/notifications" element={<SharedLayout><MyNotifications /></SharedLayout>} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
         </Suspense>
+        </RouteBoundary>
       </div>
     </Router>
     </TourProvider>

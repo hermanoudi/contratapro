@@ -88,6 +88,11 @@ export const MainContent = styled.main`
 `;
 
 // Grupo do menu separado por pauta, com rótulo impresso quando precisa
+// Onde o conteúdo começa, logo abaixo da barra do topo: alvo do "Pular para o conteúdo"
+export const ShellContent = styled.div.attrs({ id: 'conteudo', tabIndex: -1 })`
+  scroll-margin-top: 80px;
+`;
+
 export const NavGroup = styled.div`
   & + & {
     margin-top: 1rem;

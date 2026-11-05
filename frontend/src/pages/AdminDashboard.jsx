@@ -40,7 +40,7 @@ export default function AdminDashboard() {
   const tab = PANELS[searchParams.get('tab')] ? searchParams.get('tab') : 'overview';
 
   useEffect(() => {
-    if (isAdmin === null) navigate('/login');
+    if (isAdmin === null) navigate('/login', { replace: true, state: { from: '/admin/dashboard' } });
     else if (!isAdmin) {
       toast.error('Esta área é só para administradores.');
       navigate('/');

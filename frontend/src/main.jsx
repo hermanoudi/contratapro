@@ -3,6 +3,23 @@ import { createRoot } from 'react-dom/client'
 import { HelmetProvider } from 'react-helmet-async'
 import './index.css'
 import App from './App.jsx'
+import { installSessionGuard } from './session'
+
+installSessionGuard();
+
+// Depois de um deploy, os pedaços antigos da página somem do servidor: recarrega para pegar os novos.
+// Se falhar de novo logo após recarregar, desiste e deixa o aviso de erro aparecer (sem laço).
+window.addEventListener('vite:preloadError', (event) => {
+  try {
+    const last = Number(sessionStorage.getItem('recarregou-apos-deploy'));
+    if (last && Date.now() - last < 30000) return;
+    sessionStorage.setItem('recarregou-apos-deploy', String(Date.now()));
+  } catch {
+    return;
+  }
+  event.preventDefault();
+  window.location.reload();
+});
 
 // Validacao de formularios em pt-BR
 document.addEventListener('invalid', (e) => {

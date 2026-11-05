@@ -6,6 +6,8 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { API_URL } from '../config';
 import { translateError } from '../components/apiErrors';
+import SEOHead from '../components/SEO/SEOHead';
+import { goToLogin } from '../session';
 import {
   TalaoPage,
   Wrap,
@@ -15,6 +17,8 @@ import {
   Hand,
   PrimaryButton,
   StampLink,
+  StateSheet,
+  StateActions,
   Seam,
   TrustNote,
   SiteHeader,
@@ -588,34 +592,6 @@ const PagerButton = styled.button`
 
 /* ------------------------------ Estados de página ------------------------------ */
 
-const StateSheet = styled.div`
-  max-width: 40rem;
-  padding: 1.5rem clamp(1.25rem, 3vw, 1.75rem);
-  background: var(--papel);
-  border-bottom: 5px solid var(--grafica);
-  box-shadow: 0 16px 28px -18px rgba(91, 74, 18, 0.55), 0 1px 3px rgba(91, 74, 18, 0.18);
-
-  h1 {
-    font-family: var(--f-impresso);
-    font-weight: 800;
-    font-size: clamp(1.9rem, 4vw, 2.4rem);
-    line-height: 1.05;
-  }
-
-  p {
-    margin-top: 0.6rem;
-    line-height: 1.55;
-    color: var(--texto-2-papel);
-  }
-`;
-
-const StateActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
-`;
-
 /* ------------------------------ Sucesso: a via do cliente ------------------------------ */
 
 const Via = styled.section`
@@ -760,7 +736,7 @@ export default function Booking() {
 
   const [clientCity, setClientCity] = useState('');
   const [clientChecked, setClientChecked] = useState(false);
-  const [isLoggedIn] = useState(() => !!localStorage.getItem('token'));
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('token'));
 
   const [reviews, setReviews] = useState([]);
   const [reviewsPage, setReviewsPage] = useState(1);
@@ -779,7 +755,11 @@ export default function Booking() {
     const token = localStorage.getItem('token');
     if (!token) return;
     fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => (res.ok ? res.json() : null))
+      .then((res) => {
+        // Sessão vencida: o perfil segue aberto como visitante, com "Entrar para agendar"
+        if (res.status === 401) setIsLoggedIn(false);
+        return res.ok ? res.json() : null;
+      })
       .then((userData) => {
         if (userData) setClientCity(userData.city || '');
       })
@@ -917,7 +897,7 @@ export default function Booking() {
 
     const token = localStorage.getItem('token');
     if (!token) {
-      navigate('/login', { state: { from: location.pathname } });
+      goToLogin(navigate, location);
       return;
     }
     if (!selectedService) {
@@ -963,6 +943,12 @@ export default function Booking() {
         body: JSON.stringify(requestBody)
       });
 
+      if (res.status === 401) {
+        // Sessão venceu com o pedido pronto: entra de novo e volta para este perfil
+        goToLogin(navigate, location, true);
+        return;
+      }
+
       if (res.ok) {
         const appointmentData = await res.json();
         setSuccess({
@@ -1005,6 +991,9 @@ export default function Booking() {
     }[proState];
     return (
       <TalaoPage>
+        {proState === 'notfound' && (
+          <SEOHead title="Perfil não encontrado" description="Este perfil não está mais no ContrataPro." noIndex />
+        )}
         <SiteHeader />
         <main>
           <Perfil>
@@ -1087,6 +1076,13 @@ export default function Booking() {
 
   return (
     <TalaoPage>
+      <SEOHead
+        professional={{ name: pro.name, category: pro.category, description: pro.description }}
+        image={pro.profile_picture || undefined}
+        url={pro.slug ? `https://contratapro.com.br/p/${pro.slug}` : undefined}
+        type="profile"
+        city={pro.city}
+      />
       <SiteHeader />
       <main>
         <Perfil aria-labelledby={`${uid}-nome`}>
