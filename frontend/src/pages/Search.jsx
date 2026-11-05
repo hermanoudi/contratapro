@@ -20,9 +20,10 @@ import {
   BlankCard,
   NoticeSheet,
   NoticeActions,
-  CepField,
-  useCep,
-  readSavedLocation,
+  CityField,
+  useSearchOptions,
+  readSavedCity,
+  saveCity,
   SiteHeader,
   SiteFooter,
   whatsappLink,
@@ -177,23 +178,20 @@ export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const formId = useId();
   const serviceInputRef = useRef(null);
-  const cepInputRef = useRef(null);
+  const cityInputRef = useRef(null);
+  const options = useSearchOptions();
 
   // Chegando direto em /search, sem pedido: usa a região salva na última visita
   const hasQuery = searchParams.has('service') || searchParams.has('city');
-  const [savedLocation] = useState(readSavedLocation);
+  const [savedCity] = useState(readSavedCity);
   const query = {
     service: (searchParams.get('service') || '').trim(),
-    city: hasQuery ? (searchParams.get('city') || '').trim() : savedLocation?.city || '',
+    city: hasQuery ? (searchParams.get('city') || '').trim() : savedCity,
   };
 
   const [service, setService] = useState(query.service);
   const [formError, setFormError] = useState('');
-  const cep = useCep(
-    hasQuery
-      ? { cep: searchParams.get('cep') || '', city: searchParams.get('city') || '' }
-      : savedLocation
-  );
+  const [cityInput, setCityInput] = useState(query.city);
 
   const [attempt, setAttempt] = useState(0);
   // Resposta guardada com a chave do pedido que a gerou: chave diferente = ainda carregando
@@ -241,27 +239,24 @@ export default function Search() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // CEP começado e incompleto: avisa no próprio CEP em vez de buscar sem a região
-    if (cep.isIncomplete) {
-      cep.setCepIncomplete(true);
-      cepInputRef.current?.focus();
-      return;
-    }
-    if (!service.trim() && !cep.city) {
-      setFormError('Escreva o serviço ou um CEP válido para buscar.');
+    const city = cityInput.trim();
+    if (!service.trim() && !city) {
+      setFormError('Escreva o serviço ou a cidade para buscar.');
       serviceInputRef.current?.focus();
       return;
     }
     const params = new URLSearchParams();
     if (service.trim()) params.set('service', service.trim());
-    if (cep.city) params.set('city', cep.city);
-    if (cep.cepState === 'ok' && cep.cepDigits.length === 8) params.set('cep', cep.cepDigits);
+    if (city) {
+      params.set('city', city);
+      saveCity(city);
+    }
     setSearchParams(params);
   };
 
   const searchAllCities = () => {
     setSearchParams(query.service ? { service: query.service } : {});
-    cep.handleCepChange('');
+    setCityInput('');
   };
 
   const editRequest = () => {
@@ -305,7 +300,7 @@ export default function Search() {
             <PedidoLead>
               {showResults
                 ? 'Quem se cadastrou no ContrataPro e oferece esse serviço. Os primeiros da lista assinam um plano de destaque; as avaliações só vêm de quem agendou.'
-                : 'Escreva o serviço e o seu CEP. Você vê quem atende no seu bairro e marca o horário direto na agenda da pessoa.'}
+                : 'Escolha o serviço e a cidade. Você vê quem atende no seu bairro e marca o horário direto na agenda da pessoa.'}
             </PedidoLead>
 
             <PedidoSheet onSubmit={handleSubmit} noValidate aria-label="Pedido de serviço">
@@ -318,6 +313,7 @@ export default function Search() {
                     name="service"
                     placeholder="ex.: eletricista, diarista"
                     autoComplete="off"
+                    list={options.categories.length ? `${formId}-servicos` : undefined}
                     value={service}
                     aria-invalid={formError ? true : undefined}
                     aria-describedby={formError ? `${formId}-erro` : undefined}
@@ -328,12 +324,19 @@ export default function Search() {
                   />
                 </Field>
                 {formError && <FormError id={`${formId}-erro`} role="alert">{formError}</FormError>}
+                {options.categories.length > 0 && (
+                  <datalist id={`${formId}-servicos`}>
+                    {options.categories.map((name) => <option key={name} value={name} />)}
+                  </datalist>
+                )}
               </div>
               <div>
-                <CepField
-                  cep={{ ...cep, handleCepChange: (value) => { setFormError(''); cep.handleCepChange(value); } }}
-                  id={`${formId}-cep`}
-                  inputRef={cepInputRef}
+                <CityField
+                  value={cityInput}
+                  onChange={(value) => { setFormError(''); setCityInput(value); }}
+                  cities={options.cities}
+                  id={`${formId}-cidade`}
+                  inputRef={cityInputRef}
                 />
               </div>
               <SubmitCell>
@@ -442,7 +445,6 @@ export default function Search() {
                     <ProCard
                       key={pro.id}
                       pro={pro}
-                      cep={cep.cepDigits}
                       badge={pro.subscription_plan?.badge_label}
                       contactHref={whatsappLink(pro.whatsapp, pro.name, pro.services?.[0]?.title)}
                     />

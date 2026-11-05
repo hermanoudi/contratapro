@@ -289,6 +289,33 @@ async def get_categories(db: AsyncSession = Depends(get_db)):
     categories = result.scalars().all()
     return categories if categories else []
 
+@router.get("/search-options", response_model=dict)
+async def get_search_options(db: AsyncSession = Depends(get_db)):
+    """
+    Opções do filtro de busca: somente categorias e cidades que têm
+    profissionais visíveis na busca (ativos, não suspensos).
+    """
+    query = select(User.category, User.city).filter(
+        User.is_professional == True,
+        User.is_suspended.is_not(True),
+        User.subscription_status == 'active'
+    )
+    result = await db.execute(query)
+
+    # Agrupa ignorando maiúsculas/espaços; mantém a primeira grafia encontrada
+    categories: dict[str, str] = {}
+    cities: dict[str, str] = {}
+    for category, city in result.all():
+        if category and category.strip():
+            categories.setdefault(category.strip().lower(), category.strip())
+        if city and city.strip():
+            cities.setdefault(city.strip().lower(), city.strip())
+
+    return {
+        "categories": sorted(categories.values(), key=str.lower),
+        "cities": sorted(cities.values(), key=str.lower),
+    }
+
 @router.get("/p/{slug}", response_model=ProfessionalPublic)
 async def get_professional_by_slug(slug: str, db: AsyncSession = Depends(get_db)):
     """

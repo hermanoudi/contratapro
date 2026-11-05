@@ -103,3 +103,8 @@ frontend/src/
 **Downgrade de plano** (`backend/app/routers/plans.py`):
 - Se profissional tem mais serviços do que o novo limite, é necessário escolher quais manter
 - Endpoint retorna `409` com `max_allowed` e lista dos serviços para resolução manual antes de confirmar o downgrade
+
+## Busca de profissionais
+
+- Filtro por **cidade** (não por CEP): campo `CityField` na Home e em `/search`, parâmetro `city` (busca parcial, `ilike`).
+- `GET /users/search-options` devolve só categorias e cidades de profissionais visíveis (ativos, não suspensos); alimenta os `datalist` de serviço e cidade e os atalhos "Mais pedidos".

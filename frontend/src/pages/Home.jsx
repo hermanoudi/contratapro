@@ -25,8 +25,9 @@ import {
   SiteFooter,
   NoticeSheet,
   NoticeActions,
-  CepField,
-  useCep,
+  CityField,
+  useSearchOptions,
+  saveCity,
   TalaoSheet,
   Canhoto,
   TalaoBody,
@@ -36,7 +37,7 @@ import {
   Perforation,
   PrintedCircle,
   HandCross,
-  readSavedLocation,
+  readSavedCity,
 } from '../components/talao';
 
 /* Home no mundo "Talão de Orçamento". Tokens e peças compartilhadas vivem em
@@ -461,13 +462,14 @@ export default function Home() {
 
   const [service, setService] = useState('');
   const [formError, setFormError] = useState('');
-  // CEP salvo em visitas anteriores
-  const [savedLocation] = useState(readSavedLocation);
-  const cep = useCep(savedLocation);
-  const { cepDigits, city } = cep;
-  const cepInputRef = useRef(null);
+  // Cidade salva em visitas anteriores
+  const [cityInput, setCityInput] = useState(readSavedCity);
+  const city = cityInput.trim();
+  const cityInputRef = useRef(null);
 
-  const [categories, setCategories] = useState([]);
+  // Só categorias e cidades que têm profissionais cadastrados
+  const options = useSearchOptions();
+  const categories = options.categories;
   const [bookingsCount, setBookingsCount] = useState(null);
   // Texto que a pessoa digitou antes de marcar um atalho, para desmarcar sem perder o que escreveu
   const typedServiceRef = useRef('');
@@ -475,18 +477,6 @@ export default function Home() {
 
   const [pros, setPros] = useState({ status: 'loading', items: [], fromCity: null });
   const [prosAttempt, setProsAttempt] = useState(0);
-
-  // Categorias para o checklist e autocomplete (sem categorias, o campo livre continua funcionando)
-  useEffect(() => {
-    fetch(`${API_URL}/categories/groups`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!data) return;
-        const names = Object.values(data).flat().map((c) => c.name);
-        setCategories([...new Set(names)]);
-      })
-      .catch(() => {});
-  }, []);
 
   // Numeração do talão: só aparece com o número real de agendamentos
   useEffect(() => {
@@ -550,21 +540,17 @@ export default function Home() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // CEP começado e incompleto: avisa no próprio CEP em vez de buscar sem a região
-    if (cep.isIncomplete) {
-      cep.setCepIncomplete(true);
-      cepInputRef.current?.focus();
-      return;
-    }
     if (!service.trim() && !city) {
-      setFormError('Escreva o serviço ou um CEP válido para começar.');
+      setFormError('Escreva o serviço ou a cidade para começar.');
       serviceInputRef.current?.focus();
       return;
     }
     const params = new URLSearchParams();
     if (service.trim()) params.append('service', service.trim());
-    if (city) params.append('city', city);
-    if (cep.cepState === 'ok' && cepDigits.length === 8) params.append('cep', cepDigits);
+    if (city) {
+      params.append('city', city);
+      saveCity(city);
+    }
     navigate(`/search?${params}`);
   };
 
@@ -597,7 +583,7 @@ export default function Home() {
                 Profissionais da sua região, com agenda aberta pra você.
               </HeroTitle>
               <HeroLead>
-                Escreva o serviço e o seu CEP. Você vê quem atende no seu bairro, confere o perfil e marca
+                Escolha o serviço e a cidade. Você vê quem atende perto de você, confere o perfil e marca
                 o horário direto na agenda da pessoa. Para quem contrata, é grátis.
               </HeroLead>
             </div>
@@ -673,10 +659,12 @@ export default function Home() {
                   </Checklist>
                 )}
 
-                <CepField
-                  cep={{ ...cep, handleCepChange: (value) => { setFormError(''); cep.handleCepChange(value); } }}
-                  id={`${formId}-cep`}
-                  inputRef={cepInputRef}
+                <CityField
+                  value={cityInput}
+                  onChange={(value) => { setFormError(''); setCityInput(value); }}
+                  cities={options.cities}
+                  id={`${formId}-cidade`}
+                  inputRef={cityInputRef}
                 />
 
 
@@ -756,7 +744,7 @@ export default function Home() {
                 <CardsGrid>
                   {pros.status === 'loading'
                     ? [0, 1, 2].map((i) => <BlankCard key={i} aria-hidden="true" />)
-                    : pros.items.map((pro) => <ProCard key={pro.id} pro={pro} cep={cepDigits} />)}
+                    : pros.items.map((pro) => <ProCard key={pro.id} pro={pro} />)}
                 </CardsGrid>
               )}
 

@@ -190,11 +190,9 @@ export default function ServiceCategory() {
 
   const results = response.key === requestKey ? response : { status: 'loading', items: [] };
 
-  // Leva o pedido para a busca, onde dá para trocar o CEP
+  // Leva o pedido para a busca, onde dá para trocar a cidade
   const searchParams = new URLSearchParams({ service: categoryName || '' });
-  const savedCep = localStorage.getItem('userCep');
   if (city) searchParams.set('city', city);
-  if (city && savedCep) searchParams.set('cep', savedCep);
   const searchHref = `/search?${searchParams}`;
 
   const relatedCategories = POPULAR_CATEGORIES.filter((c) => c.slug !== categoria);
@@ -311,7 +309,6 @@ export default function ServiceCategory() {
                 <ProCard
                   key={pro.id}
                   pro={pro}
-                  cep={city ? savedCep || '' : ''}
                   badge={pro.subscription_plan?.badge_label}
                   contactHref={whatsappLink(pro.whatsapp, pro.name, categoryName)}
                 />
